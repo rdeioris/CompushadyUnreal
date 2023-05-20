@@ -216,11 +216,17 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 	TArray<LPCWSTR> Arguments;
 
+	TStringBuilderBase<WIDECHAR> TargetProfileWideString;
+	TargetProfileWideString = TCHAR_TO_WCHAR(*TargetProfile);
+
+	TStringBuilderBase<WIDECHAR> EntryPointWideString;
+	EntryPointWideString = TCHAR_TO_WCHAR(*EntryPoint);
+
 	Arguments.Add(L"-T");
-	Arguments.Add(TCHAR_TO_WCHAR(*TargetProfile));
+	Arguments.Add(*TargetProfileWideString);
 
 	Arguments.Add(L"-E");
-	Arguments.Add(TCHAR_TO_WCHAR(*EntryPoint));
+	Arguments.Add(*EntryPointWideString);
 
 	// compile to spirv
 	if (RHIInterfaceType == ERHIInterfaceType::Vulkan || RHIInterfaceType == ERHIInterfaceType::Metal)
@@ -576,7 +582,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 				GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
 				GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
-				
+
 				if (Pair.Value.ReflectionType.Contains("texture"))
 				{
 					GlobalInfo.TypeIndex = ImageType;
