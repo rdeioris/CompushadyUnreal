@@ -23,7 +23,7 @@ bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	return true;
 }
 
-bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef)
+bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EPixelFormat PixelFormat)
 {
 	if (!InBufferRHIRef)
 	{
@@ -32,7 +32,7 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef)
 
 	BufferRHIRef = InBufferRHIRef;
 
-	UAVRHIRef = RHICreateUnorderedAccessView(BufferRHIRef, false, false);
+	UAVRHIRef = RHICreateUnorderedAccessView(BufferRHIRef, static_cast<uint8>(PixelFormat));
 	if (!UAVRHIRef)
 	{
 		return false;

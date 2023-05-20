@@ -56,7 +56,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FStr
 		[&BufferRHIRef, Name, Size, Stride](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-	BufferRHIRef = RHICreateBuffer(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+	BufferRHIRef = RHICreateBuffer(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::VertexBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
 		});
 
 	FlushRenderingCommands();
@@ -67,7 +67,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FStr
 	}
 
 	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
-	if (!CompushadyUAV->InitializeFromBuffer(BufferRHIRef))
+	if (!CompushadyUAV->InitializeFromBuffer(BufferRHIRef, EPixelFormat::PF_R32_FLOAT))
 	{
 		return nullptr;
 	}
@@ -93,6 +93,32 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 	}
 
 	return CompushadyUAV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromTexture2D(UTexture2D* Texture2D)
+{
+	if (Texture2D->IsStreamable() && !Texture2D->IsFullyStreamedIn())
+	{
+		Texture2D->SetForceMipLevelsToBeResident(30.0f);
+		Texture2D->WaitForStreaming();
+	}
+
+	if (!Texture2D->GetResource() || !Texture2D->GetResource()->IsInitialized())
+	{
+		Texture2D->UpdateResource();
+	}
+
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = Texture2D->GetResource();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
 }
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget)
@@ -142,7 +168,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromCurveFloat(UC
 		[&BufferRHIRef, Name, Data, Steps](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-	BufferRHIRef = RHICreateBuffer(Steps * sizeof(float), EBufferUsageFlags::ShaderResource, sizeof(float), ERHIAccess::UAVCompute, ResourceCreateInfo);
+	BufferRHIRef = RHICreateBuffer(Steps * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, sizeof(float), ERHIAccess::UAVCompute, ResourceCreateInfo);
 	void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 	FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 	RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -156,7 +182,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromCurveFloat(UC
 	}
 
 	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
-	if (!CompushadySRV->InitializeFromBuffer(BufferRHIRef))
+	if (!CompushadySRV->InitializeFromBuffer(BufferRHIRef, sizeof(float), EPixelFormat::PF_R32_FLOAT))
 	{
 		return nullptr;
 	}

@@ -23,19 +23,32 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	return true;
 }
 
-bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef)
+bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const int32 Stride, const EPixelFormat PixelFormat)
 {
 	if (!InBufferRHIRef)
 	{
 		return false;
 	}
 
+	uint32 TrueStride = Stride;
+	if (Stride == 0)
+	{
+		TrueStride = GPixelFormats[PixelFormat].BlockBytes;
+	}
+
 	BufferRHIRef = InBufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
-		[this](FRHICommandListImmediate& RHICmdList)
+		[this, TrueStride, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef);
+			if (PixelFormat == EPixelFormat::PF_Unknown)
+			{
+				SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef);
+			}
+			else
+			{
+				SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef, TrueStride, PixelFormat);
+			}
 		});
 
 	FlushRenderingCommands();

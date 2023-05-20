@@ -16,7 +16,7 @@ class COMPUSHADY_API UCompushadySRV : public UObject
 
 public:
 	bool InitializeFromTexture(FTextureRHIRef InTextureRHIRef);
-	bool InitializeFromBuffer(FBufferRHIRef InBufferRHIRef);
+	bool InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const int32 Stride, const EPixelFormat PixelFormat);
 	
 	FShaderResourceViewRHIRef GetRHI() const;
 

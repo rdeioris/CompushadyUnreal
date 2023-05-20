@@ -36,6 +36,9 @@ public:
     static UCompushadyUAV* CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadySRV* CreateCompushadySRVFromTexture2D(UTexture2D* Texture2D);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySRV* CreateCompushadySRVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")

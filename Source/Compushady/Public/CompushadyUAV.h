@@ -17,7 +17,7 @@ class COMPUSHADY_API UCompushadyUAV : public UObject
 
 public:
 	bool InitializeFromTexture(FTextureRHIRef InTextureRHIRef);
-	bool InitializeFromBuffer(FBufferRHIRef InBufferRHIRef);
+	bool InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EPixelFormat PixelFormat);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void Readback();
