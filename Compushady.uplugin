@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Compushady",
+	"Description": "Quickly define and execute Compute Shaders at runtime",
+	"Category": "Other",
+	"CreatedBy": "Roberto De Ioris",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "Compushady",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
