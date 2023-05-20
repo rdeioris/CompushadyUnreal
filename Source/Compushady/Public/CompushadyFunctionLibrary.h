@@ -30,7 +30,10 @@ public:
 	static UCompushadyCBV* CreateCompushadyCBVFromArray(const TArray<int32>& Data);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
-    static UCompushadyUAV* CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const int32 Stride);
+    static UCompushadyUAV* CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);

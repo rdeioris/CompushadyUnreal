@@ -48,15 +48,15 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLF
 	return CompushadyCompute;
 }
 
-UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const int32 Stride)
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat)
 {
 	FBufferRHIRef BufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
-		[&BufferRHIRef, Name, Size, Stride](FRHICommandListImmediate& RHICmdList)
+		[&BufferRHIRef, Name, Size, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-	BufferRHIRef = RHICreateBuffer(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::VertexBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+	BufferRHIRef = RHICreateBuffer(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::UAVCompute, ResourceCreateInfo);
 		});
 
 	FlushRenderingCommands();
@@ -67,7 +67,34 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FStr
 	}
 
 	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
-	if (!CompushadyUAV->InitializeFromBuffer(BufferRHIRef, EPixelFormat::PF_R32_FLOAT))
+	if (!CompushadyUAV->InitializeFromBuffer(BufferRHIRef, PixelFormat))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride)
+{
+	FBufferRHIRef BufferRHIRef;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
+		[&BufferRHIRef, Name, Size, Stride](FRHICommandListImmediate& RHICmdList)
+		{
+			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
+	BufferRHIRef = RHICreateBuffer(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+		});
+
+	FlushRenderingCommands();
+
+	if (!BufferRHIRef.IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromStructuredBuffer(BufferRHIRef))
 	{
 		return nullptr;
 	}

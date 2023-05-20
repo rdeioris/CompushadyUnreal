@@ -43,6 +43,26 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 	return true;
 }
 
+bool UCompushadyUAV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef)
+{
+	if (!InBufferRHIRef)
+	{
+		return false;
+	}
+
+	BufferRHIRef = InBufferRHIRef;
+
+	UAVRHIRef = RHICreateUnorderedAccessView(BufferRHIRef, false, false);
+	if (!UAVRHIRef)
+	{
+		return false;
+	}
+
+	RHITransitionInfo = FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute);
+
+	return true;
+}
+
 FUnorderedAccessViewRHIRef UCompushadyUAV::GetRHI() const
 {
 	return UAVRHIRef;
