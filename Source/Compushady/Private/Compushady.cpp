@@ -14,6 +14,9 @@ DEFINE_LOG_CATEGORY(LogCompushady);
 #include "Microsoft/COMPointer.h"
 #endif
 
+#if PLATFORM_LINUX
+#define __EMULATE_UUID
+#endif
 #include "dxcapi.h"
 #if PLATFORM_WINDOWS
 #include <d3d12shader.h>
@@ -85,6 +88,8 @@ namespace Compushady
 			{
 #if PLATFORM_WINDOWS
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("dxcompiler.dll"));
+#elif PLATFORM_LINUX
+				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.so"));
 #endif
 				if (!LibHandle)
 				{
@@ -207,32 +212,33 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		return false;
 	}
 
-	TArray<LPCWSTR> Arguments;
 	ERHIInterfaceType RHIInterfaceType = RHIGetInterfaceType();
 
-	Arguments.Add(TEXT("-T"));
-	Arguments.Add(*TargetProfile);
+	TArray<LPCWSTR> Arguments;
 
-	Arguments.Add(TEXT("-E"));
-	Arguments.Add(*EntryPoint);
+	Arguments.Add(L"-T");
+	Arguments.Add(TCHAR_TO_WCHAR(*TargetProfile));
+
+	Arguments.Add(L"-E");
+	Arguments.Add(TCHAR_TO_WCHAR(*EntryPoint));
 
 	// compile to spirv
 	if (RHIInterfaceType == ERHIInterfaceType::Vulkan || RHIInterfaceType == ERHIInterfaceType::Metal)
 	{
-		Arguments.Add(TEXT("-spirv"));
-		Arguments.Add(TEXT("-fvk-t-shift"));
-		Arguments.Add(TEXT("1024"));
-		Arguments.Add(TEXT("0"));
-		Arguments.Add(TEXT("-fvk-u-shift"));
-		Arguments.Add(TEXT("2048"));
-		Arguments.Add(TEXT("0"));
-		Arguments.Add(TEXT("-fvk-s-shift"));
-		Arguments.Add(TEXT("3072"));
-		Arguments.Add(TEXT("0"));
-		Arguments.Add(TEXT("-fvk-use-dx-layout"));
-		Arguments.Add(TEXT("-fvk-use-scalar-layout"));
-		Arguments.Add(TEXT("-fspv-entrypoint-name=main_00000000_00000000"));
-		Arguments.Add(TEXT("-fspv-reflect"));
+		Arguments.Add(L"-spirv");
+		Arguments.Add(L"-fvk-t-shift");
+		Arguments.Add(L"1024");
+		Arguments.Add(L"0");
+		Arguments.Add(L"-fvk-u-shift");
+		Arguments.Add(L"2048");
+		Arguments.Add(L"0");
+		Arguments.Add(L"-fvk-s-shift");
+		Arguments.Add(L"3072");
+		Arguments.Add(L"0");
+		Arguments.Add(L"-fvk-use-dx-layout");
+		Arguments.Add(L"-fvk-use-scalar-layout");
+		Arguments.Add(L"-fspv-entrypoint-name=main_00000000_00000000");
+		Arguments.Add(L"-fspv-reflect");
 	}
 
 	DxcBuffer SourceBuffer;
