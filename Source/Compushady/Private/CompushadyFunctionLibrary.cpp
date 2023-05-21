@@ -332,7 +332,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPos
 	FStaticMeshLODResources& LODResources = RenderData->LODResources[LOD];
 
 	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
-	if (!CompushadySRV->InitializeFromStructuredBuffer(LODResources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI))
+	if (!CompushadySRV->InitializeFromBuffer(LODResources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI, EPixelFormat::PF_R32G32B32F))
 	{
 		return nullptr;
 	}
