@@ -8,6 +8,8 @@
 #include "CompushadyUAV.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "CompushadyFunctionLibrary.generated.h"
 
@@ -37,6 +39,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadySRV* CreateCompushadySRVTexture2DFromImageFile(const FString& Name, const FString& Filename);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySRV* CreateCompushadySRVFromTexture2D(UTexture2D* Texture2D);

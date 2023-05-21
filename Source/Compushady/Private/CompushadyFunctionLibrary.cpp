@@ -57,7 +57,7 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 
 	TArray<uint8> ShaderCode;
 	ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
-	
+
 	if (!CompushadyCompute->InitFromHLSL(ShaderCode, EntryPoint, ErrorMessages))
 	{
 		return nullptr;
@@ -159,6 +159,64 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromTexture2D(UTe
 
 	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
 	if (!CompushadySRV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImageFile(const FString& Name, const FString& Filename)
+{
+	TArray<uint8> ImageData;
+	if (!FFileHelper::LoadFileToArray(ImageData, *Filename))
+	{
+		return nullptr;
+	}
+	IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
+	EImageFormat ImageFormat = ImageWrapperModule.DetectImageFormat(ImageData.GetData(), ImageData.Num());
+	if (ImageFormat == EImageFormat::Invalid)
+	{
+		return nullptr;
+	}
+
+	TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(ImageFormat);
+	if (!ImageWrapper.IsValid())
+	{
+		return nullptr;
+	}
+
+	if (!ImageWrapper->SetCompressed(ImageData.GetData(), ImageData.Num()))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> UncompressedBytes;
+	if (!ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBytes))
+	{
+		return nullptr;
+	}
+
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, ImageWrapper->GetWidth(), ImageWrapper->GetHeight(), EPixelFormat::PF_B8G8R8A8);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
+	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateTexture2D)(
+		[TextureRHIRef, ImageWrapper, &UncompressedBytes](FRHICommandListImmediate& RHICmdList)
+		{
+			FUpdateTextureRegion2D UpdateTextureRegion2D(0, 0, 0, 0, ImageWrapper->GetWidth(), ImageWrapper->GetHeight());
+	RHICmdList.UpdateTexture2D(TextureRHIRef, 0, UpdateTextureRegion2D, ImageWrapper->GetWidth() * 4, UncompressedBytes.GetData());
+		});
+
+	FlushRenderingCommands();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(TextureRHIRef))
 	{
 		return nullptr;
 	}
