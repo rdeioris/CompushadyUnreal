@@ -7,6 +7,7 @@
 #include "CompushadyCBV.h"
 #include "CompushadySRV.h"
 #include "CompushadyUAV.h"
+#include "CompushadyTypes.h"
 #include "CompushadyCompute.generated.h"
 
 USTRUCT(BlueprintType)
@@ -39,13 +40,11 @@ struct FCompushadyResourceArray
 	TArray<UCompushadyUAV*> UAVs;
 };
 
-DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
-
 /**
  * 
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadyCompute : public UObject
+class COMPUSHADY_API UCompushadyCompute : public UObject, public ICompushadySignalable
 {
 	GENERATED_BODY()
 
@@ -92,10 +91,5 @@ protected:
 	ERHIInterfaceType RHIInterfaceType;
 	FComputeShaderRHIRef ComputeShaderRef;
 	FComputePipelineStateRHIRef ComputePipelineStateRef;
-	FGPUFenceRHIRef FenceRef;
-
-	bool bRunning;
-
-	void CheckFence(FCompushadySignaled OnSignal);
 
 };

@@ -2,6 +2,7 @@
 
 
 #include "CompushadyUAV.h"
+#include "CompushadySRV.h"
 
 bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 {
@@ -16,6 +17,16 @@ bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	if (!UAVRHIRef)
 	{
 		return false;
+	}
+
+	if (!InitFence())
+	{
+		return false;
+	}
+
+	if (InTextureRHIRef->GetOwnerName() == NAME_None)
+	{
+		InTextureRHIRef->SetOwnerName(*GetPathName());
 	}
 
 	RHITransitionInfo = FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute);
@@ -38,6 +49,16 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 		return false;
 	}
 
+	if (!InitFence())
+	{
+		return false;
+	}
+
+	if (InBufferRHIRef->GetOwnerName() == NAME_None)
+	{
+		InBufferRHIRef->SetOwnerName(*GetPathName());
+	}
+
 	RHITransitionInfo = FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute);
 
 	return true;
@@ -50,12 +71,27 @@ bool UCompushadyUAV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 		return false;
 	}
 
+	if (InBufferRHIRef->GetStride() == 0)
+	{
+		return false;
+	}
+
 	BufferRHIRef = InBufferRHIRef;
 
 	UAVRHIRef = RHICreateUnorderedAccessView(BufferRHIRef, false, false);
 	if (!UAVRHIRef)
 	{
 		return false;
+	}
+
+	if (!InitFence())
+	{
+		return false;
+	}
+
+	if (InBufferRHIRef->GetOwnerName() == NAME_None)
+	{
+		InBufferRHIRef->SetOwnerName(*GetPathName());
 	}
 
 	RHITransitionInfo = FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::UAVCompute);
@@ -83,13 +119,19 @@ void UCompushadyUAV::Readback()
 	RHICmdList.SubmitCommandsAndFlushGPU();
 	RHICmdList.BlockUntilGPUIdle();
 	uint32* Data = (uint32*)RHICmdList.LockStagingBuffer(StagingBufferRHIRef, nullptr, 0, BufferRHIRef->GetSize());
-	UE_LOG(LogTemp, Error, TEXT("%u %u %u"), Data[0], Data[1], Data[2]);
+
 	RHICmdList.UnlockStagingBuffer(StagingBufferRHIRef);
 		});
 }
 
-void UCompushadyUAV::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget)
+void UCompushadyUAV::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled)
 {
+	if (bRunning)
+	{
+		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		return;
+	}
+
 	if (!RenderTarget->GetResource() || !RenderTarget->GetResource()->IsInitialized())
 	{
 		RenderTarget->UpdateResource();
@@ -97,6 +139,8 @@ void UCompushadyUAV::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget)
 	}
 
 	FTextureResource* Resource = RenderTarget->GetResource();
+
+	ClearFence();
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
 		[this, Resource](FRHICommandListImmediate& RHICmdList)
@@ -107,7 +151,39 @@ void UCompushadyUAV::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget)
 	CopyTextureInfo.Size = FIntVector(1024, 1024, 1);
 
 	RHICmdList.CopyTexture(TextureRHIRef, Resource->GetTextureRHI(), CopyTextureInfo);
+	WriteFence(RHICmdList);
 		});
+
+	CheckFence(OnSignaled);
+}
+
+void UCompushadyUAV::CopyToSRV(UCompushadySRV* SRV, const FCompushadySignaled& OnSignaled)
+{
+	if (!SRV)
+	{
+		OnSignaled.ExecuteIfBound(false, "SRV is NULL");
+		return;
+	}
+
+	if (bRunning)
+	{
+		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		return;
+	}
+
+	ClearFence();
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
+		[this, SRV](FRHICommandListImmediate& RHICmdList)
+		{
+			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+	RHICmdList.Transition(FRHITransitionInfo(SRV->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
+	
+	RHICmdList.CopyBufferRegion(SRV->GetBufferRHI(), 0, BufferRHIRef, 0, SRV->GetBufferRHI()->GetSize());
+	WriteFence(RHICmdList);
+		});
+
+	CheckFence(OnSignaled);
 }
 
 FTextureRHIRef UCompushadyUAV::GetTextureRHI() const

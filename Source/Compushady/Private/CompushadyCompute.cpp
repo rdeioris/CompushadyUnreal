@@ -101,8 +101,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 		return false;
 	}
 
-	FenceRef = RHICreateGPUFence(TEXT("CompushadyFence"));
-	if (!FenceRef.IsValid() || !FenceRef->IsValid())
+	if (!InitFence())
 	{
 		ErrorMessages = "Unable to create Compute Fence";
 		return false;
@@ -179,12 +178,40 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		return;
 	}
 
-	bRunning = true;
+	for (int32 Index = 0; Index < CBVResourceBindings.Num(); Index++)
+	{
+		if (!CBVs[Index])
+		{
+			const FCompushadyResourceBinding& ResourceBinding = CBVResourceBindings[Index];
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV b%u (%s) at slot %u is NULL"), ResourceBinding.BindingIndex, *ResourceBinding.Name, Index));
+			return;
+		}
+	}
 
-	FenceRef->Clear();
+	for (int32 Index = 0; Index < SRVResourceBindings.Num(); Index++)
+	{
+		if (!SRVs[Index])
+		{
+			const FCompushadyResourceBinding& ResourceBinding = SRVResourceBindings[Index];
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV t%u (%s) at slot %u is NULL"), ResourceBinding.BindingIndex, *ResourceBinding.Name, Index));
+			return;
+		}
+	}
+
+	for (int32 Index = 0; Index < UAVResourceBindings.Num(); Index++)
+	{
+		if (!UAVs[Index])
+		{
+			const FCompushadyResourceBinding& ResourceBinding = UAVResourceBindings[Index];
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV u%u (%s) at slot %u is NULL"), ResourceBinding.BindingIndex, *ResourceBinding.Name, Index));
+			return;
+		}
+	}
+
+	ClearFence();
 
 	ENQUEUE_RENDER_COMMAND(DoCompushady)(
-		[this, CBVs, SRVs, UAVs](FRHICommandListImmediate& RHICmdList)
+		[this, CBVs, SRVs, UAVs, X, Y, Z](FRHICommandListImmediate& RHICmdList)
 		{
 
 
@@ -211,15 +238,37 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		RHICmdList.SetUAVParameter(ComputeShaderRef, UAVResourceBindings[Index].SlotIndex, UAVs[Index]->GetRHI());
 	}
 
-	RHICmdList.DispatchComputeShader(128, 128, 1);
+	RHICmdList.DispatchComputeShader(X, Y, Z);
 
-	RHICmdList.WriteGPUFence(FenceRef);
+	WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled);
 }
 
-void UCompushadyCompute::CheckFence(FCompushadySignaled OnSignal)
+bool ICompushadySignalable::InitFence()
+{
+	FenceRef = RHICreateGPUFence(TEXT("CompushadyFence"));
+	if (!FenceRef.IsValid() || !FenceRef->IsValid())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void ICompushadySignalable::WriteFence(FRHICommandListImmediate& RHICmdList)
+{
+	RHICmdList.WriteGPUFence(FenceRef);
+}
+
+void ICompushadySignalable::ClearFence()
+{
+	bRunning = true;
+	FenceRef->Clear();
+}
+
+void ICompushadySignalable::CheckFence(FCompushadySignaled OnSignal)
 {
 	if (!FenceRef->Poll())
 	{

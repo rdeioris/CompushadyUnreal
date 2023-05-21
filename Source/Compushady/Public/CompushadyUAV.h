@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CompushadyTypes.h"
 #include "UObject/NoExportTypes.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "CompushadyUAV.generated.h"
@@ -11,7 +12,7 @@
  * 
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadyUAV : public UObject
+class COMPUSHADY_API UCompushadyUAV : public UObject, public ICompushadySignalable
 {
 	GENERATED_BODY()
 
@@ -23,8 +24,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void Readback();
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void CopyToSRV(UCompushadySRV* SRV, const FCompushadySignaled& OnSignaled);
 
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;

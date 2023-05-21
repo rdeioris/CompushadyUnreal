@@ -18,37 +18,31 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 		return false;
 	}
 
+	if (InTextureRHIRef->GetOwnerName() == NAME_None)
+	{
+		InTextureRHIRef->SetOwnerName(*GetPathName());
+	}
+
 	RHITransitionInfo = FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::SRVCompute);
 
 	return true;
 }
 
-bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const int32 Stride, const EPixelFormat PixelFormat)
+bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EPixelFormat PixelFormat)
 {
 	if (!InBufferRHIRef)
 	{
 		return false;
 	}
 
-	uint32 TrueStride = Stride;
-	if (Stride == 0)
-	{
-		TrueStride = GPixelFormats[PixelFormat].BlockBytes;
-	}
-
 	BufferRHIRef = InBufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
-		[this, TrueStride, PixelFormat](FRHICommandListImmediate& RHICmdList)
+		[this, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			if (PixelFormat == EPixelFormat::PF_Unknown)
-			{
-				SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef);
-			}
-			else
-			{
-				SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef, TrueStride, PixelFormat);
-			}
+
+			SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef, GPixelFormats[PixelFormat].BlockBytes, PixelFormat);
+
 		});
 
 	FlushRenderingCommands();
@@ -56,6 +50,50 @@ bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const in
 	if (!SRVRHIRef)
 	{
 		return false;
+	}
+
+	if (InBufferRHIRef->GetOwnerName() == NAME_None)
+	{
+		InBufferRHIRef->SetOwnerName(*GetPathName());
+	}
+
+	RHITransitionInfo = FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::SRVCompute);
+
+	return true;
+}
+
+bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef)
+{
+	if (!InBufferRHIRef)
+	{
+		return false;
+	}
+
+	if (InBufferRHIRef->GetStride() == 0)
+	{
+		return false;
+	}
+
+	BufferRHIRef = InBufferRHIRef;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{
+
+			SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef);
+
+		});
+
+	FlushRenderingCommands();
+
+	if (!SRVRHIRef)
+	{
+		return false;
+	}
+
+	if (InBufferRHIRef->GetOwnerName() == NAME_None)
+	{
+		InBufferRHIRef->SetOwnerName(*GetPathName());
 	}
 
 	RHITransitionInfo = FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::SRVCompute);

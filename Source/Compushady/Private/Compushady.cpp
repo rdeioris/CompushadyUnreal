@@ -289,6 +289,11 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		return false;
 	}
 
+
+	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
+	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
+	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
+
 	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
 
@@ -322,9 +327,6 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		D3D12_SHADER_DESC ShaderDesc;
 		ShaderReflection->GetDesc(&ShaderDesc);
 
-		TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
-		TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
-		TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
 		/*
 			D3D_SIT_CBUFFER
 			D3D_SIT_TBUFFER
@@ -395,32 +397,6 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		ShaderReflection->Release();
 		Reflection->Release();
 
-		TArray<uint32> CBVKeys;
-		CBVMapping.GetKeys(CBVKeys);
-		CBVKeys.Sort();
-
-		for (uint32 CBVIndex : CBVKeys)
-		{
-			ShaderResourceBindings.CBVs.Add(CBVMapping[CBVIndex]);
-		}
-
-		TArray<uint32> SRVKeys;
-		SRVMapping.GetKeys(SRVKeys);
-		SRVKeys.Sort();
-
-		for (uint32 SRVIndex : SRVKeys)
-		{
-			ShaderResourceBindings.SRVs.Add(SRVMapping[SRVIndex]);
-		}
-
-		TArray<uint32> UAVKeys;
-		UAVMapping.GetKeys(UAVKeys);
-		UAVKeys.Sort();
-
-		for (uint32 UAVIndex : UAVKeys)
-		{
-			ShaderResourceBindings.UAVs.Add(UAVMapping[UAVIndex]);
-		}
 #endif
 	}
 
@@ -565,7 +541,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				ResourceBinding.SlotIndex = VulkanShaderHeader.UniformBuffers.Add(UniformBufferInfo);
 				VulkanShaderHeader.UniformBufferSpirvInfos.Add(SpirvInfo);
 
-				ShaderResourceBindings.CBVs.Add(ResourceBinding);
+				CBVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
 
 			}
 			else if (Pair.Value.Binding < 2048) // SRV
@@ -581,7 +557,14 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				}
 				else
 				{
-					GlobalInfo.TypeIndex = BufferType;
+					if (Pair.Value.ReflectionType.Contains("structured"))
+					{
+						GlobalInfo.TypeIndex = StorageStructuredBufferType;
+					}
+					else
+					{
+						GlobalInfo.TypeIndex = BufferType;
+					}
 					ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 				}
 
@@ -589,7 +572,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				ResourceBinding.BindingIndex = Pair.Value.Binding - 1024;
 				VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
 
-				ShaderResourceBindings.SRVs.Add(ResourceBinding);
+				SRVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
 			}
 			else if (Pair.Value.Binding < 3072) // UAV
 			{
@@ -604,14 +587,21 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				}
 				else
 				{
-					GlobalInfo.TypeIndex = StorageBufferType;
+					if (Pair.Value.ReflectionType.Contains("structured"))
+					{
+						GlobalInfo.TypeIndex = StorageStructuredBufferType;
+					}
+					else
+					{
+						GlobalInfo.TypeIndex = StorageBufferType;
+					}
 					ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 				}
 				ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
 				ResourceBinding.BindingIndex = Pair.Value.Binding - 2048;
 				VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
 
-				ShaderResourceBindings.UAVs.Add(ResourceBinding);
+				UAVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
 			}
 			else
 			{
@@ -636,6 +626,34 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 		ByteCode = Writer;
 	}
+
+	TArray<uint32> CBVKeys;
+	CBVMapping.GetKeys(CBVKeys);
+	CBVKeys.Sort();
+
+	for (uint32 CBVIndex : CBVKeys)
+	{
+		ShaderResourceBindings.CBVs.Add(CBVMapping[CBVIndex]);
+	}
+
+	TArray<uint32> SRVKeys;
+	SRVMapping.GetKeys(SRVKeys);
+	SRVKeys.Sort();
+
+	for (uint32 SRVIndex : SRVKeys)
+	{
+		ShaderResourceBindings.SRVs.Add(SRVMapping[SRVIndex]);
+	}
+
+	TArray<uint32> UAVKeys;
+	UAVMapping.GetKeys(UAVKeys);
+	UAVKeys.Sort();
+
+	for (uint32 UAVIndex : UAVKeys)
+	{
+		ShaderResourceBindings.UAVs.Add(UAVMapping[UAVIndex]);
+	}
+
 
 	return true;
 }

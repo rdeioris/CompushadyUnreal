@@ -54,3 +54,17 @@ struct COMPUSHADY_API FCompushadyFloat4
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	float W;
 };
+
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
+
+class COMPUSHADY_API ICompushadySignalable
+{
+public:
+	bool InitFence();
+	void ClearFence();
+	void CheckFence(FCompushadySignaled OnSignal);
+	void WriteFence(FRHICommandListImmediate& RHICmdList);
+protected:
+	bool bRunning;
+	FGPUFenceRHIRef FenceRef;
+};
