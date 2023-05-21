@@ -30,12 +30,17 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void CopyToSRV(UCompushadySRV* SRV, const FCompushadySignaled& OnSignaled);
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void CopyToStaticMeshPositions(UStaticMesh* StaticMesh, const int32 LOD, const FCompushadySignaled& OnSignaled);
+
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;
 
 	FUnorderedAccessViewRHIRef GetRHI() const;
 
 	const FRHITransitionInfo& GetRHITransitionInfo() const;
+
+	bool CopyFromRHIBuffer(FBufferRHIRef SourceBufferRHIRef);
 protected:
 	FTextureRHIRef TextureRHIRef;
 	FBufferRHIRef BufferRHIRef;

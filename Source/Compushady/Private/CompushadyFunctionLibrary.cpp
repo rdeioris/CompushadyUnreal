@@ -315,7 +315,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2
 	return CompushadyUAV;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPositions(UStaticMesh* StaticMesh, const int32 LOD)
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromStaticMeshPositionsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD)
 {
 	if (!StaticMesh->AreRenderingResourcesInitialized())
 	{
@@ -331,11 +331,22 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPos
 
 	FStaticMeshLODResources& LODResources = RenderData->LODResources[LOD];
 
-	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
-	if (!CompushadySRV->InitializeFromBuffer(LODResources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI, EPixelFormat::PF_R32G32B32F))
+	FBufferRHIRef BufferRHIRef = LODResources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI;
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
 	{
 		return nullptr;
 	}
 
-	return CompushadySRV;
+	UCompushadyUAV* CompushadyUAV = CreateCompushadyUAVStructuredBuffer(Name, BufferRHIRef->GetSize(), sizeof(float) * 3);
+	if (!CompushadyUAV)
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyUAV->CopyFromRHIBuffer(BufferRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
 }

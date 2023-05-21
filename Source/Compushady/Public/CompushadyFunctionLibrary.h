@@ -62,7 +62,7 @@ public:
     static UCompushadyCompute* CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint = "main");
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
-    static UCompushadySRV* CreateCompushadySRVFromStaticMeshPositions(UStaticMesh* StaticMesh, const int32 LOD);
+    static UCompushadyUAV* CreateCompushadyUAVFromStaticMeshPositionsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD);
 
 
     DECLARE_FUNCTION(execCreateCompushadyCBVFromArray)
