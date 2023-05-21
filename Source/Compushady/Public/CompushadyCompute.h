@@ -15,6 +15,9 @@ struct FCompushadyResourceBinding
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	int32 BindingIndex;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	int32 SlotIndex;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)

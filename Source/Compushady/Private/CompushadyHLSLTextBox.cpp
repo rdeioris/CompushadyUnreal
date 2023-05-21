@@ -3,13 +3,12 @@
 
 #include "CompushadyHLSLTextBox.h"
 #include "CompushadyHLSLSyntaxHighlighter.h"
-#include "Runtime/Slate/Public/Widgets/Input/SMultiLineEditableTextBox.h"
 
 void UCompushadyHLSLTextBox::ReleaseSlateResources(bool bReleaseChildren)
 {
 	Super::ReleaseSlateResources(bReleaseChildren);
 
-	//EditableTextBoxPtr.Reset();
+	SourceWidget.Reset();
 }
 
 TSharedRef<SWidget> UCompushadyHLSLTextBox::RebuildWidget()
@@ -23,7 +22,7 @@ TSharedRef<SWidget> UCompushadyHLSLTextBox::RebuildWidget()
 	Style.StdLibTextStyle = FTextBlockStyle(CodeStyle).SetColorAndOpacity(StdLibColor);
 	Style.StringTextStyle = FTextBlockStyle(CodeStyle).SetColorAndOpacity(StringColor);*/
 
-	TSharedRef<SWidget> EditableTextBoxPtr = SNew(SMultiLineEditableTextBox)
+	SourceWidget = SNew(SMultiLineEditableTextBox)
 
 		.Marshaller(FCompushadyHLSLSyntaxHighlighter::Create());
 	/*
@@ -39,7 +38,7 @@ TSharedRef<SWidget> UCompushadyHLSLTextBox::RebuildWidget()
 		.OnCursorMoved_UObject(this, &ULuaMultiLineEditableTextBox::OnCursorMoved)
 		.Style(&WidgetStyle);*/
 
-	return EditableTextBoxPtr;
+	return SourceWidget.ToSharedRef();
 }
 
 void UCompushadyHLSLTextBox::SynchronizeProperties()
@@ -48,7 +47,7 @@ void UCompushadyHLSLTextBox::SynchronizeProperties()
 
 	//EditableTextBoxPtr->SetStyle(&WidgetStyle);
 
-	//Super::SynchronizeTextLayoutProperties(*EditableTextBoxPtr);
+	Super::SynchronizeTextLayoutProperties(*SourceWidget);
 }
 
 #if WITH_EDITOR
@@ -57,3 +56,8 @@ const FText UCompushadyHLSLTextBox::GetPaletteCategory()
 	return FText::FromString("Compushady");
 }
 #endif
+
+FString UCompushadyHLSLTextBox::GetSource() const
+{
+	return SourceWidget->GetText().ToString();
+}

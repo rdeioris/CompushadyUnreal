@@ -48,6 +48,24 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLF
 	return CompushadyCompute;
 }
 
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint)
+{
+	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
+
+	TStringBuilderBase<UTF8CHAR> SourceUTF8;
+	SourceUTF8 = TCHAR_TO_UTF8(*Source);
+
+	TArray<uint8> ShaderCode;
+	ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
+	
+	if (!CompushadyCompute->InitFromHLSL(ShaderCode, EntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyCompute;
+}
+
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat)
 {
 	FBufferRHIRef BufferRHIRef;

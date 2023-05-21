@@ -16,6 +16,7 @@ namespace Compushady
 	};
 	struct FCompushadyShaderResourceBinding
 	{
+		uint32 BindingIndex;
 		uint32 SlotIndex;
 		FString Name;
 		ECompushadySharedResourceType Type;

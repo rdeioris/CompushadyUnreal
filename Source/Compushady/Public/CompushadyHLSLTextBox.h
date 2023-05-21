@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/TextWidgetTypes.h"
+#include "Runtime/Slate/Public/Widgets/Input/SMultiLineEditableTextBox.h"
 #include "CompushadyHLSLTextBox.generated.h"
 
 /**
@@ -22,8 +23,11 @@ public:
 
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	FString GetSource() const;
+
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
-	
+	TSharedPtr<SMultiLineEditableTextBox> SourceWidget;
 	
 };

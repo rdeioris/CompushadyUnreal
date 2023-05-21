@@ -29,6 +29,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 		}
 
 		FCompushadyResourceBinding ResourceBinding;
+		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
 		ResourceBinding.Name = ShaderResourceBinding.Name;
 		CBVResourceBindings.Add(ResourceBinding);
@@ -47,6 +48,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 		}
 
 		FCompushadyResourceBinding ResourceBinding;
+		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
 		ResourceBinding.Name = ShaderResourceBinding.Name;
 		SRVResourceBindings.Add(ResourceBinding);
@@ -65,6 +67,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 		}
 
 		FCompushadyResourceBinding ResourceBinding;
+		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
 		ResourceBinding.Name = ShaderResourceBinding.Name;
 		UAVResourceBindings.Add(ResourceBinding);
@@ -84,21 +87,24 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 	FSHAHash Hash = Sha1.Finalize();
 
 	ComputeShaderRef = RHICreateComputeShader(UnrealByteCode, Hash);
-	if (!ComputeShaderRef.IsValid())
+	if (!ComputeShaderRef.IsValid() || !ComputeShaderRef->IsValid())
 	{
+		ErrorMessages = "Unable to create Compute Shader";
 		return false;
 	}
 	ComputeShaderRef->SetHash(Hash);
 
 	ComputePipelineStateRef = RHICreateComputePipelineState(ComputeShaderRef);
-	if (!ComputePipelineStateRef.IsValid())
+	if (!ComputePipelineStateRef.IsValid() || !ComputePipelineStateRef->IsValid())
 	{
+		ErrorMessages = "Unable to create Compute Pipeline State";
 		return false;
 	}
 
 	FenceRef = RHICreateGPUFence(TEXT("CompushadyFence"));
-	if (!FenceRef.IsValid())
+	if (!FenceRef.IsValid() || !FenceRef->IsValid())
 	{
+		ErrorMessages = "Unable to create Compute Fence";
 		return false;
 	}
 

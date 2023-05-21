@@ -203,8 +203,6 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 	IDxcBlobEncoding* BlobSource;
 
-	//hr = DXCLibrary->CreateBlobWithEncodingOnHeapCopy(ShaderSourceBytes.GetData(), ShaderSourceBytes.Num() * sizeof(TCHAR), DXC_CP_UTF16, &BlobSource);
-
 	HR = DXC::Library->CreateBlobWithEncodingOnHeapCopy(ShaderCode.GetData(), ShaderCode.Num(), DXC_CP_UTF8, &BlobSource);
 	if (!SUCCEEDED(HR))
 	{
@@ -324,9 +322,9 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		D3D12_SHADER_DESC ShaderDesc;
 		ShaderReflection->GetDesc(&ShaderDesc);
 
-		TMap<uint32, D3D12_SHADER_INPUT_BIND_DESC> CBVMapping;
-		TMap<uint32, D3D12_SHADER_INPUT_BIND_DESC> SRVMapping;
-		TMap<uint32, D3D12_SHADER_INPUT_BIND_DESC> UAVMapping;
+		TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
+		TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
+		TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
 		/*
 			D3D_SIT_CBUFFER
 			D3D_SIT_TBUFFER
@@ -349,25 +347,39 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 			D3D12_SHADER_INPUT_BIND_DESC BindDesc;
 			ShaderReflection->GetResourceBindingDesc(Index, &BindDesc);
 
+			FCompushadyShaderResourceBinding ResourceBinding;
+			ResourceBinding.BindingIndex = BindDesc.BindPoint;
+			ResourceBinding.SlotIndex = ResourceBinding.BindingIndex;
+			ResourceBinding.Name = BindDesc.Name;
+
 			switch (BindDesc.Type)
 			{
 			case D3D_SIT_CBUFFER:
-				CBVMapping.Add(BindDesc.BindPoint, BindDesc);
+				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+				CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+				break;
+			case D3D_SIT_TEXTURE:
+				ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 				break;
 			case D3D_SIT_TBUFFER:
-			case D3D_SIT_TEXTURE:
 			case D3D_SIT_STRUCTURED:
 			case D3D_SIT_BYTEADDRESS:
-				SRVMapping.Add(BindDesc.BindPoint, BindDesc);
+				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 				break;
 			case D3D_SIT_UAV_RWTYPED:
+			case D3D_SIT_UAV_FEEDBACKTEXTURE:
+				ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+				break;
 			case D3D_SIT_UAV_RWSTRUCTURED:
 			case D3D_SIT_UAV_RWBYTEADDRESS:
 			case D3D_SIT_UAV_APPEND_STRUCTURED:
 			case D3D_SIT_UAV_CONSUME_STRUCTURED:
 			case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-			case D3D_SIT_UAV_FEEDBACKTEXTURE:
-				UAVMapping.Add(BindDesc.BindPoint, BindDesc);
+				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 				break;
 			default:
 				ErrorMessages = FString::Printf(TEXT("Unsupported resource type for %s"), UTF8_TO_TCHAR(BindDesc.Name));
@@ -389,14 +401,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 		for (uint32 CBVIndex : CBVKeys)
 		{
-			D3D12_SHADER_INPUT_BIND_DESC& BindDesc = CBVMapping[CBVIndex];
-
-			FCompushadyShaderResourceBinding ResourceBinding;
-			ResourceBinding.SlotIndex = BindDesc.BindPoint;
-			ResourceBinding.Name = BindDesc.Name;
-			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
-
-			ShaderResourceBindings.CBVs.Add(ResourceBinding);
+			ShaderResourceBindings.CBVs.Add(CBVMapping[CBVIndex]);
 		}
 
 		TArray<uint32> SRVKeys;
@@ -405,14 +410,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 		for (uint32 SRVIndex : SRVKeys)
 		{
-			D3D12_SHADER_INPUT_BIND_DESC& BindDesc = SRVMapping[SRVIndex];
-
-			FCompushadyShaderResourceBinding ResourceBinding;
-			ResourceBinding.SlotIndex = BindDesc.BindPoint;
-			ResourceBinding.Name = BindDesc.Name;
-			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
-
-			ShaderResourceBindings.SRVs.Add(ResourceBinding);
+			ShaderResourceBindings.SRVs.Add(SRVMapping[SRVIndex]);
 		}
 
 		TArray<uint32> UAVKeys;
@@ -421,14 +419,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 		for (uint32 UAVIndex : UAVKeys)
 		{
-			D3D12_SHADER_INPUT_BIND_DESC& BindDesc = UAVMapping[UAVIndex];
-
-			FCompushadyShaderResourceBinding ResourceBinding;
-			ResourceBinding.SlotIndex = BindDesc.BindPoint;
-			ResourceBinding.Name = BindDesc.Name;
-			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
-
-			ShaderResourceBindings.UAVs.Add(ResourceBinding);
+			ShaderResourceBindings.UAVs.Add(UAVMapping[UAVIndex]);
 		}
 #endif
 	}
@@ -460,7 +451,6 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		// update it to pass the size/crc check
 		ANSICHAR SpirVEntryPoint[24];
 		FCStringAnsi::Snprintf(SpirVEntryPoint, 24, "main_%0.8x_%0.8x", ByteCode.Num(), VulkanShaderHeader.SpirvCRC);
-
 
 		// SPIR-V is generally managed as an array of 32bit words
 		TArrayView<uint32> SpirV = TArrayView<uint32>((uint32*)ByteCode.GetData(), ByteCode.Num() / sizeof(uint32));
@@ -513,7 +503,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 			{
 				if (Size > 2)
 				{
-					const char* Name = reinterpret_cast<char*>(&SpirV[Offset + 3]);
+					const char* Name = reinterpret_cast<char*>(&SpirV[Offset + 2]);
 					FCompushadySpirVDecoration& Decoration = Bindings.FindOrAdd(SpirV[Offset + 1]);
 					Decoration.Name = UTF8_TO_TCHAR(Name);
 				}
@@ -531,7 +521,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 			// patch the EntryPoint Name
 			else if (Opcode == 15 && (Offset + Size < SpirV.Num())) // OpEntryPoint(15) + ExecutionModel + id + Name
 			{
-				if (Size > 9 && SpirV[Offset + 1] == 5) // ExecutionModel == GLCompute
+				if (Size > 8 && SpirV[Offset + 1] == 5) // ExecutionModel == GLCompute
 				{
 					uint32* EntryPointPtr = reinterpret_cast<uint32*>(SpirVEntryPoint);
 					for (int32 Index = 0; Index < 6; Index++)
@@ -571,6 +561,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				UniformBufferInfo.ConstantDataOriginalBindingIndex = Pair.Value.Binding;
 
 				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+				ResourceBinding.BindingIndex = Pair.Value.Binding;
 				ResourceBinding.SlotIndex = VulkanShaderHeader.UniformBuffers.Add(UniformBufferInfo);
 				VulkanShaderHeader.UniformBufferSpirvInfos.Add(SpirvInfo);
 
@@ -595,6 +586,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				}
 
 				ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+				ResourceBinding.BindingIndex = Pair.Value.Binding - 1024;
 				VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
 
 				ShaderResourceBindings.SRVs.Add(ResourceBinding);
@@ -616,6 +608,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 					ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 				}
 				ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+				ResourceBinding.BindingIndex = Pair.Value.Binding - 2048;
 				VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
 
 				ShaderResourceBindings.UAVs.Add(ResourceBinding);

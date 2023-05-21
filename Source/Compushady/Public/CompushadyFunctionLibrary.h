@@ -53,6 +53,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyCompute* CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main");
 
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyCompute* CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint = "main");
+
 
     DECLARE_FUNCTION(execCreateCompushadyCBVFromArray)
     {
