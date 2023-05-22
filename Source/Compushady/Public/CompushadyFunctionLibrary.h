@@ -64,6 +64,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVFromStaticMeshPositionsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD);
 
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyUAV* CreateCompushadyUAVFromStaticMeshTexCoordsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD);
+
 
     DECLARE_FUNCTION(execCreateCompushadyCBVFromArray)
     {

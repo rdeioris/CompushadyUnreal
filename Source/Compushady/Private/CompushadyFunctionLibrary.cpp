@@ -350,3 +350,39 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromStaticMeshPos
 
 	return CompushadyUAV;
 }
+
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromStaticMeshTexCoordsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD)
+{
+	if (!StaticMesh->AreRenderingResourcesInitialized())
+	{
+		StaticMesh->InitResources();
+	}
+
+	FStaticMeshRenderData* RenderData = StaticMesh->GetRenderData();
+
+	if (LOD >= RenderData->LODResources.Num())
+	{
+		return nullptr;
+	}
+
+	FStaticMeshLODResources& LODResources = RenderData->LODResources[LOD];
+
+	FBufferRHIRef BufferRHIRef = LODResources.VertexBuffers.StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI;
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyUAV* CompushadyUAV = CreateCompushadyUAVStructuredBuffer(Name, BufferRHIRef->GetSize(), (LODResources.VertexBuffers.StaticMeshVertexBuffer.GetUseFullPrecisionUVs() ? sizeof(float) : 2) * 2 * LODResources.VertexBuffers.StaticMeshVertexBuffer.GetNumTexCoords());
+	if (!CompushadyUAV)
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyUAV->CopyFromRHIBuffer(BufferRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
