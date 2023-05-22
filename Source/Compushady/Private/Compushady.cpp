@@ -240,7 +240,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		Arguments.Add(L"3072");
 		Arguments.Add(L"0");
 		Arguments.Add(L"-fvk-use-dx-layout");
-		//Arguments.Add(L"-fvk-use-scalar-layout");
+		Arguments.Add(L"-fvk-use-scalar-layout");
 		Arguments.Add(L"-fspv-entrypoint-name=main_00000000_00000000");
 		Arguments.Add(L"-fspv-reflect");
 	}
