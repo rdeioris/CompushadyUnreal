@@ -214,17 +214,14 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 	TArray<LPCWSTR> Arguments;
 
-	TStringBuilderBase<WIDECHAR> TargetProfileWideString;
-	TargetProfileWideString = TCHAR_TO_WCHAR(*TargetProfile);
-
-	TStringBuilderBase<WIDECHAR> EntryPointWideString;
-	EntryPointWideString = TCHAR_TO_WCHAR(*EntryPoint);
+	FTCHARToWChar WideTargetProfile(*TargetProfile);
+	FTCHARToWChar WideEntryPoint(*EntryPoint);
 
 	Arguments.Add(L"-T");
-	Arguments.Add(*TargetProfileWideString);
+	Arguments.Add(WideTargetProfile.Get());
 
 	Arguments.Add(L"-E");
-	Arguments.Add(*EntryPointWideString);
+	Arguments.Add(WideEntryPoint.Get());
 
 	// compile to spirv
 	if (RHIInterfaceType == ERHIInterfaceType::Vulkan || RHIInterfaceType == ERHIInterfaceType::Metal)
