@@ -14,10 +14,22 @@ DEFINE_LOG_CATEGORY(LogCompushady);
 #include "Microsoft/COMPointer.h"
 #endif
 
-#if PLATFORM_LINUX
+THIRD_PARTY_INCLUDES_START
+#if PLATFORM_LINUX || PLATFORM_ANDROID
 #define __EMULATE_UUID
 #endif
+
+#if PLATFORM_ANDROID
+#define SIZE_T SIZE_T_FAKE
+#endif
 #include "dxcapi.h"
+
+#if PLATFORM_ANDROID
+#undef SIZE_T
+#endif
+
+THIRD_PARTY_INCLUDES_END
+
 #if PLATFORM_WINDOWS
 #include <d3d12shader.h>
 #endif
@@ -88,7 +100,7 @@ namespace Compushady
 			{
 #if PLATFORM_WINDOWS
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("dxcompiler.dll"));
-#elif PLATFORM_LINUX
+#elif PLATFORM_LINUX || PLATFORM_ANDROID
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.so"));
 #endif
 				if (!LibHandle)

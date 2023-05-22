@@ -46,12 +46,19 @@ public class Compushady : ModuleRules
             RuntimeDependencies.Add("$(BinaryOutputDir)/dxcompiler.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64Libs, "dxcompiler.dll"));
             RuntimeDependencies.Add("$(BinaryOutputDir)/dxil.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64Libs, "dxil.dll"));
         }
-	else if (Target.Platform == UnrealTargetPlatform.Linux)
+        else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
             string ThirdPartyDirectoryLinux = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_linux");
             string ThirdPartyDirectoryLinuxLibs = System.IO.Path.Combine(ThirdPartyDirectoryLinux, "lib");
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryLinux, "include", "dxc");
             RuntimeDependencies.Add("$(BinaryOutputDir)/libdxcompiler.so", System.IO.Path.Combine(ThirdPartyDirectoryLinuxLibs, "libdxcompiler.so"));
+        }
+        else if (Target.Platform == UnrealTargetPlatform.Android)
+        {
+            string ThirdPartyDirectoryAndroid = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_android");
+            ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryAndroid, "include", "dxc");
+            string PluginPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
+            AdditionalPropertiesForReceipt.Add("AndroidPlugin", System.IO.Path.Combine(PluginPath, "Compushady_APL.xml"));
         }
 
         PrivateIncludePaths.Add(ThirdPartyDirectoryIncludePath);
