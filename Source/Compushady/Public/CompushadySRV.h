@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CompushadyTypes.h"
 #include "UObject/NoExportTypes.h"
 #include "CompushadySRV.generated.h"
 
@@ -10,7 +11,7 @@
  * 
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadySRV : public UObject
+class COMPUSHADY_API UCompushadySRV : public UObject, public ICompushadyResource
 {
 	GENERATED_BODY()
 
@@ -21,15 +22,7 @@ public:
 	
 	FShaderResourceViewRHIRef GetRHI() const;
 
-	FTextureRHIRef GetTextureRHI() const;
-	FBufferRHIRef GetBufferRHI() const;
-
-	const FRHITransitionInfo& GetRHITransitionInfo() const;
-
 protected:
-	FTextureRHIRef TextureRHIRef;
-	FBufferRHIRef BufferRHIRef;
 	FShaderResourceViewRHIRef SRVRHIRef;
-	FStagingBufferRHIRef StagingBufferRHIRef;
-	FRHITransitionInfo RHITransitionInfo;
+	
 };

@@ -303,17 +303,7 @@ bool UCompushadyUAV::CopyFromRHIBuffer(FBufferRHIRef SourceBufferRHIRef)
 	return true;
 }
 
-FTextureRHIRef UCompushadyUAV::GetTextureRHI() const
+void UCompushadyUAV::OnSignalReceived()
 {
-	return TextureRHIRef;
-}
 
-FBufferRHIRef UCompushadyUAV::GetBufferRHI() const
-{
-	return BufferRHIRef;
-}
-
-const FRHITransitionInfo& UCompushadyUAV::GetRHITransitionInfo() const
-{
-	return RHITransitionInfo;
 }

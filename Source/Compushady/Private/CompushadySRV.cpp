@@ -105,18 +105,3 @@ FShaderResourceViewRHIRef UCompushadySRV::GetRHI() const
 {
 	return SRVRHIRef;
 }
-
-FTextureRHIRef UCompushadySRV::GetTextureRHI() const
-{
-	return TextureRHIRef;
-}
-
-FBufferRHIRef UCompushadySRV::GetBufferRHI() const
-{
-	return BufferRHIRef;
-}
-
-const FRHITransitionInfo& UCompushadySRV::GetRHITransitionInfo() const
-{
-	return RHITransitionInfo;
-}

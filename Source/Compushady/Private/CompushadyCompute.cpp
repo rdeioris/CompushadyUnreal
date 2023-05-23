@@ -94,8 +94,6 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 	}
 	ComputeShaderRef->SetHash(Hash);
 
-	UE_LOG(LogTemp, Error, TEXT("CBV: %d SRV: %d UAV: %d Size: %d"), NumCBVs, NumSRVs, NumUAVs, UnrealByteCode.Num());
-
 	ComputePipelineStateRef = RHICreateComputePipelineState(ComputeShaderRef);
 	if (!ComputePipelineStateRef.IsValid() || !ComputePipelineStateRef->IsValid())
 	{
@@ -288,6 +286,7 @@ void ICompushadySignalable::CheckFence(FCompushadySignaled OnSignal)
 		AsyncTask(ENamedThreads::GameThread, [this, OnSignal]()
 			{
 				OnSignal.ExecuteIfBound(true, "");
+		OnSignalReceived();
 		bRunning = false;
 			});
 	}
@@ -296,4 +295,26 @@ void ICompushadySignalable::CheckFence(FCompushadySignaled OnSignal)
 bool UCompushadyCompute::IsRunning() const
 {
 	return bRunning;
+}
+
+void UCompushadyCompute::OnSignalReceived()
+{
+	CurrentResourceArray.CBVs.Empty();
+	CurrentResourceArray.SRVs.Empty();
+	CurrentResourceArray.UAVs.Empty();
+}
+
+FTextureRHIRef ICompushadyResource::GetTextureRHI() const
+{
+	return TextureRHIRef;
+}
+
+FBufferRHIRef ICompushadyResource::GetBufferRHI() const
+{
+	return BufferRHIRef;
+}
+
+const FRHITransitionInfo& ICompushadyResource::GetRHITransitionInfo() const
+{
+	return RHITransitionInfo;
 }

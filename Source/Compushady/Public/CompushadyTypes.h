@@ -60,12 +60,28 @@ DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FS
 class COMPUSHADY_API ICompushadySignalable
 {
 public:
+	virtual ~ICompushadySignalable() = default;
 	bool InitFence(UObject* InOwningObject);
 	void ClearFence();
 	void CheckFence(FCompushadySignaled OnSignal);
 	void WriteFence(FRHICommandListImmediate& RHICmdList);
+	virtual void OnSignalReceived() = 0;
 protected:
 	bool bRunning;
 	FGPUFenceRHIRef FenceRef;
 	TWeakObjectPtr<UObject> OwningObject;
+};
+
+class COMPUSHADY_API ICompushadyResource
+{
+public:
+	FTextureRHIRef GetTextureRHI() const;
+	FBufferRHIRef GetBufferRHI() const;
+
+	const FRHITransitionInfo& GetRHITransitionInfo() const;
+protected:
+	FTextureRHIRef TextureRHIRef;
+	FBufferRHIRef BufferRHIRef;
+	FStagingBufferRHIRef StagingBufferRHIRef;
+	FRHITransitionInfo RHITransitionInfo;
 };

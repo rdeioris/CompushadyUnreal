@@ -84,6 +84,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	TArray<FCompushadyResourceBinding> UAVResourceBindings;
 
+	void OnSignalReceived() override;
+
 protected:
 
 	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs);
@@ -91,5 +93,9 @@ protected:
 	ERHIInterfaceType RHIInterfaceType;
 	FComputeShaderRHIRef ComputeShaderRef;
 	FComputePipelineStateRHIRef ComputePipelineStateRef;
+
+	// this will avoid the resources to be GC'd
+	UPROPERTY()
+	FCompushadyResourceArray CurrentResourceArray;
 
 };

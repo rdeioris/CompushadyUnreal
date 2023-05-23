@@ -12,7 +12,7 @@
  * 
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadyUAV : public UObject, public ICompushadySignalable
+class COMPUSHADY_API UCompushadyUAV : public UObject, public ICompushadySignalable, public ICompushadyResource
 {
 	GENERATED_BODY()
 
@@ -36,18 +36,11 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void CopyToStaticMeshTexCoords(UStaticMesh* StaticMesh, const int32 LOD, const FCompushadySignaled& OnSignaled);
 
-	FTextureRHIRef GetTextureRHI() const;
-	FBufferRHIRef GetBufferRHI() const;
-
 	FUnorderedAccessViewRHIRef GetRHI() const;
 
-	const FRHITransitionInfo& GetRHITransitionInfo() const;
-
 	bool CopyFromRHIBuffer(FBufferRHIRef SourceBufferRHIRef);
+
+	void OnSignalReceived() override;
 protected:
-	FTextureRHIRef TextureRHIRef;
-	FBufferRHIRef BufferRHIRef;
 	FUnorderedAccessViewRHIRef UAVRHIRef;
-	FStagingBufferRHIRef StagingBufferRHIRef;
-	FRHITransitionInfo RHITransitionInfo;
 };
