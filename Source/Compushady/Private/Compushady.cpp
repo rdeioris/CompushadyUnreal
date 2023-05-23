@@ -45,6 +45,16 @@ THIRD_PARTY_INCLUDES_END
 #include "Windows/HideWindowsPlatformTypes.h"
 #endif
 
+#if WITH_EDITOR
+#include "CompushadyShader.h"
+#include "CompushadyHLSLSyntaxHighlighter.h"
+#include "DetailCategoryBuilder.h"
+#include "DetailLayoutBuilder.h"
+#include "DetailWidgetRow.h"
+#include "IDetailCustomization.h"
+#include "PropertyEditorModule.h"
+#endif
+
 
 #define LOCTEXT_NAMESPACE "FCompushadyModule"
 
@@ -606,6 +616,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 					}
 					ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 				}
+
 				ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
 				ResourceBinding.BindingIndex = Pair.Value.Binding - 2048;
 				VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
@@ -618,6 +629,61 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 				return false;
 			}
 		}
+
+		// if on Android, we need to remove reflection opcodes (by setting to OpNop)
+#if PLATFORM_ANDROID
+		Offset = 5;
+		while (Offset < SpirV.Num())
+		{
+			uint32 Word = SpirV[Offset];
+			uint16 Opcode = Word & 0xFFFF;
+			uint16 Size = Word >> 16;
+			if (Size == 0)
+			{
+				break;
+			}
+
+			// strip OpDecorateStringGOOGLE
+			if (Opcode == 5632 && (Offset + Size < SpirV.Num()) && Size > 2) // OpDecorateStringGOOGLE(5632) + id + Decoration(UserTypeGOOGLE/5636|HlslSemanticGOOGLE/5635) + String
+			{
+				if (SpirV[Offset + 2] == 5636 || SpirV[Offset + 2] == 5635)
+				{
+					for (int32 Index = 0; Index < Size; Index++)
+					{
+						SpirV[Offset + Index] = 0x00010000;
+					}
+				}
+			}
+
+			// strip OpMemberDecorateStringGOOGLE
+			else if (Opcode == 5633 && (Offset + Size < SpirV.Num()) && Size > 3) // OpMemberDecorateStringGOOGLE(5632) + id + member + Decoration(UserTypeGOOGLE/5636|HlslSemanticGOOGLE/5635) + String
+			{
+				if (SpirV[Offset + 3] == 5636 || SpirV[Offset + 3] == 5635)
+				{
+					for (int32 Index = 0; Index < Size; Index++)
+					{
+						SpirV[Offset + Index] = 0x00010000;
+					}
+				}
+			}
+
+			// strip reflection extensions
+			else if (Opcode == 10 && (Offset + Size < SpirV.Num()) && Size > 1)
+			{
+				const char* ExtensionName = reinterpret_cast<char*>(&SpirV[Offset + 1]);
+				FString ExtensionNameString = UTF8_TO_TCHAR(ExtensionName);
+				if (ExtensionNameString == "SPV_GOOGLE_hlsl_functionality1" || ExtensionNameString == "SPV_GOOGLE_user_type")
+				{
+					for (int32 Index = 0; Index < Size; Index++)
+					{
+						SpirV[Offset + Index] = 0x00010000;
+					}
+				}
+	}
+
+			Offset += Size;
+}
+#endif
 
 		FArrayWriter Writer;
 
@@ -667,9 +733,59 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	return true;
 }
 
+#if WITH_EDITOR
+class FCompushadyShaderCustomization : public IDetailCustomization
+{
+public:
+	// IDetailCustomization interface
+	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override
+	{
+		TArray<TWeakObjectPtr<UObject>> Objects;
+		DetailBuilder.GetObjectsBeingCustomized(Objects);
+
+		if (Objects.Num() != 1)
+		{
+			return;
+		}
+
+		TWeakObjectPtr<UCompushadyShader> CompushadyShader = Cast<UCompushadyShader>(Objects[0].Get());
+
+		TSharedRef<IPropertyHandle> PropertyHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UCompushadyShader, Code));
+		DetailBuilder.HideProperty(PropertyHandle);
+
+
+		IDetailCategoryBuilder& CategoryBuilder = DetailBuilder.EditCategory("Code");
+		CategoryBuilder.AddCustomRow(FText::FromString("Code")).WholeRowContent()[
+
+			SNew(SMultiLineEditableTextBox)
+				.AutoWrapText(false)
+				.Margin(0.0f)
+				.Marshaller(FCompushadyHLSLSyntaxHighlighter::Create())
+				.Text(FText::FromString(CompushadyShader->Code))
+				.OnTextChanged_Lambda([CompushadyShader](const FText& InCode)
+					{
+						CompushadyShader->Code = InCode.ToString();
+			CompushadyShader->MarkPackageDirty();
+					})
+
+		];
+	}
+
+	static TSharedRef<IDetailCustomization> MakeInstance()
+	{
+		return MakeShared<FCompushadyShaderCustomization>();
+	}
+};
+#endif
 
 void FCompushadyModule::StartupModule()
 {
+#if WITH_EDITOR
+	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>(TEXT("PropertyEditor"));
+	PropertyModule.RegisterCustomClassLayout(TEXT("CompushadyShader"), FOnGetDetailCustomizationInstance::CreateStatic(&FCompushadyShaderCustomization::MakeInstance));
+
+	PropertyModule.NotifyCustomizationModuleChanged();
+#endif
 }
 
 void FCompushadyModule::ShutdownModule()

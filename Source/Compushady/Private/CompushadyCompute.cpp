@@ -94,6 +94,8 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 	}
 	ComputeShaderRef->SetHash(Hash);
 
+	UE_LOG(LogTemp, Error, TEXT("CBV: %d SRV: %d UAV: %d Size: %d"), NumCBVs, NumSRVs, NumUAVs, UnrealByteCode.Num());
+
 	ComputePipelineStateRef = RHICreateComputePipelineState(ComputeShaderRef);
 	if (!ComputePipelineStateRef.IsValid() || !ComputePipelineStateRef->IsValid())
 	{
@@ -101,7 +103,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 		return false;
 	}
 
-	if (!InitFence())
+	if (!InitFence(this))
 	{
 		ErrorMessages = "Unable to create Compute Fence";
 		return false;
@@ -246,8 +248,10 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 	CheckFence(OnSignaled);
 }
 
-bool ICompushadySignalable::InitFence()
+bool ICompushadySignalable::InitFence(UObject* InOwningObject)
 {
+	OwningObject = InOwningObject;
+
 	FenceRef = RHICreateGPUFence(TEXT("CompushadyFence"));
 	if (!FenceRef.IsValid() || !FenceRef->IsValid())
 	{
@@ -270,6 +274,11 @@ void ICompushadySignalable::ClearFence()
 
 void ICompushadySignalable::CheckFence(FCompushadySignaled OnSignal)
 {
+	if (!OwningObject.IsValid(false, true))
+	{
+		return;
+	}
+
 	if (!FenceRef->Poll())
 	{
 		AsyncTask(ENamedThreads::AnyBackgroundHiPriTask, [this, OnSignal]() { CheckFence(OnSignal); });

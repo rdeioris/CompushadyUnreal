@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CompushadyCBV.h"
 #include "CompushadyCompute.h"
+#include "CompushadyShader.h"
 #include "CompushadyUAV.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -60,6 +61,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyCompute* CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint = "main");
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyCompute* CreateCompushadyComputeFromHLSLShaderAsset(UCompushadyShader* ShaderAsset, FString& ErrorMessages, const FString& EntryPoint = "main");
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVFromStaticMeshPositionsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD);

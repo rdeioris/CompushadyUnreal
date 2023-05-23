@@ -19,7 +19,7 @@ bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 		return false;
 	}
 
-	if (!InitFence())
+	if (!InitFence(this))
 	{
 		return false;
 	}
@@ -49,7 +49,7 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 		return false;
 	}
 
-	if (!InitFence())
+	if (!InitFence(this))
 	{
 		return false;
 	}
@@ -84,7 +84,7 @@ bool UCompushadyUAV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 		return false;
 	}
 
-	if (!InitFence())
+	if (!InitFence(this))
 	{
 		return false;
 	}

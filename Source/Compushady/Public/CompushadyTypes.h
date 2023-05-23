@@ -60,11 +60,12 @@ DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FS
 class COMPUSHADY_API ICompushadySignalable
 {
 public:
-	bool InitFence();
+	bool InitFence(UObject* InOwningObject);
 	void ClearFence();
 	void CheckFence(FCompushadySignaled OnSignal);
 	void WriteFence(FRHICommandListImmediate& RHICmdList);
 protected:
 	bool bRunning;
 	FGPUFenceRHIRef FenceRef;
+	TWeakObjectPtr<UObject> OwningObject;
 };
