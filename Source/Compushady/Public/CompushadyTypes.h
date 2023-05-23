@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Engine/TextureRenderTarget2DArray.h"
 #include "CompushadyTypes.generated.h"
 
 /**
@@ -57,6 +59,10 @@ struct COMPUSHADY_API FCompushadyFloat4
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
 
+DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatPayload, bool, bSuccess, float&, Payload, const FString&, ErrorMessage);
+DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatArrayPayload, bool, bSuccess, const TArray<float>&, Payload, const FString&, ErrorMessage);
+
+
 class COMPUSHADY_API ICompushadySignalable
 {
 public:
@@ -64,24 +70,49 @@ public:
 	bool InitFence(UObject* InOwningObject);
 	void ClearFence();
 	void CheckFence(FCompushadySignaled OnSignal);
+	void CheckFence(FCompushadySignaledWithFloatPayload OnSignal, TArray<uint8>& Data);
+	void CheckFence(FCompushadySignaledWithFloatArrayPayload OnSignal, TArray<uint8>& Data);
 	void WriteFence(FRHICommandListImmediate& RHICmdList);
 	virtual void OnSignalReceived() = 0;
 protected:
 	bool bRunning;
-	FGPUFenceRHIRef FenceRef;
+	FGPUFenceRHIRef FenceRHIRef;
 	TWeakObjectPtr<UObject> OwningObject;
 };
 
-class COMPUSHADY_API ICompushadyResource
+UCLASS(Abstract)
+class COMPUSHADY_API UCompushadyResource : public UObject, public ICompushadySignalable
 {
+	GENERATED_BODY()
 public:
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void ReadbackToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const int32 Slice, const FCompushadySignaled& OnSignaled);
+
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;
 
 	const FRHITransitionInfo& GetRHITransitionInfo() const;
+
+	FStagingBufferRHIRef GetStagingBuffer();
+
+	void OnSignalReceived() override;
 protected:
 	FTextureRHIRef TextureRHIRef;
 	FBufferRHIRef BufferRHIRef;
 	FStagingBufferRHIRef StagingBufferRHIRef;
 	FRHITransitionInfo RHITransitionInfo;
+	TArray<uint8> ReadbackCache;
 };

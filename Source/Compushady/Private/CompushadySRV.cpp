@@ -18,6 +18,11 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 		return false;
 	}
 
+	if (!InitFence(this))
+	{
+		return false;
+	}
+
 	if (InTextureRHIRef->GetOwnerName() == NAME_None)
 	{
 		InTextureRHIRef->SetOwnerName(*GetPathName());
@@ -48,6 +53,11 @@ bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 	FlushRenderingCommands();
 
 	if (!SRVRHIRef)
+	{
+		return false;
+	}
+
+	if (!InitFence(this))
 	{
 		return false;
 	}
@@ -87,6 +97,11 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 	FlushRenderingCommands();
 
 	if (!SRVRHIRef)
+	{
+		return false;
+	}
+
+	if (!InitFence(this))
 	{
 		return false;
 	}

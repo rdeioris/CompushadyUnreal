@@ -11,7 +11,7 @@
  * 
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadySRV : public UObject, public ICompushadyResource
+class COMPUSHADY_API UCompushadySRV : public UCompushadyResource
 {
 	GENERATED_BODY()
 

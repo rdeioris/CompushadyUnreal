@@ -104,58 +104,7 @@ FUnorderedAccessViewRHIRef UCompushadyUAV::GetRHI() const
 	return UAVRHIRef;
 }
 
-void UCompushadyUAV::Readback()
-{
-	if (!StagingBufferRHIRef.IsValid())
-	{
-		StagingBufferRHIRef = RHICreateStagingBuffer();
-	}
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadback)(
-		[this](FRHICommandListImmediate& RHICmdList)
-		{
-			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBufferRHIRef, 0, BufferRHIRef->GetSize());
-	RHICmdList.SubmitCommandsAndFlushGPU();
-	RHICmdList.BlockUntilGPUIdle();
-	uint32* Data = (uint32*)RHICmdList.LockStagingBuffer(StagingBufferRHIRef, nullptr, 0, BufferRHIRef->GetSize());
-
-	RHICmdList.UnlockStagingBuffer(StagingBufferRHIRef);
-		});
-}
-
-void UCompushadyUAV::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled)
-{
-	if (bRunning)
-	{
-		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
-		return;
-	}
-
-	if (!RenderTarget->GetResource() || !RenderTarget->GetResource()->IsInitialized())
-	{
-		RenderTarget->UpdateResource();
-		RenderTarget->UpdateResourceImmediate(false);
-	}
-
-	FTextureResource* Resource = RenderTarget->GetResource();
-
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
-		[this, Resource](FRHICommandListImmediate& RHICmdList)
-		{
-			RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(Resource->GetTextureRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
-	FRHICopyTextureInfo CopyTextureInfo;
-	CopyTextureInfo.Size = FIntVector(1024, 1024, 1);
-
-	RHICmdList.CopyTexture(TextureRHIRef, Resource->GetTextureRHI(), CopyTextureInfo);
-	WriteFence(RHICmdList);
-		});
-
-	CheckFence(OnSignaled);
-}
 
 void UCompushadyUAV::CopyToSRV(UCompushadySRV* SRV, const FCompushadySignaled& OnSignaled)
 {
@@ -290,7 +239,7 @@ void UCompushadyUAV::CopyToStaticMeshTexCoords(UStaticMesh* StaticMesh, const in
 
 bool UCompushadyUAV::CopyFromRHIBuffer(FBufferRHIRef SourceBufferRHIRef)
 {
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToFromRHIBuffer)(
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyFromRHIBuffer)(
 		[this, SourceBufferRHIRef](FRHICommandListImmediate& RHICmdList)
 		{
 			RHICmdList.Transition(FRHITransitionInfo(SourceBufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
@@ -301,9 +250,4 @@ bool UCompushadyUAV::CopyFromRHIBuffer(FBufferRHIRef SourceBufferRHIRef)
 
 	FlushRenderingCommands();
 	return true;
-}
-
-void UCompushadyUAV::OnSignalReceived()
-{
-
 }
