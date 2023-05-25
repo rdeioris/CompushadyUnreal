@@ -155,7 +155,6 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			}
 			else if (Size > 2 && SpirV[Offset + 2] == 2) // Block
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Block: %u"), SpirV[Offset + 1]);
 				SpirVBlocks.Add(SpirV[Offset + 1]);
 			}
 		}
@@ -202,17 +201,14 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 		}
 		else if (Opcode == 25 && (Offset + Size < SpirV.Num()) && Size > 8) // OpTypeImage + id + ... Dim + Sampled
 		{
-			UE_LOG(LogTemp, Warning, TEXT("OpTypeImage: %u"), SpirV[Offset + 1]);
 			SpirVImages.Add(SpirV[Offset + 1], TPair<uint32, uint32>(SpirV[Offset + 3], SpirV[Offset + 7]));
 		}
 		else if (Opcode == 27 && (Offset + Size < SpirV.Num()) && Size > 2) // OpTypeSampledImage + id + id_type
 		{
-			UE_LOG(LogTemp, Warning, TEXT("OpTypeImage: %u"), SpirV[Offset + 1]);
 			SpirVSampledImages.Add(SpirV[Offset + 1], SpirV[Offset + 2]);
 		}
 		else if (Opcode == 30 && (Offset + Size < SpirV.Num()) && Size > 1) // OpTypeStruct + id + ...
 		{
-			UE_LOG(LogTemp, Warning, TEXT("OpTypeStruct: %u"), SpirV[Offset + 1]);
 			SpirVStructs.Add(SpirV[Offset + 1], Opcode);
 		}
 		Offset += Size;
@@ -249,17 +245,15 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 		SpirvInfo.BindingIndexOffset = Pair.Value.BindingIndexOffset;
 		SpirvInfo.DescriptorSetOffset = Pair.Value.DescriptorSetOffset;
 
-		UE_LOG(LogTemp, Error, TEXT("SpirV: %s %u"), *ResourceBinding.Name, Pair.Value.TypeId);
-
 		if (Pair.Value.ReflectionType.IsEmpty() && ResourceBinding.Name != "$Globals")
 		{
+			// this code path tries to do its best to rebuild the pipeline without reflection
 			if (SpirVPointers.Contains(Pair.Value.TypeId))
 			{
 				uint32 TypeId = SpirVPointers[Pair.Value.TypeId];
 				// identify CBVs
 				if (SpirVBlocks.Contains(TypeId))
 				{
-					UE_LOG(LogTemp, Error, TEXT("Found Block!!!"));
 					FVulkanShaderHeader::FUniformBufferInfo UniformBufferInfo = {};
 					UniformBufferInfo.ConstantDataOriginalBindingIndex = Pair.Value.Binding;
 
