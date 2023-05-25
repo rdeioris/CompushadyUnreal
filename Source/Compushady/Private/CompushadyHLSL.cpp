@@ -225,15 +225,6 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	if (RHIInterfaceType == ERHIInterfaceType::Vulkan || RHIInterfaceType == ERHIInterfaceType::Metal)
 	{
 		Arguments.Add(L"-spirv");
-		Arguments.Add(L"-fvk-t-shift");
-		Arguments.Add(L"1024");
-		Arguments.Add(L"0");
-		Arguments.Add(L"-fvk-u-shift");
-		Arguments.Add(L"2048");
-		Arguments.Add(L"0");
-		Arguments.Add(L"-fvk-s-shift");
-		Arguments.Add(L"3072");
-		Arguments.Add(L"0");
 		Arguments.Add(L"-fvk-use-dx-layout");
 		Arguments.Add(L"-fvk-use-scalar-layout");
 		Arguments.Add(L"-fspv-entrypoint-name=main_00000000_00000000");
@@ -375,7 +366,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 			case D3D_SIT_UAV_APPEND_STRUCTURED:
 			case D3D_SIT_UAV_CONSUME_STRUCTURED:
 			case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+				ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
 				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 				break;
 			default:
@@ -415,7 +406,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 	if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
 	{
-		return FixupSPIRV(ByteCode, EntryPoint, TargetProfile, ShaderResourceBindings, ErrorMessages);
+		return FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages);
 	}
 		
 	// sort resources

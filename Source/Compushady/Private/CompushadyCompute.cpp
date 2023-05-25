@@ -21,7 +21,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
 }
 
-bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
+bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
 {
 	bRunning = false;
 
@@ -35,7 +35,7 @@ bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, const FS
 
 	TArray<uint8> ByteCode = ShaderCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::FixupSPIRV(ByteCode, EntryPoint, "cs_6_0", ShaderResourceBindings, ErrorMessages))
+	if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
 	{
 		return false;
 	}

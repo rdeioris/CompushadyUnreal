@@ -44,7 +44,7 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLF
 	return CompushadyCompute;
 }
 
-UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRVFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint)
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRVFile(const FString& Filename, FString& ErrorMessages)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 	TArray<uint8> ShaderCode;
@@ -53,7 +53,7 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRV
 		return nullptr;
 	}
 
-	if (!CompushadyCompute->InitFromSPIRV(ShaderCode, EntryPoint, ErrorMessages))
+	if (!CompushadyCompute->InitFromSPIRV(ShaderCode, ErrorMessages))
 	{
 		return nullptr;
 	}

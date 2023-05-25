@@ -8,11 +8,80 @@
 #include "VulkanCommon.h"
 #include "VulkanShaderResources.h"
 
-bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, const FString& TargetProfile, FCompushadyShaderResourceBindings& ShaderResourceBindings, FString& ErrorMessages)
+bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FString& ErrorMessages)
 {
 	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
+
+	// SPIR-V is generally managed as an array of 32bit words
+	TArrayView<uint32> SpirV = TArrayView<uint32>((uint32*)ByteCode.GetData(), ByteCode.Num() / sizeof(uint32));
+
+	// skip the first 4 words
+	int32 Offset = 5;
+
+	int32 EntryPointCharsCounter = 0;
+	int32 EntryPointOffset = 0;
+	// First of all, let's check for the entry point (it may have been generated manually, we expect 22 + 1 chars (6 words))
+	while (Offset < SpirV.Num())
+	{
+		uint32 Word = SpirV[Offset];
+		uint16 Opcode = Word & 0xFFFF;
+		uint16 Size = Word >> 16;
+		if (Size == 0)
+		{
+			break;
+		}
+
+		if (Opcode == 15 && (Offset + Size < SpirV.Num()) && Size > 3 && SpirV[Offset + 1] == 5) // OpEntryPoint(15) + ExecutionModel(GLCompute/5) + id + Name + ...)
+		{
+			EntryPointOffset = Offset;
+			bool bFoundNull = false;
+			for (int32 Index = 0; Index < Size; Index++)
+			{
+				uint8* CharPtr = reinterpret_cast<uint8*>(&SpirV[Offset + 3 + Index]);
+				for (int32 CharIndex = 0; CharIndex < 4; CharIndex++)
+				{
+					EntryPointCharsCounter++;
+					if (CharPtr[CharIndex] == 0)
+					{
+						bFoundNull = true;
+						break;
+					}
+				}
+				if (bFoundNull)
+				{
+					break;
+				}
+			}
+			break;
+		}
+		Offset += Size;
+	}
+
+	if (EntryPointOffset == 0)
+	{
+		ErrorMessages = "Unable to find SPIRV EntryPoint";
+		return false;
+	}
+
+	if (EntryPointCharsCounter < 23)
+	{
+		int32 WordsAvailable = (EntryPointCharsCounter / 4) + ((EntryPointCharsCounter % 4 != 0) ? 1 : 0);
+		ByteCode.InsertZeroed((EntryPointOffset + 3) * 4, (6 - WordsAvailable) * 4);
+		// remap the array view as the internal pointer could have been changed
+		SpirV = TArrayView<uint32>((uint32*)ByteCode.GetData(), ByteCode.Num() / sizeof(uint32));
+		// fix the opcode + size
+		uint32 Word = SpirV[Offset];
+		uint16 Opcode = Word & 0xFFFF;
+		uint16 Size = Word >> 16;
+		Size += 6 - WordsAvailable;
+		SpirV[Offset] = Opcode | Size << 16;
+	}
+	// we need to reduce the blob size
+	else if (EntryPointCharsCounter > 23)
+	{
+	}
 
 	FVulkanShaderHeader VulkanShaderHeader;
 	VulkanShaderHeader.SpirvCRC = FCrc::MemCrc32(ByteCode.GetData(), ByteCode.Num());
@@ -22,23 +91,39 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, 
 	ANSICHAR SpirVEntryPoint[24];
 	FCStringAnsi::Snprintf(SpirVEntryPoint, 24, "main_%0.8x_%0.8x", ByteCode.Num(), VulkanShaderHeader.SpirvCRC);
 
-	// SPIR-V is generally managed as an array of 32bit words
-	TArrayView<uint32> SpirV = TArrayView<uint32>((uint32*)ByteCode.GetData(), ByteCode.Num() / sizeof(uint32));
-
-	// skip the first 4 words
-	int32 Offset = 5;
+	Offset = 5;
 
 	struct FCompushadySpirVDecoration
 	{
 		uint32 Binding;
 		uint32 BindingIndexOffset;
 		uint32 DescriptorSetOffset;
+		uint32 TypeId;
 		FString Name;
 		FString ReflectionType;
+		bool bHasBinding;
+
+		FCompushadySpirVDecoration()
+		{
+			Binding = 0;
+			BindingIndexOffset = 0;
+			DescriptorSetOffset = 0;
+			TypeId = 0;
+			bHasBinding = false;
+		}
 	};
 
 	// this is a map between SPIR-V ids bindings and reflection types
 	TMap<uint32, FCompushadySpirVDecoration> Bindings;
+
+	// store the pointer types (as a fallback when reflection is not available)
+	TMap<uint32, uint32> SpirVPointers;
+	// store the relevant types (Struct and Images)
+	TMap<uint32, uint32> SpirVStructs;
+	TMap<uint32, TPair<uint32, uint32>> SpirVImages;
+	TMap<uint32, uint32> SpirVSampledImages;
+	// track Block decorations (for recognizing CBVs)
+	TSet<uint32> SpirVBlocks;
 
 	while (Offset < SpirV.Num())
 	{
@@ -60,12 +145,18 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, 
 					FCompushadySpirVDecoration& Decoration = Bindings.FindOrAdd(SpirV[Offset + 1]);
 					Decoration.Binding = SpirV[Offset + 3];
 					Decoration.BindingIndexOffset = Offset + 3;
+					Decoration.bHasBinding = true;
 				}
 				else if (SpirV[Offset + 2] == 34) // DescriptorSet
 				{
 					FCompushadySpirVDecoration& Decoration = Bindings.FindOrAdd(SpirV[Offset + 1]);
 					Decoration.DescriptorSetOffset = Offset + 3;
 				}
+			}
+			else if (Size > 2 && SpirV[Offset + 2] == 2) // Block
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Block: %u"), SpirV[Offset + 1]);
+				SpirVBlocks.Add(SpirV[Offset + 1]);
 			}
 		}
 		// get the name
@@ -89,7 +180,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, 
 			}
 		}
 		// patch the EntryPoint Name
-		else if (Opcode == 15 && (Offset + Size < SpirV.Num())) // OpEntryPoint(15) + ExecutionModel + id + Name
+		else if (Opcode == 15 && (Offset + Size < SpirV.Num())) // OpEntryPoint(15) + ExecutionModel + id + Name + ...
 		{
 			if (Size > 8 && SpirV[Offset + 1] == 5) // ExecutionModel == GLCompute
 			{
@@ -100,7 +191,40 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, 
 				}
 			}
 		}
+		else if (Opcode == 59 && (Offset + Size < SpirV.Num()) && Size > 3) // OpVariable + id_type + id + StorageClass
+		{
+			FCompushadySpirVDecoration& Decoration = Bindings.FindOrAdd(SpirV[Offset + 2]);
+			Decoration.TypeId = SpirV[Offset + 1];
+		}
+		else if (Opcode == 32 && (Offset + Size < SpirV.Num()) && Size > 3) // OpTypePointer + id + StorageClass + id_type
+		{
+			SpirVPointers.Add(SpirV[Offset + 1], SpirV[Offset + 3]);
+		}
+		else if (Opcode == 25 && (Offset + Size < SpirV.Num()) && Size > 8) // OpTypeImage + id + ... Dim + Sampled
+		{
+			UE_LOG(LogTemp, Warning, TEXT("OpTypeImage: %u"), SpirV[Offset + 1]);
+			SpirVImages.Add(SpirV[Offset + 1], TPair<uint32, uint32>(SpirV[Offset + 3], SpirV[Offset + 7]));
+		}
+		else if (Opcode == 27 && (Offset + Size < SpirV.Num()) && Size > 2) // OpTypeSampledImage + id + id_type
+		{
+			UE_LOG(LogTemp, Warning, TEXT("OpTypeImage: %u"), SpirV[Offset + 1]);
+			SpirVSampledImages.Add(SpirV[Offset + 1], SpirV[Offset + 2]);
+		}
+		else if (Opcode == 30 && (Offset + Size < SpirV.Num()) && Size > 1) // OpTypeStruct + id + ...
+		{
+			UE_LOG(LogTemp, Warning, TEXT("OpTypeStruct: %u"), SpirV[Offset + 1]);
+			SpirVStructs.Add(SpirV[Offset + 1], Opcode);
+		}
 		Offset += Size;
+	}
+
+	// fixup SampledImages
+	for (TPair<uint32, uint32>& Pair : SpirVPointers)
+	{
+		if (SpirVSampledImages.Contains(Pair.Value))
+		{
+			Pair.Value = SpirVSampledImages[Pair.Value];
+		}
 	}
 
 	int32 UniformBufferType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::UniformBuffer);
@@ -112,8 +236,8 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, 
 
 	for (const TPair<uint32, FCompushadySpirVDecoration>& Pair : Bindings)
 	{
-		// skip empty offsets (they are not resources!)
-		if (Pair.Value.BindingIndexOffset == 0)
+		// skip unbound decorations
+		if (!Pair.Value.bHasBinding)
 		{
 			continue;
 		}
@@ -125,7 +249,101 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, 
 		SpirvInfo.BindingIndexOffset = Pair.Value.BindingIndexOffset;
 		SpirvInfo.DescriptorSetOffset = Pair.Value.DescriptorSetOffset;
 
-		if (Pair.Value.Binding < 1024) // CBV
+		UE_LOG(LogTemp, Error, TEXT("SpirV: %s %u"), *ResourceBinding.Name, Pair.Value.TypeId);
+
+		if (Pair.Value.ReflectionType.IsEmpty() && ResourceBinding.Name != "$Globals")
+		{
+			if (SpirVPointers.Contains(Pair.Value.TypeId))
+			{
+				uint32 TypeId = SpirVPointers[Pair.Value.TypeId];
+				// identify CBVs
+				if (SpirVBlocks.Contains(TypeId))
+				{
+					UE_LOG(LogTemp, Error, TEXT("Found Block!!!"));
+					FVulkanShaderHeader::FUniformBufferInfo UniformBufferInfo = {};
+					UniformBufferInfo.ConstantDataOriginalBindingIndex = Pair.Value.Binding;
+
+					ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+					ResourceBinding.BindingIndex = Pair.Value.Binding;
+					ResourceBinding.SlotIndex = VulkanShaderHeader.UniformBuffers.Add(UniformBufferInfo);
+					VulkanShaderHeader.UniformBufferSpirvInfos.Add(SpirvInfo);
+
+					CBVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+					continue;
+				}
+				else
+				{
+					if (SpirVImages.Contains(TypeId))
+					{
+						if (SpirVImages[TypeId].Key < 5) // Texture?
+						{
+							if (SpirVImages[TypeId].Value < 2) // SRV?
+							{
+								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+								GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+								GlobalInfo.TypeIndex = ImageType;
+								ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+								ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+								SRVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+								continue;
+							}
+							else // UAV
+							{
+								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+								GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+								GlobalInfo.TypeIndex = StorageImageType;
+								ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+								ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+								UAVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+								continue;
+							}
+						}
+						else // buffer
+						{
+							if (SpirVImages[TypeId].Value < 2) // SRV?
+							{
+								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+								GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+								GlobalInfo.TypeIndex = BufferType;
+								ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+								ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+								SRVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+								continue;
+							}
+							else // UAV
+							{
+								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+								GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+								GlobalInfo.TypeIndex = StorageBufferType;
+								ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+								ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+								UAVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+								continue;
+							}
+						}
+					}
+				}
+			}
+			ErrorMessages = FString::Printf(TEXT("Reflection data unavailable for %s (binding:%u)"), *ResourceBinding.Name, Pair.Value.Binding);
+			return false;
+		}
+		else if (Pair.Value.ReflectionType == "cbuffer" || ResourceBinding.Name == "$Globals")
 		{
 			FVulkanShaderHeader::FUniformBufferInfo UniformBufferInfo = {};
 			UniformBufferInfo.ConstantDataOriginalBindingIndex = Pair.Value.Binding;
@@ -136,71 +354,90 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, 
 			VulkanShaderHeader.UniformBufferSpirvInfos.Add(SpirvInfo);
 
 			CBVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
-
 		}
-		else if (Pair.Value.Binding < 2048) // SRV
+		else if (Pair.Value.ReflectionType.StartsWith("buffer:"))
 		{
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
 			GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
-
-			if (Pair.Value.ReflectionType.Contains("texture"))
-			{
-				GlobalInfo.TypeIndex = ImageType;
-				ResourceBinding.Type = ECompushadySharedResourceType::Texture;
-			}
-			else
-			{
-				if (Pair.Value.ReflectionType.Contains("structured"))
-				{
-					GlobalInfo.TypeIndex = StorageStructuredBufferType;
-				}
-				else
-				{
-					GlobalInfo.TypeIndex = BufferType;
-				}
-				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
-			}
-
+			GlobalInfo.TypeIndex = BufferType;
+			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
-			ResourceBinding.BindingIndex = Pair.Value.Binding - 1024;
+			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
 
 			SRVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
 		}
-		else if (Pair.Value.Binding < 3072) // UAV
+		else if (Pair.Value.ReflectionType.StartsWith("rwbuffer:"))
 		{
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
 			GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
-
-			if (Pair.Value.ReflectionType.Contains("texture"))
-			{
-				GlobalInfo.TypeIndex = StorageImageType;
-				ResourceBinding.Type = ECompushadySharedResourceType::Texture;
-			}
-			else
-			{
-				if (Pair.Value.ReflectionType.Contains("structured"))
-				{
-					GlobalInfo.TypeIndex = StorageStructuredBufferType;
-				}
-				else
-				{
-					GlobalInfo.TypeIndex = StorageBufferType;
-				}
-				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
-			}
-
+			GlobalInfo.TypeIndex = StorageBufferType;
+			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
-			ResourceBinding.BindingIndex = Pair.Value.Binding - 2048;
+			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+			UAVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+		}
+		else if (Pair.Value.ReflectionType == "byteaddressbuffer" || Pair.Value.ReflectionType.StartsWith("structuredbuffer:"))
+		{
+			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+			GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+			GlobalInfo.TypeIndex = StorageStructuredBufferType;
+			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+			ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+			SRVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+		}
+		else if (Pair.Value.ReflectionType.StartsWith("rwstructuredbuffer:") ||
+			Pair.Value.ReflectionType == "rwbyteaddressbuffer"
+			/* || Pair.Value.ReflectionType.StartsWith("appendstructuredbuffer:") */)
+		{
+			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+			GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+			GlobalInfo.TypeIndex = StorageStructuredBufferType;
+			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+			ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+			UAVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+		}
+		else if (Pair.Value.ReflectionType.StartsWith("texture"))
+		{
+			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+			GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+			GlobalInfo.TypeIndex = ImageType;
+			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+			ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+			SRVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+		}
+		else if (Pair.Value.ReflectionType.StartsWith("rwtexture"))
+		{
+			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+			GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+			GlobalInfo.TypeIndex = StorageImageType;
+			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+			ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
 
 			UAVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
 		}
 		else
 		{
-			ErrorMessages = FString::Printf(TEXT("Invalid shader binding for %s: %u"), *ResourceBinding.Name, Pair.Value.Binding);
+			ErrorMessages = FString::Printf(TEXT("Unsupported shader resource type \"%s\" for %s (binding: %u)"), *Pair.Value.ReflectionType, *ResourceBinding.Name, Pair.Value.Binding);
 			return false;
 		}
 	}
