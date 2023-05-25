@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "Compushady.h"
 #include "CompushadyCBV.h"
 #include "CompushadySRV.h"
 #include "CompushadyUAV.h"
@@ -51,6 +52,8 @@ class COMPUSHADY_API UCompushadyCompute : public UObject, public ICompushadySign
 public:
 	bool InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
 
+	bool InitFromSPIRV(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
+
 	UFUNCTION(BlueprintCallable, meta=(AutoCreateRefTerm = "ResourceArray,OnSignaled"),Category="Compushady")
 	void Dispatch(const FCompushadyResourceArray& ResourceArray, const int32 X, const int32 Y, const int32 Z, const FCompushadySignaled& OnSignaled);
 
@@ -87,6 +90,8 @@ public:
 	void OnSignalReceived() override;
 
 protected:
+
+	bool CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages);
 
 	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs);
 

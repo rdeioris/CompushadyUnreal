@@ -30,6 +30,9 @@ namespace Compushady
 	};
 
 	bool CompileHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FString& ErrorMessages);
+	bool FixupSPIRV(TArray<uint8>& ByteCode, const FString& EntryPoint, const FString& TargetProfile, FCompushadyShaderResourceBindings& ShaderResourceBindings, FString& ErrorMessages);
+
+	void DXCTeardown();
 }
 
 class FCompushadyModule : public IModuleInterface

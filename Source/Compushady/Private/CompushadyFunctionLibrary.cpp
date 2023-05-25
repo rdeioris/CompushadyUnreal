@@ -2,11 +2,7 @@
 
 
 #include "CompushadyFunctionLibrary.h"
-#include "Compushady.h"
-#include "Engine/TextureRenderTarget2D.h"
-#include "vulkan.h"
-#include "VulkanCommon.h"
-#include "VulkanShaderResources.h"
+#include "CompushadyTypes.h"
 #include "Serialization/ArrayWriter.h"
 
 UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBV(const FString& Name, const int64 Size)
@@ -41,6 +37,23 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLF
 	}
 
 	if (!CompushadyCompute->InitFromHLSL(ShaderCode, EntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyCompute;
+}
+
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRVFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint)
+{
+	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
+	TArray<uint8> ShaderCode;
+	if (!FFileHelper::LoadFileToArray(ShaderCode, *Filename))
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyCompute->InitFromSPIRV(ShaderCode, EntryPoint, ErrorMessages))
 	{
 		return nullptr;
 	}
