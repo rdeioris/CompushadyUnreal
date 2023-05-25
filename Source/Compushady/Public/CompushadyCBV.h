@@ -24,16 +24,25 @@ public:
 	FUniformBufferRHIRef GetRHI();
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetFloat(const int64 Offset, const float Value);
+	void SetFloat(const int32 Offset, const float Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetDouble(const int64 Offset, const double Value);
+	void SetDouble(const int32 Offset, const double Value);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Values"), Category = "Compushady")
+	void SetFloatArray(const int32 Offset, const TArray<float>& Values);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Values"), Category = "Compushady")
+	void SetDoubleArray(const int32 Offset, const TArray<double>& Values);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
+	void SetTransformFloat(const int32 Offset, const FTransform& Transform, const bool bTranspose=true);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
+	void SetTransformDouble(const int32 Offset, const FTransform& Transform, const bool bTranspose = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetFloatArray(const int64 Offset, const TArray<float>& Values);
-
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetDoubleArray(const int64 Offset, const TArray<double>& Values);
+	void SetPerspectiveFloat(const int32 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = true, const bool bTranspose = true);
 
 protected:
 	TArray<uint8> BufferData;

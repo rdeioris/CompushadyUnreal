@@ -36,6 +36,12 @@ public:
     static UCompushadyUAV* CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadySRV* CreateCompushadySRVBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const EPixelFormat PixelFormat);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -51,7 +57,7 @@ public:
     static UCompushadySRV* CreateCompushadySRVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
-    static UCompushadySRV* CreateCompushadySRVFromCurveFloat(UCurveFloat* CurveFloat, const float StartTime, const float EndTime, const int32 Steps);
+    static UCompushadySRV* CreateCompushadySRVBufferFromCurveFloat(const FString& Name, UCurveFloat* CurveFloat, const float StartTime, const float EndTime, const int32 Steps);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);

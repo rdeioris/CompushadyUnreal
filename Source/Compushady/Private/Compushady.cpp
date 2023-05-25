@@ -53,6 +53,8 @@ THIRD_PARTY_INCLUDES_END
 #include "DetailWidgetRow.h"
 #include "IDetailCustomization.h"
 #include "PropertyEditorModule.h"
+#include "Widgets/Layout/SScrollBar.h"
+#include "Widgets/Text/SMultiLineEditableText.h"
 #endif
 
 
@@ -755,8 +757,13 @@ public:
 
 
 		IDetailCategoryBuilder& CategoryBuilder = DetailBuilder.EditCategory("Code");
+
+
 		CategoryBuilder.AddCustomRow(FText::FromString("Code")).WholeRowContent()[
 
+			SNew(SVerticalBox)
+			+SVerticalBox::Slot().MaxHeight(800)
+			[
 			SNew(SMultiLineEditableTextBox)
 				.AutoWrapText(false)
 				.Margin(0.0f)
@@ -767,6 +774,11 @@ public:
 						CompushadyShader->Code = InCode.ToString();
 			CompushadyShader->MarkPackageDirty();
 					})
+			]
+			+SVerticalBox::Slot().FillHeight(0.1)
+			[
+				SNew(STextBlock).Text(FText::FromString("Test"))
+			]
 
 		];
 	}
@@ -775,6 +787,7 @@ public:
 	{
 		return MakeShared<FCompushadyShaderCustomization>();
 	}
+
 };
 #endif
 

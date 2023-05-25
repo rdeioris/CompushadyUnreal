@@ -263,7 +263,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromRenderTarget2
 	return CompushadySRV;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromCurveFloat(UCurveFloat* CurveFloat, const float StartTime, const float EndTime, const int32 Steps)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromCurveFloat(const FString& Name, UCurveFloat* CurveFloat, const float StartTime, const float EndTime, const int32 Steps)
 {
 	if (!CurveFloat || Steps <= 0 || EndTime <= StartTime)
 	{
@@ -282,8 +282,6 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromCurveFloat(UC
 	}
 
 	FBufferRHIRef BufferRHIRef;
-
-	FString Name = CurveFloat->GetName();
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Data, Steps](FRHICommandListImmediate& RHICmdList)
@@ -403,4 +401,64 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromStaticMeshTex
 	}
 
 	return CompushadyUAV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const EPixelFormat PixelFormat)
+{
+	FBufferRHIRef BufferRHIRef;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
+		[&BufferRHIRef, Name, Data, PixelFormat](FRHICommandListImmediate& RHICmdList)
+		{
+			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
+	BufferRHIRef = RHICreateBuffer(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::UAVCompute, ResourceCreateInfo);
+	void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
+	FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
+	RHICmdList.UnlockBuffer(BufferRHIRef);
+		});
+
+	FlushRenderingCommands();
+
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromBuffer(BufferRHIRef, PixelFormat))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride)
+{
+	FBufferRHIRef BufferRHIRef;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
+		[&BufferRHIRef, Name, Data, Stride](FRHICommandListImmediate& RHICmdList)
+		{
+			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
+	BufferRHIRef = RHICreateBuffer(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+	void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
+	FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
+	RHICmdList.UnlockBuffer(BufferRHIRef);
+		});
+
+	FlushRenderingCommands();
+
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromStructuredBuffer(BufferRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
 }
