@@ -52,6 +52,8 @@ class COMPUSHADY_API UCompushadyCompute : public UObject, public ICompushadySign
 public:
 	bool InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
 
+	bool InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
+
 	bool InitFromSPIRV(const TArray<uint8>& ShaderCode, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta=(AutoCreateRefTerm = "ResourceArray,OnSignaled"),Category="Compushady")

@@ -69,6 +69,9 @@ public:
     static UCompushadyCompute* CreateCompushadyComputeFromSPIRVFile(const FString& Filename, FString& ErrorMessages);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyCompute* CreateCompushadyComputeFromGLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main");
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyCompute* CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint = "main");
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")

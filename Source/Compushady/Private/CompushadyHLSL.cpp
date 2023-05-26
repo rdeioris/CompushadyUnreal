@@ -86,7 +86,11 @@ namespace Compushady
 			if (!LibHandle)
 			{
 #if PLATFORM_WINDOWS
-				LibHandle = FPlatformProcess::GetDllHandle(TEXT("dxcompiler.dll"));
+#if WITH_EDITOR
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectPluginsDir() / TEXT("Compushady/Binaries/Win64/dxcompiler.dll")));
+#else
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/dxcompiler.dll")));
+#endif
 #elif PLATFORM_LINUX || PLATFORM_ANDROID
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.so"));
 #endif
@@ -142,7 +146,11 @@ namespace Compushady
 #if PLATFORM_WINDOWS
 			if (!DXILLibHandle)
 			{
-				DXILLibHandle = FPlatformProcess::GetDllHandle(TEXT("dxil.dll"));
+#if WITH_EDITOR
+				DXILLibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectPluginsDir() / TEXT("Compushady/Binaries/Win64/dxil.dll")));
+#else
+				DXILLibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/dxil.dll")));
+#endif
 				if (!DXILLibHandle)
 				{
 					UE_LOG(LogCompushady, Error, TEXT("Unable to load dxil shared library"));
@@ -408,7 +416,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	{
 		return FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages);
 	}
-		
+
 	// sort resources
 	TArray<uint32> CBVKeys;
 	CBVMapping.GetKeys(CBVKeys);

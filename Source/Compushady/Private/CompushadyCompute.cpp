@@ -21,6 +21,28 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
 }
 
+bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
+{
+	bRunning = false;
+
+	RHIInterfaceType = RHIGetInterfaceType();
+
+	if (RHIInterfaceType != ERHIInterfaceType::Vulkan)
+	{
+		ErrorMessages = "GLSL shaders are currently supported only on Vulkan";
+		return false;
+	}
+
+	TArray<uint8> ByteCode;
+	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ShaderResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
+}
+
 bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
 {
 	bRunning = false;

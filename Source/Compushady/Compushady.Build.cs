@@ -38,6 +38,7 @@ public class Compushady : ModuleRules
 
         string ThirdPartyDirectoryIncludePath = ThirdPartyDirectory;
 
+        // DirectXCompiler
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_windows");
@@ -62,5 +63,12 @@ public class Compushady : ModuleRules
         }
 
         PrivateIncludePaths.Add(ThirdPartyDirectoryIncludePath);
+
+        // easy_glslang
+        if (Target.Platform == UnrealTargetPlatform.Win64)
+        {
+            string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "easy_glslang");
+            RuntimeDependencies.Add("$(BinaryOutputDir)/easy_glslang.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64, "easy_glslang.dll"));
+        }
     }
 }
