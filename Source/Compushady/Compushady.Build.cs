@@ -64,11 +64,11 @@ public class Compushady : ModuleRules
 
         PrivateIncludePaths.Add(ThirdPartyDirectoryIncludePath);
 
-        // easy_glslang
+        // libcompushady_khr
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
-            string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "easy_glslang");
-            RuntimeDependencies.Add("$(BinaryOutputDir)/easy_glslang.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64, "easy_glslang.dll"));
+            string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "compushady_khr");
+            RuntimeDependencies.Add("$(BinaryOutputDir)/libcompushady_khr.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64, "libcompushady_khr.dll"));
         }
     }
 }

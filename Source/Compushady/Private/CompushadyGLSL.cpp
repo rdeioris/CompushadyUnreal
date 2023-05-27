@@ -4,10 +4,10 @@
 
 namespace Compushady
 {
-	namespace EasyGlslang
+	namespace KHR
 	{
 		static void* LibHandle = nullptr;
-		static void* (*GLSLToSpirV)(const char* source, void* (*allocator)(size_t), size_t* spirv_size) = nullptr;
+		static void* (*GLSLToSpirV)(const char* Source, const int SourceLen, void* (*Allocator)(size_t), size_t* SpirVSize, char** Errors) = nullptr;
 
 		static bool Setup()
 		{
@@ -15,27 +15,27 @@ namespace Compushady
 			{
 #if PLATFORM_WINDOWS
 #if WITH_EDITOR
-				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectPluginsDir() / TEXT("Compushady/Binaries/Win64/easy_glslang.dll")));
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectPluginsDir() / TEXT("Compushady/Binaries/Win64/libcompushady_khr.dll")));
 #else
-				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/easy_glslang.dll")));
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/libcompushady_khr.dll")));
 #endif
 #elif PLATFORM_LINUX || PLATFORM_ANDROID
-				LibHandle = FPlatformProcess::GetDllHandle(TEXT("easy_glslang.so"));
+				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libcompushady_khr.so"));
 #endif
 				if (!LibHandle)
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Unable to load easy_glslang shared library"));
+					UE_LOG(LogCompushady, Error, TEXT("Unable to load libcompushady_khr shared library"));
 					return false;
 				}
 			}
 
 			if (!GLSLToSpirV)
 			{
-				GLSLToSpirV = reinterpret_cast<void* (*)(const char* source, void* (*allocator)(SIZE_T), SIZE_T * spirv_size)>(FPlatformProcess::GetDllExport(LibHandle, TEXT("glslang_compile")));
+				GLSLToSpirV = reinterpret_cast<void* (*)(const char*, const int, void* (*)(SIZE_T), SIZE_T*, char**)>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_glslang_compile")));
 
 				if (!GLSLToSpirV)
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Unable to find glslang_compile symbol in easy_glslang"));
+					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_glslang_compile symbol in libcompushady_khr"));
 					return false;
 				}
 			}
@@ -52,20 +52,30 @@ namespace Compushady
 
 bool Compushady::CompileGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FString& ErrorMessages)
 {
-	if (!EasyGlslang::Setup())
+	if (!KHR::Setup())
 	{
 		return false;
 	}
 
 	SIZE_T SpvSize;
-	void* Data = EasyGlslang::GLSLToSpirV((const char*)ShaderCode.GetData(), EasyGlslang::Malloc, &SpvSize);
-	UE_LOG(LogTemp, Error, TEXT("Data: %p %llu %u"), Data, SpvSize, ((uint32*)Data)[0]);
-	if (Data)
+	char* Errors = nullptr;
+	void* Data = KHR::GLSLToSpirV((const char*)ShaderCode.GetData(), ShaderCode.Num(), KHR::Malloc, &SpvSize, &Errors);
+	if (!Data)
 	{
-		ByteCode.Append((uint8*)Data, SpvSize);
-		FMemory::Free(Data);
-
-		return FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages);
+		if (Errors)
+		{
+			ErrorMessages = UTF8_TO_TCHAR(Errors);
+			FMemory::Free(Errors);
+		}
+		else
+		{
+			ErrorMessages = "Unable to compile GLSL sources";
+		}
+		return false;
 	}
-	return false;
+
+	ByteCode.Append((uint8*)Data, SpvSize);
+	FMemory::Free(Data);
+
+	return FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages);
 }
