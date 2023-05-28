@@ -97,6 +97,9 @@ public:
 	void ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
@@ -108,6 +111,7 @@ public:
 	const FRHITransitionInfo& GetRHITransitionInfo() const;
 
 	FStagingBufferRHIRef GetStagingBuffer();
+	FTextureRHIRef GetReadbackTexture();
 
 	void OnSignalReceived() override;
 protected:
@@ -116,4 +120,5 @@ protected:
 	FStagingBufferRHIRef StagingBufferRHIRef;
 	FRHITransitionInfo RHITransitionInfo;
 	TArray<uint8> ReadbackCache;
+	FTextureRHIRef ReadbackTextureRHIRef;
 };

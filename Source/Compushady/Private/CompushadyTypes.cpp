@@ -2,6 +2,8 @@
 
 
 #include "CompushadyTypes.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
 #include "Serialization/ArrayWriter.h"
 
 bool ICompushadySignalable::InitFence(UObject* InOwningObject)
@@ -122,6 +124,17 @@ FStagingBufferRHIRef UCompushadyResource::GetStagingBuffer()
 	return StagingBufferRHIRef;
 }
 
+FTextureRHIRef UCompushadyResource::GetReadbackTexture()
+{
+	if (!ReadbackTextureRHIRef.IsValid())
+	{
+		FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(nullptr, TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat());
+		TextureCreateDesc.SetFlags(ETextureCreateFlags::CPUReadback);
+		ReadbackTextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	}
+	return ReadbackTextureRHIRef;
+}
+
 void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
 {
 	if (bRunning)
@@ -149,6 +162,52 @@ void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithF
 		});
 
 	CheckFence(OnSignaled, ReadbackCache);
+}
+
+void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
+{
+	if (bRunning)
+	{
+		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		return;
+	}
+
+	ClearFence();
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
+		[this, Filename](FRHICommandListImmediate& RHICmdList)
+		{
+			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
+	RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+	FRHICopyTextureInfo CopyTextureInfo;
+	RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
+	RHICmdList.SubmitCommandsAndFlushGPU();
+	RHICmdList.BlockUntilGPUIdle();
+	int32 Width = 0;
+	int32 Height = 0;
+	void* Data = nullptr;
+	RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
+	if (Data)
+	{
+		IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
+
+		TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+		if (ImageWrapper.IsValid())
+		{
+
+			if (ImageWrapper->SetRaw(Data, Width * Height * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes, Width, Height, ERGBFormat::BGRA, 8))
+			{
+
+				TArray64<uint8> CompressedBytes = ImageWrapper->GetCompressed();
+				FFileHelper::SaveArrayToFile(CompressedBytes, *Filename);
+			}
+		}
+		RHICmdList.UnmapStagingSurface(GetTextureRHI());
+	}
+	WriteFence(RHICmdList);
+		});
+
+	CheckFence(OnSignaled);
 }
 
 void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
