@@ -414,7 +414,8 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 	if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
 	{
-		return FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages);
+		// skip here if we are on vulkan (we will do reflection later)
+		return true;
 	}
 
 	// sort resources

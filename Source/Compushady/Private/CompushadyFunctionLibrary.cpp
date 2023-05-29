@@ -78,6 +78,27 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRV
 	return CompushadyCompute;
 }
 
+bool UCompushadyFunctionLibrary::DisassembleSPIRVFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages)
+{
+	TArray<uint8> ByteCode;
+	if (!FFileHelper::LoadFileToArray(ByteCode, *Filename))
+	{
+		return false;
+	}
+
+	return Compushady::DisassembleSPIRV(ByteCode, Disassembled, ErrorMessages);
+}
+
+bool UCompushadyFunctionLibrary::DisassembleSPIRVBlob(const TArray<uint8>& Blob, FString& Disassembled, FString& ErrorMessages)
+{
+	return Compushady::DisassembleSPIRV(Blob, Disassembled, ErrorMessages);
+}
+
+bool UCompushadyFunctionLibrary::SPIRVBlobToHLSL(const TArray<uint8>& Blob, FString& HLSL, FString& ErrorMessages)
+{
+	return Compushady::SPIRVToHLSL(Blob, HLSL, ErrorMessages);
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();

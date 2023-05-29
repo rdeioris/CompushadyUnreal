@@ -18,6 +18,16 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 		return false;
 	}
 
+	if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
+	{
+		SPIRV = ByteCode;
+
+		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
+		{
+			return false;
+		}
+	}
+
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
 }
 
@@ -40,6 +50,13 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 		return false;
 	}
 
+	SPIRV = ByteCode;
+
+	if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
 }
 
@@ -57,6 +74,7 @@ bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString&
 
 	TArray<uint8> ByteCode = ShaderCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
+	SPIRV = ByteCode;
 	if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
 	{
 		return false;
@@ -305,4 +323,9 @@ void UCompushadyCompute::OnSignalReceived()
 	CurrentResourceArray.CBVs.Empty();
 	CurrentResourceArray.SRVs.Empty();
 	CurrentResourceArray.UAVs.Empty();
+}
+
+const TArray<uint8>& UCompushadyCompute::GetSPIRV() const
+{
+	return SPIRV;
 }

@@ -91,6 +91,9 @@ public:
 
 	void OnSignalReceived() override;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const TArray<uint8>& GetSPIRV() const;
+
 protected:
 
 	bool CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages);
@@ -104,5 +107,7 @@ protected:
 	// this will avoid the resources to be GC'd
 	UPROPERTY()
 	FCompushadyResourceArray CurrentResourceArray;
+
+	TArray<uint8> SPIRV;
 
 };
