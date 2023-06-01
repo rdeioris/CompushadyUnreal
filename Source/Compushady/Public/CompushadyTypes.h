@@ -109,6 +109,9 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ);
+
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;
 

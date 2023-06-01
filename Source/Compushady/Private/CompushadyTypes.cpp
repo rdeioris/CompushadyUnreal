@@ -373,3 +373,18 @@ void UCompushadyResource::OnSignalReceived()
 {
 
 }
+
+FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ)
+{
+	if (TextureRHIRef.IsValid())
+	{
+		FIntVector TextureXYZ = TextureRHIRef->GetSizeXYZ();
+		return FIntVector(
+			FMath::DivideAndRoundUp(TextureXYZ.X, XYZ.X),
+			FMath::DivideAndRoundUp(TextureXYZ.Y, XYZ.Y),
+			FMath::DivideAndRoundUp(TextureXYZ.Z, XYZ.Z)
+		);
+	}
+	return XYZ;
+
+}

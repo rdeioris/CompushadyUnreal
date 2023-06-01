@@ -245,7 +245,7 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 	return true;
 }
 
-void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray, const int32 X, const int32 Y, const int32 Z, const FCompushadySignaled& OnSignaled)
+void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
 {
 	if (bRunning)
 	{
@@ -308,7 +308,7 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 	ClearFence();
 
 	ENQUEUE_RENDER_COMMAND(DoCompushady)(
-		[this, CBVs, SRVs, UAVs, X, Y, Z](FRHICommandListImmediate& RHICmdList)
+		[this, CBVs, SRVs, UAVs, XYZ](FRHICommandListImmediate& RHICmdList)
 		{
 			SetComputePipelineState(RHICmdList, ComputeShaderRef);
 
@@ -333,7 +333,7 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		RHICmdList.SetUAVParameter(ComputeShaderRef, UAVResourceBindings[Index].SlotIndex, UAVs[Index]->GetRHI());
 	}
 
-	RHICmdList.DispatchComputeShader(X, Y, Z);
+	RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
 
 	WriteFence(RHICmdList);
 		});
