@@ -184,7 +184,7 @@ namespace Compushady
 	}
 }
 
-bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FString& ErrorMessages)
+bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 
 	if (ShaderCode.Num() == 0)
@@ -387,6 +387,10 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 			}
 
 		}
+
+		UINT TGX, TGY, TGZ;
+		ShaderReflection->GetThreadGroupSize(&TGX, &TGY, &TGZ);
+		ThreadGroupSize = FIntVector(TGX, TGY, TGZ);
 
 		ShaderReflection->Release();
 		Reflection->Release();

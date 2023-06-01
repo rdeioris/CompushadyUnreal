@@ -13,7 +13,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 
 	TArray<uint8> ByteCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ShaderResourceBindings, ErrorMessages))
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
 		return false;
 	}
@@ -22,7 +22,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 	{
 		SPIRV = ByteCode;
 
-		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
+		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 		{
 			return false;
 		}
@@ -39,7 +39,7 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 
 	TArray<uint8> ByteCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ShaderResourceBindings, ErrorMessages))
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ErrorMessages))
 	{
 		return false;
 	}
@@ -62,7 +62,7 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 	}
 	else
 	{
-		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
+		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 		{
 			return false;
 		}
@@ -86,7 +86,7 @@ bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString&
 	TArray<uint8> ByteCode = ShaderCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
 	SPIRV = ByteCode;
-	if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
+	if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
 		return false;
 	}
@@ -356,4 +356,9 @@ void UCompushadyCompute::OnSignalReceived()
 const TArray<uint8>& UCompushadyCompute::GetSPIRV() const
 {
 	return SPIRV;
+}
+
+FIntVector UCompushadyCompute::GetThreadGroupSize() const
+{
+	return ThreadGroupSize;
 }

@@ -8,7 +8,7 @@
 #include "VulkanCommon.h"
 #include "VulkanShaderResources.h"
 
-bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FString& ErrorMessages)
+bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
@@ -210,6 +210,12 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 		else if (Opcode == 30 && (Offset + Size < SpirV.Num()) && Size > 1) // OpTypeStruct + id + ...
 		{
 			SpirVStructs.Add(SpirV[Offset + 1], Opcode);
+		}
+		else if (Opcode == 16 && (Offset + Size < SpirV.Num()) && Size > 5 && SpirV[Offset + 2] == 17) // OpExecutionMode + id + LocalSize(17) + X + Y + Z ...
+		{
+			ThreadGroupSize.X = SpirV[Offset + 3];
+			ThreadGroupSize.Y = SpirV[Offset + 4];
+			ThreadGroupSize.Z = SpirV[Offset + 5];
 		}
 		Offset += Size;
 	}
@@ -483,9 +489,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 				for (int32 Index = 0; Index < Size; Index++)
 				{
 					SpirV[Offset + Index] = 0x00010000;
-				}
-			}
 		}
+	}
+}
 
 		Offset += Size;
 	}
