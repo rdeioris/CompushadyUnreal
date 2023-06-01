@@ -300,7 +300,7 @@ void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTar
 	CheckFence(OnSignaled);
 }
 
-void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled)
+void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo)
 {
 	if (bRunning)
 	{
@@ -322,19 +322,46 @@ void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, cons
 		return;
 	}
 
+	if (!CopyTexture_Internal(TextureRHIRef, Resource->GetTextureRHI(), CopyInfo, OnSignaled))
+	{
+		return;
+	}
+
+	CheckFence(OnSignaled);
+}
+
+bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled)
+{
+	if (Destination->GetFormat() != Source->GetFormat())
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Incompatible Texture Formats (%s vs %s)"),
+			GetPixelFormatString(Destination->GetFormat()),
+			GetPixelFormatString(Source->GetFormat())
+		));
+		return false;
+	}
+
+	FIntVector DestinationSize = Destination->GetSizeXYZ();
+	FIntVector SourceSize = Source->GetSizeXYZ();
+
+	FRHICopyTextureInfo CopyTextureInfo;
+	CopyTextureInfo.Size = SourceSize;
+	CopyTextureInfo.DestPosition = CopyInfo.DestinationOffset;
+	CopyTextureInfo.SourcePosition = CopyInfo.SourceOffset;
+
 	ClearFence();
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
-		[this, Resource](FRHICommandListImmediate& RHICmdList)
+		[this, Destination, Source, CopyTextureInfo](FRHICommandListImmediate& RHICmdList)
 		{
-			RHICmdList.Transition(FRHITransitionInfo(Resource->GetTextureRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
-	FRHICopyTextureInfo CopyTextureInfo;
-	RHICmdList.CopyTexture(Resource->GetTextureRHI(), TextureRHIRef, CopyTextureInfo);
+			RHICmdList.Transition(FRHITransitionInfo(Source, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+	RHICmdList.Transition(FRHITransitionInfo(Destination, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+
+	RHICmdList.CopyTexture(Source, Destination, CopyTextureInfo);
 	WriteFence(RHICmdList);
 		});
 
-	CheckFence(OnSignaled);
+	return true;
 }
 
 void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const int32 Slice, const FCompushadySignaled& OnSignaled)

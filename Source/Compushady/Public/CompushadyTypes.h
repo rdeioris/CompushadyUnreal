@@ -59,6 +59,21 @@ struct COMPUSHADY_API FCompushadyFloat4
 	float W;
 };
 
+USTRUCT(BlueprintType)
+struct COMPUSHADY_API FCompushadyCopyInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FIntVector SourceOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FIntVector SourceSize;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FIntVector DestinationOffset;
+};
+
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
 
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatPayload, bool, bSuccess, float&, Payload, const FString&, ErrorMessage);
@@ -77,6 +92,8 @@ public:
 	void WriteFence(FRHICommandListImmediate& RHICmdList);
 	virtual void OnSignalReceived() = 0;
 protected:
+	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
+
 	bool bRunning;
 	FGPUFenceRHIRef FenceRHIRef;
 	TWeakObjectPtr<UObject> OwningObject;
@@ -106,8 +123,8 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const int32 Slice, const FCompushadySignaled& OnSignaled);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
-	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled);
+	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
+	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ);
