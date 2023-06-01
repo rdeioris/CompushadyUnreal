@@ -28,7 +28,9 @@ public class Compushady : ModuleRules
                 "SlateCore",
                 "Slate",
                 "VulkanRHI",
-                "UMG"
+                "UMG",
+                "AudioExtensions",
+                "MediaAssets"
             }
             );
 

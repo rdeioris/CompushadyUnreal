@@ -300,6 +300,43 @@ void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTar
 	CheckFence(OnSignaled);
 }
 
+void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled)
+{
+	if (bRunning)
+	{
+		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		return;
+	}
+
+	if (!MediaTexture)
+	{
+		OnSignaled.ExecuteIfBound(false, "MediaTexture is NULL");
+		return;
+	}
+
+	FTextureResource* Resource = MediaTexture->GetResource();
+
+	if (!Resource)
+	{
+		OnSignaled.ExecuteIfBound(false, "MediaTexture Resource not available");
+		return;
+	}
+
+	ClearFence();
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
+		[this, Resource](FRHICommandListImmediate& RHICmdList)
+		{
+			RHICmdList.Transition(FRHITransitionInfo(Resource->GetTextureRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
+	RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+	FRHICopyTextureInfo CopyTextureInfo;
+	RHICmdList.CopyTexture(Resource->GetTextureRHI(), TextureRHIRef, CopyTextureInfo);
+	WriteFence(RHICmdList);
+		});
+
+	CheckFence(OnSignaled);
+}
+
 void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const int32 Slice, const FCompushadySignaled& OnSignaled)
 {
 	if (bRunning)

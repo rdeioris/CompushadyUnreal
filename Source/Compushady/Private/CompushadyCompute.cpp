@@ -37,12 +37,6 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 
 	RHIInterfaceType = RHIGetInterfaceType();
 
-	if (RHIInterfaceType != ERHIInterfaceType::Vulkan)
-	{
-		ErrorMessages = "GLSL shaders are currently supported only on Vulkan";
-		return false;
-	}
-
 	TArray<uint8> ByteCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
 	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ShaderResourceBindings, ErrorMessages))
@@ -52,9 +46,26 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 
 	SPIRV = ByteCode;
 
-	if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
+	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
-		return false;
+		FString HLSL;
+		if (!Compushady::SPIRVToHLSL(SPIRV, HLSL, ErrorMessages))
+		{
+			return false;
+		}
+		TStringBuilderBase<UTF8CHAR> SourceUTF8;
+		SourceUTF8 = TCHAR_TO_UTF8(*HLSL);
+
+		TArray<uint8> HLSLShaderCode;
+		HLSLShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
+		return InitFromHLSL(HLSLShaderCode, EntryPoint, ErrorMessages);
+	}
+	else
+	{
+		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ErrorMessages))
+		{
+			return false;
+		}
 	}
 
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
@@ -140,6 +151,25 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 		CBVResourceBindings.Add(ResourceBinding);
 		CBVResourceBindingsMap.Add(ResourceBinding.Name, ResourceBinding);
 		CBVResourceBindingsSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
+	}
+
+	// check for holes in the CBVs
+	for (int32 Index = 0; Index < static_cast<int32>(NumCBVs); Index++)
+	{
+		bool bFound = false;
+		for (const FCompushadyResourceBinding& Binding : CBVResourceBindings)
+		{
+			if (Binding.SlotIndex == Index)
+			{
+				bFound = true;
+				break;
+			}
+		}
+		if (!bFound)
+		{
+			ErrorMessages = "Binding holes not allowed in CBVs";
+			return false;
+		}
 	}
 
 	uint32 NumSRVs = 0;
@@ -280,8 +310,6 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 	ENQUEUE_RENDER_COMMAND(DoCompushady)(
 		[this, CBVs, SRVs, UAVs, X, Y, Z](FRHICommandListImmediate& RHICmdList)
 		{
-
-
 			SetComputePipelineState(RHICmdList, ComputeShaderRef);
 
 	for (int32 Index = 0; Index < CBVs.Num(); Index++)
