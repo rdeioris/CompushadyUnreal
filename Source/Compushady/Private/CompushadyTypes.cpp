@@ -140,7 +140,7 @@ void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithF
 	if (bRunning)
 	{
 		TArray<float> Values;
-		OnSignaled.ExecuteIfBound(false, Values, "The UAV is already being processed by another task");
+		OnSignaled.ExecuteIfBound(false, Values, "The Resource is already being processed by another task");
 		return;
 	}
 
@@ -168,7 +168,7 @@ void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, cons
 {
 	if (bRunning)
 	{
-		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
 	}
 
@@ -215,7 +215,7 @@ void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FComp
 	if (bRunning)
 	{
 		TArray<float> Values;
-		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
 	}
 
@@ -245,7 +245,7 @@ void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 E
 	if (bRunning)
 	{
 		TArray<float> Values;
-		OnSignaled.ExecuteIfBound(false, Values, "The UAV is already being processed by another task");
+		OnSignaled.ExecuteIfBound(false, Values, "The Resource is already being processed by another task");
 		return;
 	}
 
@@ -269,11 +269,11 @@ void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 E
 	CheckFence(OnSignaled, ReadbackCache);
 }
 
-void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled)
+void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo)
 {
 	if (bRunning)
 	{
-		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
 	}
 
@@ -285,17 +285,16 @@ void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTar
 
 	FTextureResource* Resource = RenderTarget->GetResource();
 
-	ClearFence();
+	if (!Resource)
+	{
+		OnSignaled.ExecuteIfBound(false, "RenderTarget2D Resource not available");
+		return;
+	}
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
-		[this, Resource](FRHICommandListImmediate& RHICmdList)
-		{
-			RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(Resource->GetTextureRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
-	FRHICopyTextureInfo CopyTextureInfo;
-	RHICmdList.CopyTexture(TextureRHIRef, Resource->GetTextureRHI(), CopyTextureInfo);
-	WriteFence(RHICmdList);
-		});
+	if (!CopyTexture_Internal(Resource->GetTextureRHI(), TextureRHIRef, CopyInfo, OnSignaled))
+	{
+		return;
+	}
 
 	CheckFence(OnSignaled);
 }
@@ -304,7 +303,7 @@ void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, cons
 {
 	if (bRunning)
 	{
-		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
 	}
 
@@ -330,6 +329,37 @@ void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, cons
 	CheckFence(OnSignaled);
 }
 
+
+void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo)
+{
+	if (bRunning)
+	{
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
+		return;
+	}
+
+	if (!RenderTargetArray->GetResource() || !RenderTargetArray->GetResource()->IsInitialized())
+	{
+		RenderTargetArray->UpdateResource();
+		RenderTargetArray->UpdateResourceImmediate(false);
+	}
+
+	FTextureResource* Resource = RenderTargetArray->GetResource();
+
+	if (!Resource)
+	{
+		OnSignaled.ExecuteIfBound(false, "RenderTarget2DArray Resource not available");
+		return;
+	}
+
+	if (!CopyTexture_Internal(Resource->GetTextureRHI(), TextureRHIRef, CopyInfo, OnSignaled))
+	{
+		return;
+	}
+
+	CheckFence(OnSignaled);
+}
+
 bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled)
 {
 	if (Destination->GetFormat() != Source->GetFormat())
@@ -345,9 +375,75 @@ bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTe
 	FIntVector SourceSize = Source->GetSizeXYZ();
 
 	FRHICopyTextureInfo CopyTextureInfo;
-	CopyTextureInfo.Size = SourceSize;
+	CopyTextureInfo.Size = CopyInfo.SourceSize;
+
+	if (CopyTextureInfo.Size.X == 0)
+	{
+		CopyTextureInfo.Size.X = SourceSize.X;
+	}
+
+	if (CopyTextureInfo.Size.Y == 0)
+	{
+		CopyTextureInfo.Size.Y = SourceSize.Y;
+	}
+
+	if (CopyTextureInfo.Size.Z == 0)
+	{
+		CopyTextureInfo.Size.Z = SourceSize.Z;
+	}
+
 	CopyTextureInfo.DestPosition = CopyInfo.DestinationOffset;
 	CopyTextureInfo.SourcePosition = CopyInfo.SourceOffset;
+
+	if (CopyTextureInfo.SourcePosition.X < 0 || CopyTextureInfo.SourcePosition.X >= SourceSize.X ||
+		CopyTextureInfo.SourcePosition.Y < 0 || CopyTextureInfo.SourcePosition.Y >= SourceSize.Y ||
+		CopyTextureInfo.SourcePosition.Z < 0 || CopyTextureInfo.SourcePosition.Z >= SourceSize.Z)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid Texture Source Offset (%s)"),
+			*CopyTextureInfo.SourcePosition.ToString())
+		);
+		return false;
+	}
+
+	if (CopyTextureInfo.SourcePosition.X + CopyTextureInfo.Size.X >= SourceSize.X)
+	{
+		CopyTextureInfo.Size.X = SourceSize.X - CopyTextureInfo.SourcePosition.X;
+	}
+
+	if (CopyTextureInfo.SourcePosition.Y + CopyTextureInfo.Size.Y >= SourceSize.Y)
+	{
+		CopyTextureInfo.Size.Y = SourceSize.Y - CopyTextureInfo.SourcePosition.Y;
+	}
+
+	if (CopyTextureInfo.SourcePosition.Z + CopyTextureInfo.Size.Z >= SourceSize.Z)
+	{
+		CopyTextureInfo.Size.Z = SourceSize.Z - CopyTextureInfo.SourcePosition.Z;
+	}
+
+	if (CopyTextureInfo.DestPosition.X < 0 || CopyTextureInfo.DestPosition.X >= DestinationSize.X ||
+		CopyTextureInfo.DestPosition.Y < 0 || CopyTextureInfo.DestPosition.Y >= DestinationSize.Y ||
+		CopyTextureInfo.DestPosition.Z < 0 || CopyTextureInfo.DestPosition.Z >= DestinationSize.Z)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid Texture Destination Offset (%s)"),
+			*CopyTextureInfo.DestPosition.ToString())
+		);
+		return false;
+	}
+
+	if (CopyTextureInfo.DestPosition.X + CopyTextureInfo.Size.X >= DestinationSize.X)
+	{
+		CopyTextureInfo.Size.X = DestinationSize.X - CopyTextureInfo.DestPosition.X;
+	}
+
+	if (CopyTextureInfo.DestPosition.Y + CopyTextureInfo.Size.Y >= DestinationSize.Y)
+	{
+		CopyTextureInfo.Size.Y = DestinationSize.Y - CopyTextureInfo.DestPosition.Y;
+	}
+
+	if (CopyTextureInfo.DestPosition.Z + CopyTextureInfo.Size.Z >= DestinationSize.Z)
+	{
+		CopyTextureInfo.Size.Z = DestinationSize.Z - CopyTextureInfo.DestPosition.Z;
+	}
 
 	ClearFence();
 
@@ -362,38 +458,6 @@ bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTe
 		});
 
 	return true;
-}
-
-void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const int32 Slice, const FCompushadySignaled& OnSignaled)
-{
-	if (bRunning)
-	{
-		OnSignaled.ExecuteIfBound(false, "The UAV is already being processed by another task");
-		return;
-	}
-
-	if (!RenderTargetArray->GetResource() || !RenderTargetArray->GetResource()->IsInitialized())
-	{
-		RenderTargetArray->UpdateResource();
-		RenderTargetArray->UpdateResourceImmediate(false);
-	}
-
-	FTextureResource* Resource = RenderTargetArray->GetResource();
-
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
-		[this, Resource, Slice](FRHICommandListImmediate& RHICmdList)
-		{
-			RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(Resource->GetTextureRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
-	FRHICopyTextureInfo CopyTextureInfo;
-	CopyTextureInfo.DestSliceIndex = Slice;
-	RHICmdList.CopyTexture(TextureRHIRef, Resource->GetTextureRHI(), CopyTextureInfo);
-	WriteFence(RHICmdList);
-		});
-
-	CheckFence(OnSignaled);
 }
 
 void UCompushadyResource::OnSignalReceived()
