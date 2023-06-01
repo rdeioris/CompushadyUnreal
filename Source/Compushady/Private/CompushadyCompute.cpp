@@ -245,12 +245,12 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 	return true;
 }
 
-void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
+bool UCompushadyCompute::SetupDispatch(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled)
 {
 	if (bRunning)
 	{
 		OnSignaled.ExecuteIfBound(false, "The Compute Shader is already running");
-		return;
+		return false;
 	}
 
 	const TArray<UCompushadyCBV*>& CBVs = ResourceArray.CBVs;
@@ -260,19 +260,19 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 	if (CBVs.Num() != CBVResourceBindings.Num())
 	{
 		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d CBVs got %d"), CBVResourceBindings.Num(), CBVs.Num()));
-		return;
+		return false;
 	}
 
 	if (SRVs.Num() != SRVResourceBindings.Num())
 	{
 		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d SRVs got %d"), SRVResourceBindings.Num(), SRVs.Num()));
-		return;
+		return false;
 	}
 
 	if (UAVs.Num() != UAVResourceBindings.Num())
 	{
 		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d UAVs got %d"), UAVResourceBindings.Num(), UAVs.Num()));
-		return;
+		return false;
 	}
 
 	for (int32 Index = 0; Index < CBVResourceBindings.Num(); Index++)
@@ -281,7 +281,7 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		{
 			const FCompushadyResourceBinding& ResourceBinding = CBVResourceBindings[Index];
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV b%u (%s) at slot %u is NULL"), ResourceBinding.BindingIndex, *ResourceBinding.Name, Index));
-			return;
+			return false;
 		}
 	}
 
@@ -291,7 +291,7 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		{
 			const FCompushadyResourceBinding& ResourceBinding = SRVResourceBindings[Index];
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV t%u (%s) at slot %u is NULL"), ResourceBinding.BindingIndex, *ResourceBinding.Name, Index));
-			return;
+			return false;
 		}
 	}
 
@@ -301,16 +301,16 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		{
 			const FCompushadyResourceBinding& ResourceBinding = UAVResourceBindings[Index];
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV u%u (%s) at slot %u is NULL"), ResourceBinding.BindingIndex, *ResourceBinding.Name, Index));
-			return;
+			return false;
 		}
 	}
 
-	ClearFence();
+	return true;
+}
 
-	ENQUEUE_RENDER_COMMAND(DoCompushady)(
-		[this, CBVs, SRVs, UAVs, XYZ](FRHICommandListImmediate& RHICmdList)
-		{
-			SetComputePipelineState(RHICmdList, ComputeShaderRef);
+void UCompushadyCompute::SetupPipeline(FRHICommandListImmediate& RHICmdList, const TArray<UCompushadyCBV*>& CBVs, const TArray<UCompushadySRV*>& SRVs, const TArray<UCompushadyUAV*>& UAVs)
+{
+	SetComputePipelineState(RHICmdList, ComputeShaderRef);
 
 	for (int32 Index = 0; Index < CBVs.Num(); Index++)
 	{
@@ -332,8 +332,79 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		RHICmdList.Transition(UAVs[Index]->GetRHITransitionInfo());
 		RHICmdList.SetUAVParameter(ComputeShaderRef, UAVResourceBindings[Index].SlotIndex, UAVs[Index]->GetRHI());
 	}
+}
+
+void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
+{
+	if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid ThreadGroupCount %s"), *XYZ.ToString()));
+		return;
+	}
+
+	if (!SetupDispatch(ResourceArray, OnSignaled))
+	{
+		return;
+	}
+
+	const TArray<UCompushadyCBV*>& CBVs = ResourceArray.CBVs;
+	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
+	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
+
+	ClearFence();
+
+	ENQUEUE_RENDER_COMMAND(DoCompushady)(
+		[this, ResourceArray, XYZ, CBVs, SRVs, UAVs](FRHICommandListImmediate& RHICmdList)
+		{
+			SetupPipeline(RHICmdList, CBVs, SRVs, UAVs);
 
 	RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
+
+	WriteFence(RHICmdList);
+		});
+
+	CheckFence(OnSignaled);
+}
+
+void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* Buffer, const int32 Offset, const FCompushadySignaled& OnSignaled)
+{
+	if (!Buffer)
+	{
+		OnSignaled.ExecuteIfBound(false, "Buffer is NULL");
+		return;
+	}
+
+	FBufferRHIRef BufferRHIRef = Buffer->GetBufferRHI();
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid Indirect Buffer");
+		return;
+	}
+
+	if (BufferRHIRef->GetSize() < (sizeof(int32) * 3))
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid Indirect Buffer size (expected sizeof(uint32) * 3)");
+		return;
+	}
+
+	if (!SetupDispatch(ResourceArray, OnSignaled))
+	{
+		return;
+	}
+
+	const TArray<UCompushadyCBV*>& CBVs = ResourceArray.CBVs;
+	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
+	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
+
+	ClearFence();
+
+	ENQUEUE_RENDER_COMMAND(DoCompushady)(
+		[this, ResourceArray, BufferRHIRef, Offset, CBVs, SRVs, UAVs](FRHICommandListImmediate& RHICmdList)
+		{
+			SetupPipeline(RHICmdList, CBVs, SRVs, UAVs);
+
+	RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
+	RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);
 
 	WriteFence(RHICmdList);
 		});
