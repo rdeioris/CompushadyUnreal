@@ -9,6 +9,7 @@
 #include "CompushadyUAV.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Engine/TextureRenderTarget2DArray.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
@@ -28,6 +29,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Compushady")
 	static UCompushadyCBV* CreateCompushadyCBVFromData(const FString& Name, const TArray<uint8>& Data);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyCBV* CreateCompushadyCBVFromFloatArray(const FString& Name, const TArray<float>& Data);
 
 	UFUNCTION(BlueprintCallable, CustomThunk, meta=(DisplayName = "Create Compushady CBV From Array", ArrayParm = "Data"), Category = "Compushady")
 	static UCompushadyCBV* CreateCompushadyCBVFromArray(const TArray<int32>& Data);
@@ -67,6 +71,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyUAV* CreateCompushadyUAVFromRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyCompute* CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main");

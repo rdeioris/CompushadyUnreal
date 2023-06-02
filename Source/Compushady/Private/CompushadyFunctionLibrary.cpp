@@ -27,6 +27,17 @@ UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBVFromData(const FS
 	return CompushadyCBV;
 }
 
+UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBVFromFloatArray(const FString& Name, const TArray<float>& Data)
+{
+	UCompushadyCBV* CompushadyCBV = NewObject<UCompushadyCBV>();
+	if (!CompushadyCBV->Initialize(Name, reinterpret_cast<const uint8*>(Data.GetData()), Data.Num() * sizeof(float)))
+	{
+		return nullptr;
+	}
+
+	return CompushadyCBV;
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
@@ -435,6 +446,11 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromCurveFl
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget)
 {
+	if (!RenderTarget)
+	{
+		return nullptr;
+	}
+
 	if (!RenderTarget->bCanCreateUAV || !RenderTarget->GetResource() || !RenderTarget->GetResource()->IsInitialized())
 	{
 		RenderTarget->bCanCreateUAV = true;
@@ -445,6 +461,33 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2
 	FlushRenderingCommands();
 
 	FTextureResource* Resource = RenderTarget->GetResource();
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray)
+{
+	if (!RenderTargetArray)
+	{
+		return nullptr;
+	}
+
+	if (!RenderTargetArray->bCanCreateUAV || !RenderTargetArray->GetResource() || !RenderTargetArray->GetResource()->IsInitialized())
+	{
+		RenderTargetArray->bCanCreateUAV = true;
+		RenderTargetArray->UpdateResource();
+	}
+
+	RenderTargetArray->UpdateResourceImmediate(false);
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = RenderTargetArray->GetResource();
 
 	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
 	if (!CompushadyUAV->InitializeFromTexture(Resource->GetTextureRHI()))

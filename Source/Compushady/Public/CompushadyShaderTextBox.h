@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/TextWidgetTypes.h"
 #include "Runtime/Slate/Public/Widgets/Input/SMultiLineEditableTextBox.h"
-#include "CompushadyHLSLTextBox.generated.h"
+#include "CompushadyShaderTextBox.generated.h"
 
 /**
  * 

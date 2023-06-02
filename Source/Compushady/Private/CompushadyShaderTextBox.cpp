@@ -1,7 +1,7 @@
 // Copyright 2023 - Roberto De Ioris.
 
 
-#include "CompushadyHLSLTextBox.h"
+#include "CompushadyShaderTextBox.h"
 #include "CompushadyHLSLSyntaxHighlighter.h"
 
 void UCompushadyHLSLTextBox::ReleaseSlateResources(bool bReleaseChildren)

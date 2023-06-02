@@ -469,6 +469,11 @@ FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ)
 {
 	if (TextureRHIRef.IsValid())
 	{
+		if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
+		{
+			return FIntVector(1, 1, 1);
+		}
+
 		FIntVector TextureXYZ = TextureRHIRef->GetSizeXYZ();
 		return FIntVector(
 			FMath::DivideAndRoundUp(TextureXYZ.X, XYZ.X),
