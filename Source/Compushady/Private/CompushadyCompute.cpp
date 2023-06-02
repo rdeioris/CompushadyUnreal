@@ -27,6 +27,15 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 			return false;
 		}
 	}
+	else if (RHIInterfaceType == ERHIInterfaceType::D3D12)
+	{
+		DXIL = ByteCode;
+
+		if (!FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return false;
+		}
+	}
 
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
 }
@@ -87,6 +96,30 @@ bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString&
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
 	SPIRV = ByteCode;
 	if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	{
+		return false;
+	}
+
+	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
+}
+
+bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
+{
+	bRunning = false;
+
+	RHIInterfaceType = RHIGetInterfaceType();
+
+	if (RHIInterfaceType != ERHIInterfaceType::D3D12)
+	{
+		ErrorMessages = "DXIL shaders are currently supported only on Direct3D12";
+		return false;
+	}
+
+	TArray<uint8> ByteCode = ShaderCode;
+	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
+	DXIL = ByteCode;
+
+	if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
 		return false;
 	}
@@ -381,7 +414,7 @@ void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& Resour
 		return;
 	}
 
-	if (BufferRHIRef->GetSize() < (sizeof(int32) * 3))
+	if (BufferRHIRef->GetSize() < (sizeof(uint32) * 3))
 	{
 		OnSignaled.ExecuteIfBound(false, "Invalid Indirect Buffer size (expected sizeof(uint32) * 3)");
 		return;
@@ -427,6 +460,11 @@ void UCompushadyCompute::OnSignalReceived()
 const TArray<uint8>& UCompushadyCompute::GetSPIRV() const
 {
 	return SPIRV;
+}
+
+const TArray<uint8>& UCompushadyCompute::GetDXIL() const
+{
+	return DXIL;
 }
 
 FIntVector UCompushadyCompute::GetThreadGroupSize() const

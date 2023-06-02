@@ -78,6 +78,23 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRV
 	return CompushadyCompute;
 }
 
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages)
+{
+	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
+	TArray<uint8> ShaderCode;
+	if (!FFileHelper::LoadFileToArray(ShaderCode, *Filename))
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyCompute->InitFromDXIL(ShaderCode, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyCompute;
+}
+
 bool UCompushadyFunctionLibrary::DisassembleSPIRVFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages)
 {
 	TArray<uint8> ByteCode;
@@ -92,6 +109,22 @@ bool UCompushadyFunctionLibrary::DisassembleSPIRVFile(const FString& Filename, F
 bool UCompushadyFunctionLibrary::DisassembleSPIRVBlob(const TArray<uint8>& Blob, FString& Disassembled, FString& ErrorMessages)
 {
 	return Compushady::DisassembleSPIRV(Blob, Disassembled, ErrorMessages);
+}
+
+bool UCompushadyFunctionLibrary::DisassembleDXILFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages)
+{
+	TArray<uint8> ByteCode;
+	if (!FFileHelper::LoadFileToArray(ByteCode, *Filename))
+	{
+		return false;
+	}
+
+	return Compushady::DisassembleDXIL(ByteCode, Disassembled, ErrorMessages);
+}
+
+bool UCompushadyFunctionLibrary::DisassembleDXILBlob(const TArray<uint8>& Blob, FString& Disassembled, FString& ErrorMessages)
+{
+	return Compushady::DisassembleDXIL(Blob, Disassembled, ErrorMessages);
 }
 
 bool UCompushadyFunctionLibrary::SPIRVBlobToHLSL(const TArray<uint8>& Blob, FString& HLSL, FString& ErrorMessages)

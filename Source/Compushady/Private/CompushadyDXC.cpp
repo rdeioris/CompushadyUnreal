@@ -184,6 +184,69 @@ namespace Compushady
 	}
 }
 
+bool Compushady::DisassembleDXIL(const TArray<uint8>& ByteCode, FString& Disassembled, FString& ErrorMessages)
+{
+	if (ByteCode.Num() == 0)
+	{
+		ErrorMessages = "Empty ByteCode";
+		return false;
+	}
+
+	if (!DXC::Setup())
+	{
+		ErrorMessages = "Failed DXCompiler initialization";
+		return false;
+	}
+
+	DxcBuffer SourceBuffer = {};
+	SourceBuffer.Ptr = ByteCode.GetData();
+	SourceBuffer.Size = ByteCode.Num();
+
+	IDxcResult* DisassembleResult;
+
+	HRESULT HR = DXC::Compiler->Disassemble(&SourceBuffer, __uuidof(IDxcResult), reinterpret_cast<void**>(&DisassembleResult));
+	if (!SUCCEEDED(HR))
+	{
+		ErrorMessages = "Unable to disassemble bytecode blob";
+		return false;
+	}
+
+	DisassembleResult->GetStatus(&HR);
+
+	if (!SUCCEEDED(HR))
+	{
+		IDxcBlobEncoding* BlobError;
+		HR = DisassembleResult->GetErrorBuffer(&BlobError);
+		if (SUCCEEDED(HR))
+		{
+			ErrorMessages = FString(BlobError->GetBufferSize(), reinterpret_cast<const char*>(BlobError->GetBufferPointer()));
+			BlobError->Release();
+		}
+		else
+		{
+			ErrorMessages = "Unable to disassemble code blob";
+		}
+
+		DisassembleResult->Release();
+		return false;
+	}
+
+	IDxcBlob* DisassembledBlob;
+	HR = DisassembleResult->GetResult(&DisassembledBlob);
+	if (!SUCCEEDED(HR))
+	{
+		ErrorMessages = "Unable to get disassemble result";
+		return false;
+	}
+
+	Disassembled = FString(DisassembledBlob->GetBufferSize(), reinterpret_cast<const char*>(DisassembledBlob->GetBufferPointer()));
+
+	DisassembledBlob->Release();
+	DisassembleResult->Release();
+
+	return true;
+}
+
 bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 
@@ -283,144 +346,130 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		return false;
 	}
 
-
-	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
-	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
-	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
-
-	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
-	{
-
-#if PLATFORM_WINDOWS
-		IDxcBlob* Reflection;
-		HR = CompileResult->GetOutput(DXC_OUT_REFLECTION, __uuidof(IDxcBlob), reinterpret_cast<void**>(&Reflection), nullptr);
-		if (!SUCCEEDED(HR))
-		{
-			ErrorMessages = "Unable to get reflection result";
-			CompiledBlob->Release();
-			CompileResult->Release();
-			return false;
-		}
-
-		ID3D12ShaderReflection* ShaderReflection;
-
-		DxcBuffer ReflectionBuffer;
-		ReflectionBuffer.Ptr = Reflection->GetBufferPointer();
-		ReflectionBuffer.Size = Reflection->GetBufferSize();
-		ReflectionBuffer.Encoding = 0;
-		HR = DXC::Utils->CreateReflection(&ReflectionBuffer, __uuidof(ID3D12ShaderReflection), reinterpret_cast<void**>(&ShaderReflection));
-		if (!SUCCEEDED(HR))
-		{
-			ErrorMessages = "Unable to create reflection";
-			Reflection->Release();
-			CompiledBlob->Release();
-			CompileResult->Release();
-			return false;
-		}
-
-		D3D12_SHADER_DESC ShaderDesc;
-		ShaderReflection->GetDesc(&ShaderDesc);
-
-		/*
-			D3D_SIT_CBUFFER
-			D3D_SIT_TBUFFER
-			D3D_SIT_TEXTURE
-			D3D_SIT_SAMPLER
-			D3D_SIT_UAV_RWTYPED
-			D3D_SIT_STRUCTURED
-			D3D_SIT_UAV_RWSTRUCTURED
-			D3D_SIT_BYTEADDRESS
-			D3D_SIT_UAV_RWBYTEADDRESS
-			D3D_SIT_UAV_APPEND_STRUCTURED
-			D3D_SIT_UAV_CONSUME_STRUCTURED
-			D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
-			D3D_SIT_RTACCELERATIONSTRUCTURE
-			D3D_SIT_UAV_FEEDBACKTEXTURE
-		*/
-
-		for (uint32 Index = 0; Index < ShaderDesc.BoundResources; Index++)
-		{
-			D3D12_SHADER_INPUT_BIND_DESC BindDesc;
-			ShaderReflection->GetResourceBindingDesc(Index, &BindDesc);
-
-			FCompushadyShaderResourceBinding ResourceBinding;
-			ResourceBinding.BindingIndex = BindDesc.BindPoint;
-			ResourceBinding.SlotIndex = ResourceBinding.BindingIndex;
-			ResourceBinding.Name = BindDesc.Name;
-
-			switch (BindDesc.Type)
-			{
-			case D3D_SIT_CBUFFER:
-				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
-				CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case D3D_SIT_TEXTURE:
-				ResourceBinding.Type = ECompushadySharedResourceType::Texture;
-				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case D3D_SIT_TBUFFER:
-			case D3D_SIT_STRUCTURED:
-			case D3D_SIT_BYTEADDRESS:
-				ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
-				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case D3D_SIT_UAV_RWTYPED:
-			case D3D_SIT_UAV_FEEDBACKTEXTURE:
-				ResourceBinding.Type = ECompushadySharedResourceType::Texture;
-				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case D3D_SIT_UAV_RWSTRUCTURED:
-			case D3D_SIT_UAV_RWBYTEADDRESS:
-			case D3D_SIT_UAV_APPEND_STRUCTURED:
-			case D3D_SIT_UAV_CONSUME_STRUCTURED:
-			case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-				ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
-				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			default:
-				ErrorMessages = FString::Printf(TEXT("Unsupported resource type for %s"), UTF8_TO_TCHAR(BindDesc.Name));
-				ShaderReflection->Release();
-				Reflection->Release();
-				CompiledBlob->Release();
-				CompileResult->Release();
-				return false;
-			}
-
-		}
-
-		UINT TGX, TGY, TGZ;
-		ShaderReflection->GetThreadGroupSize(&TGX, &TGY, &TGZ);
-		ThreadGroupSize = FIntVector(TGX, TGY, TGZ);
-
-		ShaderReflection->Release();
-		Reflection->Release();
-
-#endif
-	}
-
 	CompileResult->Release();
 
-#if PLATFORM_WINDOWS
-	IDxcOperationResult* VerifyResult;
-	DXC::Validator->Validate(CompiledBlob, DxcValidatorFlags_InPlaceEdit, &VerifyResult);
-	if (!SUCCEEDED(HR) || !VerifyResult)
+	// validate the shader
+	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
-		ErrorMessages = "Unable to validate shader";
-		CompiledBlob->Release();
-		return false;
-	}
-	VerifyResult->Release();
+#if PLATFORM_WINDOWS
+		IDxcOperationResult* VerifyResult;
+		DXC::Validator->Validate(CompiledBlob, DxcValidatorFlags_InPlaceEdit, &VerifyResult);
+		if (!SUCCEEDED(HR) || !VerifyResult)
+		{
+			ErrorMessages = "Unable to validate shader";
+			CompiledBlob->Release();
+			return false;
+		}
+		VerifyResult->Release();
 #endif
+	}
 
 	ByteCode.Append(reinterpret_cast<const uint8*>(CompiledBlob->GetBufferPointer()), CompiledBlob->GetBufferSize());
 
 	CompiledBlob->Release();
 
-	if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
+	return true;
+}
+
+bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	if (!DXC::Setup())
 	{
-		// skip here if we are on vulkan (we will do reflection later)
-		return true;
+		ErrorMessages = "Failed DXCompiler initialization";
+		return false;
 	}
+
+#if PLATFORM_WINDOWS
+	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
+	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
+	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
+
+	ID3D12ShaderReflection* ShaderReflection;
+
+	DxcBuffer ReflectionBuffer;
+	ReflectionBuffer.Ptr = ByteCode.GetData();
+	ReflectionBuffer.Size = ByteCode.Num();
+	ReflectionBuffer.Encoding = 0;
+	HRESULT HR = DXC::Utils->CreateReflection(&ReflectionBuffer, __uuidof(ID3D12ShaderReflection), reinterpret_cast<void**>(&ShaderReflection));
+
+	if (!SUCCEEDED(HR))
+	{
+		ErrorMessages = "Unable to create reflection";
+		return false;
+	}
+
+	D3D12_SHADER_DESC ShaderDesc;
+	ShaderReflection->GetDesc(&ShaderDesc);
+
+	/*
+		D3D_SIT_CBUFFER
+		D3D_SIT_TBUFFER
+		D3D_SIT_TEXTURE
+		D3D_SIT_SAMPLER
+		D3D_SIT_UAV_RWTYPED
+		D3D_SIT_STRUCTURED
+		D3D_SIT_UAV_RWSTRUCTURED
+		D3D_SIT_BYTEADDRESS
+		D3D_SIT_UAV_RWBYTEADDRESS
+		D3D_SIT_UAV_APPEND_STRUCTURED
+		D3D_SIT_UAV_CONSUME_STRUCTURED
+		D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
+		D3D_SIT_RTACCELERATIONSTRUCTURE
+		D3D_SIT_UAV_FEEDBACKTEXTURE
+	*/
+
+	for (uint32 Index = 0; Index < ShaderDesc.BoundResources; Index++)
+	{
+		D3D12_SHADER_INPUT_BIND_DESC BindDesc;
+		ShaderReflection->GetResourceBindingDesc(Index, &BindDesc);
+
+		FCompushadyShaderResourceBinding ResourceBinding;
+		ResourceBinding.BindingIndex = BindDesc.BindPoint;
+		ResourceBinding.SlotIndex = ResourceBinding.BindingIndex;
+		ResourceBinding.Name = BindDesc.Name;
+
+		switch (BindDesc.Type)
+		{
+		case D3D_SIT_CBUFFER:
+			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+			CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_TEXTURE:
+			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_TBUFFER:
+		case D3D_SIT_STRUCTURED:
+		case D3D_SIT_BYTEADDRESS:
+			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_UAV_RWTYPED:
+		case D3D_SIT_UAV_FEEDBACKTEXTURE:
+			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_UAV_RWSTRUCTURED:
+		case D3D_SIT_UAV_RWBYTEADDRESS:
+		case D3D_SIT_UAV_APPEND_STRUCTURED:
+		case D3D_SIT_UAV_CONSUME_STRUCTURED:
+		case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+			ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		default:
+			ErrorMessages = FString::Printf(TEXT("Unsupported resource type for %s"), UTF8_TO_TCHAR(BindDesc.Name));
+			ShaderReflection->Release();
+			return false;
+		}
+
+	}
+
+	UINT TGX, TGY, TGZ;
+	ShaderReflection->GetThreadGroupSize(&TGX, &TGY, &TGZ);
+	ThreadGroupSize = FIntVector(TGX, TGY, TGZ);
+
+	ShaderReflection->Release();
 
 	// sort resources
 	TArray<uint32> CBVKeys;
@@ -450,8 +499,9 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		ShaderResourceBindings.UAVs.Add(UAVMapping[UAVIndex]);
 	}
 
-
 	return true;
+
+#endif
 }
 
 void Compushady::DXCTeardown()

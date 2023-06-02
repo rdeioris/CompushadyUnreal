@@ -75,10 +75,19 @@ public:
     static UCompushadyCompute* CreateCompushadyComputeFromSPIRVFile(const FString& Filename, FString& ErrorMessages);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyCompute* CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
     static bool DisassembleSPIRVFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static bool DisassembleSPIRVBlob(const TArray<uint8>& Blob, FString& Disassembled, FString& ErrorMessages);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static bool DisassembleDXILFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static bool DisassembleDXILBlob(const TArray<uint8>& Blob, FString& Disassembled, FString& ErrorMessages);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static bool SPIRVBlobToHLSL(const TArray<uint8>& Blob, FString& HLSL, FString& ErrorMessages);

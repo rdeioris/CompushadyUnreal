@@ -56,6 +56,8 @@ public:
 
 	bool InitFromSPIRV(const TArray<uint8>& ShaderCode, FString& ErrorMessages);
 
+	bool InitFromDXIL(const TArray<uint8>& ShaderCode, FString& ErrorMessages);
+
 	UFUNCTION(BlueprintCallable, meta=(AutoCreateRefTerm = "ResourceArray,OnSignaled"),Category="Compushady")
 	void Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
 
@@ -98,6 +100,9 @@ public:
 	const TArray<uint8>& GetSPIRV() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const TArray<uint8>& GetDXIL() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetThreadGroupSize() const;
 
 protected:
@@ -117,6 +122,7 @@ protected:
 	FIntVector ThreadGroupSize;
 
 	TArray<uint8> SPIRV;
+	TArray<uint8> DXIL;
 
 	bool SetupDispatch(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled);
 	void SetupPipeline(FRHICommandListImmediate& RHICmdList, const TArray<UCompushadyCBV*>& CBVs, const TArray<UCompushadySRV*>& SRVs, const TArray<UCompushadyUAV*>& UAVs);
