@@ -4,14 +4,14 @@
 #include "CompushadyShaderTextBox.h"
 #include "CompushadyHLSLSyntaxHighlighter.h"
 
-void UCompushadyHLSLTextBox::ReleaseSlateResources(bool bReleaseChildren)
+void UCompushadyShaderTextBox::ReleaseSlateResources(bool bReleaseChildren)
 {
 	Super::ReleaseSlateResources(bReleaseChildren);
 
 	SourceWidget.Reset();
 }
 
-TSharedRef<SWidget> UCompushadyHLSLTextBox::RebuildWidget()
+TSharedRef<SWidget> UCompushadyShaderTextBox::RebuildWidget()
 {
 	/*FLuaSyntaxTextStyle Style;
 	Style.NormalTextStyle = CodeStyle;
@@ -41,7 +41,7 @@ TSharedRef<SWidget> UCompushadyHLSLTextBox::RebuildWidget()
 	return SourceWidget.ToSharedRef();
 }
 
-void UCompushadyHLSLTextBox::SynchronizeProperties()
+void UCompushadyShaderTextBox::SynchronizeProperties()
 {
 	Super::SynchronizeProperties();
 
@@ -51,13 +51,18 @@ void UCompushadyHLSLTextBox::SynchronizeProperties()
 }
 
 #if WITH_EDITOR
-const FText UCompushadyHLSLTextBox::GetPaletteCategory()
+const FText UCompushadyShaderTextBox::GetPaletteCategory()
 {
 	return FText::FromString("Compushady");
 }
 #endif
 
-FString UCompushadyHLSLTextBox::GetSource() const
+FString UCompushadyShaderTextBox::GetSource() const
 {
 	return SourceWidget->GetText().ToString();
+}
+
+void UCompushadyShaderTextBox::SetSource(const FString& Source)
+{
+	SourceWidget->SetText(FText::FromString(Source));
 }

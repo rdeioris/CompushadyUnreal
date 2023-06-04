@@ -629,3 +629,15 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 
 	return CompushadySRV;
 }
+
+UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadySoundWave(const UCompushadyCompute* Compute, const FCompushadyResourceArray& ResourceArray, const float Duration)
+{
+	UCompushadySoundWave* CompushadySoundWave = NewObject<UCompushadySoundWave>();
+
+	CompushadySoundWave->Duration = 10000;
+	CompushadySoundWave->SetSampleRate(48000);
+	CompushadySoundWave->NumChannels = 1;
+	CompushadySoundWave->bLooping = true;
+
+	return CompushadySoundWave;
+}

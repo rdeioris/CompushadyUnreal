@@ -11,7 +11,7 @@
  * 
  */
 UCLASS()
-class COMPUSHADY_API UCompushadyHLSLTextBox : public UTextLayoutWidget
+class COMPUSHADY_API UCompushadyShaderTextBox : public UTextLayoutWidget
 {
 	GENERATED_BODY()
 
@@ -25,6 +25,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FString GetSource() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	void SetSource(const FString& Source);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;

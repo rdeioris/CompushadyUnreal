@@ -54,7 +54,7 @@ void UCompushadyCBV::SyncBufferData(FRHICommandListImmediate& RHICmdList)
 
 void UCompushadyCBV::SetFloat(const int32 Offset, const float Value)
 {
-	if (Offset + sizeof(float) < BufferData.Num())
+	if (Offset + sizeof(float) <= BufferData.Num())
 	{
 		FMemory::Memcpy(BufferData.GetData() + Offset, &Value, sizeof(float));
 		bBufferDataDirty = true;
@@ -63,7 +63,7 @@ void UCompushadyCBV::SetFloat(const int32 Offset, const float Value)
 
 void UCompushadyCBV::SetFloatArray(const int32 Offset, const TArray<float>& Values)
 {
-	if (Offset + (Values.Num() * sizeof(float)) < BufferData.Num())
+	if (Offset + (Values.Num() * sizeof(float)) <= BufferData.Num())
 	{
 		FMemory::Memcpy(BufferData.GetData() + Offset, Values.GetData(), Values.Num() * sizeof(float));
 		bBufferDataDirty = true;
@@ -72,7 +72,7 @@ void UCompushadyCBV::SetFloatArray(const int32 Offset, const TArray<float>& Valu
 
 void UCompushadyCBV::SetDouble(const int32 Offset, const double Value)
 {
-	if (Offset + sizeof(double) < BufferData.Num())
+	if (Offset + sizeof(double) <= BufferData.Num())
 	{
 		FMemory::Memcpy(BufferData.GetData() + Offset, &Value, sizeof(double));
 		bBufferDataDirty = true;
@@ -81,7 +81,7 @@ void UCompushadyCBV::SetDouble(const int32 Offset, const double Value)
 
 void UCompushadyCBV::SetDoubleArray(const int32 Offset, const TArray<double>& Values)
 {
-	if (Offset + (Values.Num() * sizeof(double)) < BufferData.Num())
+	if (Offset + (Values.Num() * sizeof(double)) <= BufferData.Num())
 	{
 		FMemory::Memcpy(BufferData.GetData() + Offset, Values.GetData(), Values.Num() * sizeof(double));
 		bBufferDataDirty = true;
@@ -90,7 +90,7 @@ void UCompushadyCBV::SetDoubleArray(const int32 Offset, const TArray<double>& Va
 
 void UCompushadyCBV::SetTransformFloat(const int32 Offset, const FTransform& Transform, const bool bTranspose)
 {
-	if (Offset + (16 * sizeof(float)) < BufferData.Num())
+	if (Offset + (16 * sizeof(float)) <= BufferData.Num())
 	{
 		FMatrix44f Matrix(Transform.ToMatrixWithScale());
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
@@ -100,7 +100,7 @@ void UCompushadyCBV::SetTransformFloat(const int32 Offset, const FTransform& Tra
 
 void UCompushadyCBV::SetTransformDouble(const int32 Offset, const FTransform& Transform, const bool bTranspose)
 {
-	if (Offset + (16 * sizeof(double)) < BufferData.Num())
+	if (Offset + (16 * sizeof(double)) <= BufferData.Num())
 	{
 		FMatrix44d Matrix(Transform.ToMatrixWithScale());
 		FMemory::Memcpy(BufferData.GetData() + Offset, Matrix.M, 16 * sizeof(double));
@@ -110,7 +110,7 @@ void UCompushadyCBV::SetTransformDouble(const int32 Offset, const FTransform& Tr
 
 void UCompushadyCBV::SetPerspectiveFloat(const int32 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose)
 {
-	if (Offset + (16 * sizeof(float)) < BufferData.Num())
+	if (Offset + (16 * sizeof(float)) <= BufferData.Num())
 	{
 		FPerspectiveMatrix44f Matrix(FMath::DegreesToRadians(HalfFOV), Width, Height, ZNear, ZFar);
 		if (bRightHanded)

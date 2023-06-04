@@ -6,6 +6,7 @@
 #include "CompushadyCBV.h"
 #include "CompushadyCompute.h"
 #include "CompushadyShader.h"
+#include "CompushadySoundWave.h"
 #include "CompushadyUAV.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -113,6 +114,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVFromStaticMeshTexCoordsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadySoundWave* CreateCompushadySoundWave(const UCompushadyCompute* Compute, const FCompushadyResourceArray& ResourceArray, const float Duration);
 
 
     DECLARE_FUNCTION(execCreateCompushadyCBVFromArray)
