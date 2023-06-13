@@ -130,7 +130,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySoundWave* CreateCompushadySoundWave(const UCompushadyCompute* Compute, const FCompushadyResourceArray& ResourceArray, const float Duration);
 
-
     DECLARE_FUNCTION(execCreateCompushadyCBVFromArray)
     {
         Stack.MostRecentProperty = nullptr;

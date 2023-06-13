@@ -166,48 +166,25 @@ void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithF
 
 void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
 {
-	if (bRunning)
+	auto PngWriter = [this, Filename](void* Data)
 	{
-		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
-		return;
-	}
-
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
-		[this, Filename](FRHICommandListImmediate& RHICmdList)
-		{
-			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
-	RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	FRHICopyTextureInfo CopyTextureInfo;
-	RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
-	RHICmdList.SubmitCommandsAndFlushGPU();
-	RHICmdList.BlockUntilGPUIdle();
-	int32 Width = 0;
-	int32 Height = 0;
-	void* Data = nullptr;
-	RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
-	if (Data)
-	{
+		FIntVector Size = GetTextureSize();
 		IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
 
 		TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
 		if (ImageWrapper.IsValid())
 		{
 
-			if (ImageWrapper->SetRaw(Data, Width * Height * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes, Width, Height, ERGBFormat::BGRA, 8))
+			if (ImageWrapper->SetRaw(Data, Size.X * Size.Y * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes, Size.X, Size.Y, ERGBFormat::BGRA, 8))
 			{
 
 				TArray64<uint8> CompressedBytes = ImageWrapper->GetCompressed();
 				FFileHelper::SaveArrayToFile(CompressedBytes, *Filename);
 			}
 		}
-		RHICmdList.UnmapStagingSurface(GetTextureRHI());
-	}
-	WriteFence(RHICmdList);
-		});
+	};
 
-	CheckFence(OnSignaled);
+	MapAndExecute(PngWriter, OnSignaled);
 }
 
 void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
@@ -548,4 +525,52 @@ int32 UCompushadyResource::GetTextureNumSlices() const
 		return Desc.ArraySize;
 	}
 	return 0;
+}
+
+void UCompushadyResource::MapAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
+{
+	if (bRunning)
+	{
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
+		return;
+	}
+
+	ClearFence();
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
+		[this, InFunction](FRHICommandListImmediate& RHICmdList)
+		{
+			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
+	RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+	FRHICopyTextureInfo CopyTextureInfo;
+	RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
+	RHICmdList.SubmitCommandsAndFlushGPU();
+	RHICmdList.BlockUntilGPUIdle();
+	int32 Width = 0;
+	int32 Height = 0;
+	void* Data = nullptr;
+	RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
+	if (Data)
+	{
+		InFunction(Data);
+		RHICmdList.UnmapStagingSurface(GetTextureRHI());
+	}
+	WriteFence(RHICmdList);
+		});
+
+	CheckFence(OnSignaled);
+}
+
+void UCompushadyResource::MapAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
+{
+	auto Wrapper = [this, InFunction](void* Data)
+	{
+		FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([this, InFunction, Data]()
+			{
+				InFunction(Data);
+			}, TStatId(), nullptr, ENamedThreads::GameThread);
+		FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
+	};
+
+	MapAndExecute(Wrapper, OnSignaled);
 }

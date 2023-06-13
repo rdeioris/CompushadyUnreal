@@ -153,6 +153,10 @@ public:
 	FTextureRHIRef GetReadbackTexture();
 
 	void OnSignalReceived() override;
+
+	void MapAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
+	void MapAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
+
 protected:
 	FTextureRHIRef TextureRHIRef;
 	FBufferRHIRef BufferRHIRef;
