@@ -12,6 +12,8 @@
 #include "Engine/TextureCube.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
+#include "Engine/TextureRenderTargetCube.h"
+#include "Engine/TextureRenderTargetVolume.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
@@ -79,6 +81,12 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVFromRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyUAV* CreateCompushadyUAVFromRenderTargetCube(UTextureRenderTargetCube* RenderTargetCube);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyUAV* CreateCompushadyUAVFromRenderTargetVolume(UTextureRenderTargetVolume* RenderTargetVolume);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyCompute* CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main");

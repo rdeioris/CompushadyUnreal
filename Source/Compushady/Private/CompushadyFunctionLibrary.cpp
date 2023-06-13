@@ -524,6 +524,60 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2
 	return CompushadyUAV;
 }
 
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTargetCube(UTextureRenderTargetCube* RenderTargetCube)
+{
+	if (!RenderTargetCube)
+	{
+		return nullptr;
+	}
+
+	if (!RenderTargetCube->bCanCreateUAV || !RenderTargetCube->GetResource() || !RenderTargetCube->GetResource()->IsInitialized())
+	{
+		RenderTargetCube->bCanCreateUAV = true;
+		RenderTargetCube->UpdateResource();
+	}
+
+	RenderTargetCube->UpdateResourceImmediate(false);
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = RenderTargetCube->GetResource();
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTargetVolume(UTextureRenderTargetVolume* RenderTargetVolume)
+{
+	if (!RenderTargetVolume)
+	{
+		return nullptr;
+	}
+
+	if (!RenderTargetVolume->bCanCreateUAV || !RenderTargetVolume->GetResource() || !RenderTargetVolume->GetResource()->IsInitialized())
+	{
+		RenderTargetVolume->bCanCreateUAV = true;
+		RenderTargetVolume->UpdateResource();
+	}
+
+	RenderTargetVolume->UpdateResourceImmediate(false);
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = RenderTargetVolume->GetResource();
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromStaticMeshPositionsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD)
 {
 	if (!StaticMesh->AreRenderingResourcesInitialized())

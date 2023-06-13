@@ -506,7 +506,7 @@ void UCompushadyResource::OnSignalReceived()
 
 }
 
-FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ) const
+FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const
 {
 	if (TextureRHIRef.IsValid())
 	{
@@ -519,7 +519,7 @@ FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ) 
 		return FIntVector(
 			FMath::DivideAndRoundUp(TextureXYZ.X, XYZ.X),
 			FMath::DivideAndRoundUp(TextureXYZ.Y, XYZ.Y),
-			FMath::DivideAndRoundUp(TextureXYZ.Z, XYZ.Z)
+			FMath::DivideAndRoundUp(bUseNumSlicesForZ ? GetTextureNumSlices() : TextureXYZ.Z, XYZ.Z)
 		);
 	}
 	return XYZ;

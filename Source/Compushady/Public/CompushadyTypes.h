@@ -136,7 +136,7 @@ public:
 	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
-	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ) const;
+	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureSize() const;
