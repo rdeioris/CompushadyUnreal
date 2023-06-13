@@ -374,6 +374,20 @@ bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTe
 	FIntVector DestinationSize = Destination->GetSizeXYZ();
 	FIntVector SourceSize = Source->GetSizeXYZ();
 
+	const FRHITextureDesc& DestinationDesc = Destination->GetDesc();
+	int32 DestinationNumSlices = DestinationDesc.ArraySize;
+	if (DestinationDesc.IsTextureCube())
+	{
+		DestinationNumSlices *= 6;
+	}
+
+	const FRHITextureDesc& SourceDesc = Source->GetDesc();
+	int32 SourceNumSlices = SourceDesc.ArraySize;
+	if (SourceDesc.IsTextureCube())
+	{
+		SourceNumSlices *= 6;
+	}
+
 	FRHICopyTextureInfo CopyTextureInfo;
 	CopyTextureInfo.Size = CopyInfo.SourceSize;
 
@@ -445,6 +459,33 @@ bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTe
 		CopyTextureInfo.Size.Z = DestinationSize.Z - CopyTextureInfo.DestPosition.Z;
 	}
 
+	CopyTextureInfo.SourceSliceIndex = CopyInfo.SourceSlice;
+	if (static_cast<int32>(CopyTextureInfo.SourceSliceIndex) >= SourceNumSlices)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid Texture Source Slice Index (%u)"),
+			CopyTextureInfo.SourceSliceIndex)
+		);
+		return false;
+	}
+
+	CopyTextureInfo.DestSliceIndex = CopyInfo.DestinationSlice;
+	if (static_cast<int32>(CopyTextureInfo.DestSliceIndex) >= DestinationNumSlices)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid Texture Destination Slice Index (%u)"),
+			CopyTextureInfo.SourceSliceIndex)
+		);
+		return false;
+	}
+
+	CopyTextureInfo.NumSlices = CopyInfo.NumSlices;
+	if (CopyTextureInfo.NumSlices == 0 || CopyTextureInfo.SourceSliceIndex + CopyTextureInfo.NumSlices > static_cast<uint32>(SourceNumSlices) || CopyTextureInfo.DestSliceIndex + CopyTextureInfo.NumSlices > static_cast<uint32>(DestinationNumSlices))
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid Texture Number Of Slices for Copy (%u)"),
+			CopyTextureInfo.NumSlices)
+		);
+		return false;
+	}
+
 	ClearFence();
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
@@ -465,7 +506,7 @@ void UCompushadyResource::OnSignalReceived()
 
 }
 
-FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ)
+FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ) const
 {
 	if (TextureRHIRef.IsValid())
 	{
@@ -483,4 +524,28 @@ FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ)
 	}
 	return XYZ;
 
+}
+
+FIntVector UCompushadyResource::GetTextureSize() const
+{
+	if (TextureRHIRef.IsValid())
+	{
+		return TextureRHIRef->GetSizeXYZ();
+	}
+
+	return FIntVector(0, 0, 0);
+}
+
+int32 UCompushadyResource::GetTextureNumSlices() const
+{
+	if (TextureRHIRef.IsValid())
+	{
+		const FRHITextureDesc& Desc = TextureRHIRef->GetDesc();
+		if (Desc.IsTextureCube())
+		{
+			return Desc.ArraySize * 6;
+		}
+		return Desc.ArraySize;
+	}
+	return 0;
 }

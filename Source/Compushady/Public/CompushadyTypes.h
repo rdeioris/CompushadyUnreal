@@ -71,7 +71,16 @@ struct COMPUSHADY_API FCompushadyCopyInfo
 	FIntVector SourceSize;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 SourceSlice = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	FIntVector DestinationOffset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 DestinationSlice = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 NumSlices = 1;
 };
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
@@ -127,7 +136,13 @@ public:
 	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
-	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ);
+	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	FIntVector GetTextureSize() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	int32 GetTextureNumSlices() const;
 
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;

@@ -319,6 +319,32 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromTexture2D(UTe
 	return CompushadySRV;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromTextureCube(UTextureCube* TextureCube)
+{
+	if (TextureCube->IsStreamable() && !TextureCube->IsFullyStreamedIn())
+	{
+		TextureCube->SetForceMipLevelsToBeResident(30.0f);
+		TextureCube->WaitForStreaming();
+	}
+
+	if (!TextureCube->GetResource() || !TextureCube->GetResource()->IsInitialized())
+	{
+		TextureCube->UpdateResource();
+	}
+
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = TextureCube->GetResource();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImageFile(const FString& Name, const FString& Filename)
 {
 	TArray<uint8> ImageData;

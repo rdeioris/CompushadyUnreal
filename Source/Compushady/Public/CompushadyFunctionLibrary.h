@@ -9,6 +9,7 @@
 #include "CompushadySoundWave.h"
 #include "CompushadyUAV.h"
 #include "Curves/CurveFloat.h"
+#include "Engine/TextureCube.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
 #include "IImageWrapper.h"
@@ -66,6 +67,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySRV* CreateCompushadySRVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadySRV* CreateCompushadySRVFromTextureCube(UTextureCube* TextureCube);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySRV* CreateCompushadySRVBufferFromCurveFloat(const FString& Name, UCurveFloat* CurveFloat, const float StartTime, const float EndTime, const int32 Steps);
