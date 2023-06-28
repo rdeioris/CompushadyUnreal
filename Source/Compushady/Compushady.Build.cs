@@ -27,14 +27,13 @@ public class Compushady : ModuleRules
                 "RenderCore",
                 "SlateCore",
                 "Slate",
-                "VulkanRHI",
                 "UMG",
                 "AudioExtensions",
                 "MediaAssets"
             }
             );
 
-        AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
+        
 
         string ThirdPartyDirectory = System.IO.Path.Combine(ModuleDirectory, "..", "ThirdParty");
 
@@ -43,6 +42,8 @@ public class Compushady : ModuleRules
         // DirectXCompiler
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
+            PrivateDependencyModuleNames.Add("VulkanRHI");
+            AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_windows");
             string ThirdPartyDirectoryWin64Libs = System.IO.Path.Combine(ThirdPartyDirectoryWin64, "bin", "x64");
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryWin64, "inc");
@@ -51,6 +52,8 @@ public class Compushady : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
+            AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
+            AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             string ThirdPartyDirectoryLinux = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_linux");
             string ThirdPartyDirectoryLinuxLibs = System.IO.Path.Combine(ThirdPartyDirectoryLinux, "lib");
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryLinux, "include", "dxc");
@@ -58,10 +61,19 @@ public class Compushady : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Android)
         {
+            AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
+            AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             string ThirdPartyDirectoryAndroid = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_android");
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryAndroid, "include", "dxc");
             string PluginPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
             AdditionalPropertiesForReceipt.Add("AndroidPlugin", System.IO.Path.Combine(PluginPath, "Compushady_APL.xml"));
+        }
+        else if (Target.Platform == UnrealTargetPlatform.Mac)
+        {
+            string ThirdPartyDirectoryMac = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_mac");
+            string ThirdPartyDirectoryMacLibs = System.IO.Path.Combine(ThirdPartyDirectoryMac, "lib");
+            ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryMac, "include", "dxc");
+            RuntimeDependencies.Add("$(BinaryOutputDir)/libdxcompiler.dylib", System.IO.Path.Combine(ThirdPartyDirectoryMacLibs, "libdxcompiler.dylib"));
         }
 
         PrivateIncludePaths.Add(ThirdPartyDirectoryIncludePath);

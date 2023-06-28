@@ -4,9 +4,11 @@
 
 #include "Serialization/ArrayWriter.h"
 
+#if PLATFORM_WINDOWS || PLATFORM_LINUX || PLATFORM_ANDROID
 #include "vulkan.h"
 #include "VulkanCommon.h"
 #include "VulkanShaderResources.h"
+
 
 bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
@@ -544,3 +546,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 
 	return true;
 }
+#else
+bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+    return false;
+}
+#endif

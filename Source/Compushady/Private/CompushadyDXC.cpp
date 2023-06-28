@@ -11,7 +11,7 @@
 #endif
 
 THIRD_PARTY_INCLUDES_START
-#if PLATFORM_LINUX || PLATFORM_ANDROID
+#if PLATFORM_LINUX || PLATFORM_ANDROID || PLATFORM_MAC
 #define __EMULATE_UUID
 #endif
 
@@ -93,6 +93,8 @@ namespace Compushady
 #endif
 #elif PLATFORM_LINUX || PLATFORM_ANDROID
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.so"));
+#elif PLATFORM_MAC
+                LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.dylib"));
 #endif
 				if (!LibHandle)
 				{
@@ -499,9 +501,8 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 		ShaderResourceBindings.UAVs.Add(UAVMapping[UAVIndex]);
 	}
 
-	return true;
-
 #endif
+    return true;
 }
 
 void Compushady::DXCTeardown()

@@ -27,6 +27,12 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 			return false;
 		}
 	}
+    else if (RHIInterfaceType == ERHIInterfaceType::Metal)
+    {
+        SPIRV = ByteCode;
+        // TODO convert to MSL
+        return false;
+    }
 	else if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
 		DXIL = ByteCode;
@@ -144,6 +150,11 @@ bool UCompushadyCompute::ToUnrealShader(const TArray<uint8>& ByteCode, TArray<ui
 	{
 		Blob.Append(ByteCode);
 	}
+    else if (RHIInterfaceType == ERHIInterfaceType::Metal)
+    {
+        // TODO: convert to MSL
+        Blob.Append(ByteCode);
+    }
 	else
 	{
 		return false;
