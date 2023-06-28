@@ -52,7 +52,7 @@ public class Compushady : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
-            AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
+            PrivateDependencyModuleNames.Add("VulkanRHI");
             AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             string ThirdPartyDirectoryLinux = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_linux");
             string ThirdPartyDirectoryLinuxLibs = System.IO.Path.Combine(ThirdPartyDirectoryLinux, "lib");
@@ -61,7 +61,7 @@ public class Compushady : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Android)
         {
-            AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
+            PrivateDependencyModuleNames.Add("VulkanRHI");
             AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             string ThirdPartyDirectoryAndroid = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_android");
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryAndroid, "include", "dxc");
