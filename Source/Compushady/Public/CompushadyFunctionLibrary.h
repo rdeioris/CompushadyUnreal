@@ -47,6 +47,9 @@ public:
     static UCompushadySRV* CreateCompushadySRVBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const EPixelFormat PixelFormat);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadySRV* CreateCompushadySRVBufferFromByteArray(const FString& Name, const TArray<uint8>& Data, const EPixelFormat PixelFormat);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")

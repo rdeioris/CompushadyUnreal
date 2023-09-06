@@ -46,8 +46,8 @@ void ICompushadySignalable::CheckFence(FCompushadySignaled OnSignal)
 		AsyncTask(ENamedThreads::GameThread, [this, OnSignal]()
 			{
 				bRunning = false;
-		OnSignal.ExecuteIfBound(true, "");
-		OnSignalReceived();
+				OnSignal.ExecuteIfBound(true, "");
+				OnSignalReceived();
 			});
 	}
 }
@@ -68,9 +68,9 @@ void ICompushadySignalable::CheckFence(FCompushadySignaledWithFloatPayload OnSig
 		AsyncTask(ENamedThreads::GameThread, [this, OnSignal, &Data]()
 			{
 				float* ValuePtr = reinterpret_cast<float*>(Data.GetData());
-		bRunning = false;
-		OnSignal.ExecuteIfBound(true, *ValuePtr, "");
-		OnSignalReceived();
+				bRunning = false;
+				OnSignal.ExecuteIfBound(true, *ValuePtr, "");
+				OnSignalReceived();
 			});
 	}
 }
@@ -91,11 +91,11 @@ void ICompushadySignalable::CheckFence(FCompushadySignaledWithFloatArrayPayload 
 		AsyncTask(ENamedThreads::GameThread, [this, OnSignal, &Data]()
 			{
 				float* ValuesPtr = reinterpret_cast<float*>(Data.GetData());
-		TArray<float> Values;
-		Values.Append(ValuesPtr, Data.Num() / sizeof(float));
-		bRunning = false;
-		OnSignal.ExecuteIfBound(true, Values, "");
-		OnSignalReceived();
+				TArray<float> Values;
+				Values.Append(ValuesPtr, Data.Num() / sizeof(float));
+				bRunning = false;
+				OnSignal.ExecuteIfBound(true, Values, "");
+				OnSignalReceived();
 			});
 	}
 }
@@ -150,71 +150,80 @@ void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithF
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
-	RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-	RHICmdList.SubmitCommandsAndFlushGPU();
-	RHICmdList.BlockUntilGPUIdle();
-	uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-	ReadbackCache.Empty(BufferRHIRef->GetSize());
-	ReadbackCache.Append(Data, (BufferRHIRef->GetSize() / sizeof(float)) * sizeof(float));
-	RHICmdList.UnlockStagingBuffer(StagingBuffer);
-	WriteFence(RHICmdList);
+			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
+			RHICmdList.SubmitCommandsAndFlushGPU();
+			RHICmdList.BlockUntilGPUIdle();
+			uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
+			ReadbackCache.Empty(BufferRHIRef->GetSize());
+			ReadbackCache.Append(Data, (BufferRHIRef->GetSize() / sizeof(float)) * sizeof(float));
+			RHICmdList.UnlockStagingBuffer(StagingBuffer);
+			WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled, ReadbackCache);
 }
 
+bool UCompushadyResource::IsValidTexture() const
+{
+	return TextureRHIRef.IsValid() && TextureRHIRef->IsValid();
+}
+
+bool UCompushadyResource::IsValidBuffer() const
+{
+	return BufferRHIRef.IsValid() && BufferRHIRef->IsValid();
+}
+
 void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
 {
-	auto PngWriter = [this, Filename](void* Data)
+	if (!IsValidTexture())
 	{
-		FIntVector Size = GetTextureSize();
-		IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
+		OnSignaled.ExecuteIfBound(false, "The resource is not a valid Texture");
+		return;
+	}
 
-		TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
-		if (ImageWrapper.IsValid())
+	auto PngWriter = [this, Filename](void* Data)
 		{
+			FIntVector Size = GetTextureSize();
+			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
 
-			if (ImageWrapper->SetRaw(Data, Size.X * Size.Y * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes, Size.X, Size.Y, ERGBFormat::BGRA, 8))
+			TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+			if (ImageWrapper.IsValid())
 			{
 
-				TArray64<uint8> CompressedBytes = ImageWrapper->GetCompressed();
-				FFileHelper::SaveArrayToFile(CompressedBytes, *Filename);
+				if (ImageWrapper->SetRaw(Data, Size.X * Size.Y * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes, Size.X, Size.Y, ERGBFormat::BGRA, 8))
+				{
+
+					TArray64<uint8> CompressedBytes = ImageWrapper->GetCompressed();
+					FFileHelper::SaveArrayToFile(CompressedBytes, *Filename);
+				}
 			}
-		}
-	};
+		};
 
 	MapAndExecute(PngWriter, OnSignaled);
 }
 
 void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
 {
-	if (bRunning)
-	{
-		TArray<float> Values;
-		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
-		return;
-	}
-
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadback)(
-		[this, Filename](FRHICommandListImmediate& RHICmdList)
+	auto FileWriter = [this, Filename](void* Data)
 		{
-			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
-	RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-	RHICmdList.SubmitCommandsAndFlushGPU();
-	RHICmdList.BlockUntilGPUIdle();
-	uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-	ReadbackCache.Empty(BufferRHIRef->GetSize());
-	ReadbackCache.Append(Data, (BufferRHIRef->GetSize() / sizeof(float)) * sizeof(float));
-	FFileHelper::SaveArrayToFile(ReadbackCache, *Filename);
-	RHICmdList.UnlockStagingBuffer(StagingBuffer);
-	WriteFence(RHICmdList);
-		});
+			int32 Size = 0;
+			if (IsValidBuffer())
+			{
+				Size = GetBufferSize();
+			}
+			else if (IsValidTexture())
+			{
+				Size = TextureRHIRef->GetDesc().CalcMemorySizeEstimate();
+			}
+			if (Size > 0)
+			{
+				TArrayView<uint8> ArrayView = TArrayView<uint8>(reinterpret_cast<uint8*>(Data), Size);
+				FFileHelper::SaveArrayToFile(ArrayView, *Filename);
+			}
+		};
 
-	CheckFence(OnSignaled);
+	MapAndExecute(FileWriter, OnSignaled);
 }
 
 void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
@@ -232,15 +241,15 @@ void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 E
 		[this, Offset, Elements](FRHICommandListImmediate& RHICmdList)
 		{
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
-	RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-	RHICmdList.SubmitCommandsAndFlushGPU();
-	RHICmdList.BlockUntilGPUIdle();
-	uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-	ReadbackCache.Empty(Elements * sizeof(float));
-	ReadbackCache.Append(Data + sizeof(float) * Offset, Elements * sizeof(float));
-	RHICmdList.UnlockStagingBuffer(StagingBuffer);
-	WriteFence(RHICmdList);
+			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
+			RHICmdList.SubmitCommandsAndFlushGPU();
+			RHICmdList.BlockUntilGPUIdle();
+			uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
+			ReadbackCache.Empty(Elements * sizeof(float));
+			ReadbackCache.Append(Data + sizeof(float) * Offset, Elements * sizeof(float));
+			RHICmdList.UnlockStagingBuffer(StagingBuffer);
+			WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled, ReadbackCache);
@@ -465,14 +474,14 @@ bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTe
 
 	ClearFence();
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyToRenderTarget2D)(
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyTexture)(
 		[this, Destination, Source, CopyTextureInfo](FRHICommandListImmediate& RHICmdList)
 		{
 			RHICmdList.Transition(FRHITransitionInfo(Source, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(Destination, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+			RHICmdList.Transition(FRHITransitionInfo(Destination, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
-	RHICmdList.CopyTexture(Source, Destination, CopyTextureInfo);
-	WriteFence(RHICmdList);
+			RHICmdList.CopyTexture(Source, Destination, CopyTextureInfo);
+			WriteFence(RHICmdList);
 		});
 
 	return true;
@@ -505,12 +514,21 @@ FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ, 
 
 FIntVector UCompushadyResource::GetTextureSize() const
 {
-	if (TextureRHIRef.IsValid())
+	if (TextureRHIRef.IsValid() && TextureRHIRef->IsValid())
 	{
 		return TextureRHIRef->GetSizeXYZ();
 	}
 
 	return FIntVector(0, 0, 0);
+}
+
+int64 UCompushadyResource::GetBufferSize() const
+{
+	if (BufferRHIRef.IsValid() && BufferRHIRef->IsValid())
+	{
+		return static_cast<int64>(BufferRHIRef->GetSize());
+	}
+	return 0;
 }
 
 int32 UCompushadyResource::GetTextureNumSlices() const
@@ -537,40 +555,123 @@ void UCompushadyResource::MapAndExecute(TFunction<void(void*)> InFunction, const
 
 	ClearFence();
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
-		[this, InFunction](FRHICommandListImmediate& RHICmdList)
-		{
-			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
-	RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	FRHICopyTextureInfo CopyTextureInfo;
-	RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
-	RHICmdList.SubmitCommandsAndFlushGPU();
-	RHICmdList.BlockUntilGPUIdle();
-	int32 Width = 0;
-	int32 Height = 0;
-	void* Data = nullptr;
-	RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
-	if (Data)
+	if (TextureRHIRef.IsValid() && TextureRHIRef->IsValid())
 	{
-		InFunction(Data);
-		RHICmdList.UnmapStagingSurface(GetTextureRHI());
+		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				FTextureRHIRef ReadbackTexture = GetReadbackTexture();
+				RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				FRHICopyTextureInfo CopyTextureInfo;
+				RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
+				RHICmdList.SubmitCommandsAndFlushGPU();
+				RHICmdList.BlockUntilGPUIdle();
+				int32 Width = 0;
+				int32 Height = 0;
+				void* Data = nullptr;
+				RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
+				if (Data)
+				{
+					InFunction(Data);
+					RHICmdList.UnmapStagingSurface(ReadbackTexture);
+				}
+				WriteFence(RHICmdList);
+			});
 	}
-	WriteFence(RHICmdList);
-		});
+	else if (BufferRHIRef.IsValid() && BufferRHIRef->IsValid())
+	{
+		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
+				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
+				RHICmdList.SubmitCommandsAndFlushGPU();
+				RHICmdList.BlockUntilGPUIdle();
+				uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
+				if (Data)
+				{
+					InFunction(Data);
+					RHICmdList.UnlockStagingBuffer(StagingBuffer);
+				}
+				WriteFence(RHICmdList);
+			});
+	}
+	else
+	{
+		OnSignaled.ExecuteIfBound(false, "The Resource is in invalid state");
+		return;
+	}
 
 	CheckFence(OnSignaled);
+}
+
+bool UCompushadyResource::MapAndExecuteSync(TFunction<void(void*)> InFunction)
+{
+	if (bRunning)
+	{
+		return false;
+	}
+
+	if (TextureRHIRef.IsValid() && TextureRHIRef->IsValid())
+	{
+		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				FTextureRHIRef ReadbackTexture = GetReadbackTexture();
+				RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				FRHICopyTextureInfo CopyTextureInfo;
+				RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
+				RHICmdList.SubmitCommandsAndFlushGPU();
+				RHICmdList.BlockUntilGPUIdle();
+				int32 Width = 0;
+				int32 Height = 0;
+				void* Data = nullptr;
+				RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
+				if (Data)
+				{
+					InFunction(Data);
+					RHICmdList.UnmapStagingSurface(ReadbackTexture);
+				}
+			});
+	}
+	else if (BufferRHIRef.IsValid() && BufferRHIRef->IsValid())
+	{
+		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
+				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
+				RHICmdList.SubmitCommandsAndFlushGPU();
+				RHICmdList.BlockUntilGPUIdle();
+				uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
+				if (Data)
+				{
+					InFunction(Data);
+					RHICmdList.UnlockStagingBuffer(StagingBuffer);
+				}
+			});
+	}
+	else
+	{
+		return false;
+	}
+
+	FlushRenderingCommands();
+	return true;
 }
 
 void UCompushadyResource::MapAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
 {
 	auto Wrapper = [this, InFunction](void* Data)
-	{
-		FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([this, InFunction, Data]()
-			{
-				InFunction(Data);
-			}, TStatId(), nullptr, ENamedThreads::GameThread);
-		FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
-	};
+		{
+			FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([this, InFunction, Data]()
+				{
+					InFunction(Data);
+				}, TStatId(), nullptr, ENamedThreads::GameThread);
+			FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
+		};
 
 	MapAndExecute(Wrapper, OnSignaled);
 }

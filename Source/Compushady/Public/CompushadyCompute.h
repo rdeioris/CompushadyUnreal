@@ -105,6 +105,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetThreadGroupSize() const;
 
+	FComputeShaderRHIRef GetRHI() const
+	{
+		return ComputeShaderRef;
+	}
+
 protected:
 
 	bool CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages);

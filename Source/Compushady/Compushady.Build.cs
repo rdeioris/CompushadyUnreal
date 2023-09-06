@@ -13,8 +13,8 @@ public class Compushady : ModuleRules
             new string[]
             {
                 "Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
+                "MediaAssets"
+            }
             );
 
 
@@ -29,11 +29,13 @@ public class Compushady : ModuleRules
                 "Slate",
                 "UMG",
                 "AudioExtensions",
-                "MediaAssets"
             }
             );
 
-        
+        if (Target.Type == TargetType.Editor)
+        {
+            PrivateDependencyModuleNames.Add("Projects");
+        }
 
         string ThirdPartyDirectory = System.IO.Path.Combine(ModuleDirectory, "..", "ThirdParty");
 

@@ -21,6 +21,8 @@ public:
 
 	void SyncBufferData(FRHICommandListImmediate& RHICmdList);
 
+	void BufferDataClean();
+
 	FUniformBufferRHIRef GetRHI();
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -28,6 +30,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void SetDouble(const int32 Offset, const double Value);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	void SetInt(const int32 Offset, const int32 Value);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	void SetUInt(const int32 Offset, const int64 Value);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Values"), Category = "Compushady")
 	void SetFloatArray(const int32 Offset, const TArray<float>& Values);
@@ -43,6 +51,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void SetPerspectiveFloat(const int32 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = true, const bool bTranspose = true);
+
+	const TArray<uint8>& GetBufferData() { return BufferData; }
 
 protected:
 	TArray<uint8> BufferData;

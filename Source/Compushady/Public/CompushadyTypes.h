@@ -142,6 +142,9 @@ public:
 	FIntVector GetTextureSize() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	int64 GetBufferSize() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	int32 GetTextureNumSlices() const;
 
 	FTextureRHIRef GetTextureRHI() const;
@@ -152,10 +155,14 @@ public:
 	FStagingBufferRHIRef GetStagingBuffer();
 	FTextureRHIRef GetReadbackTexture();
 
+	bool IsValidTexture() const;
+	bool IsValidBuffer() const;
+
 	void OnSignalReceived() override;
 
 	void MapAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
 	void MapAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
+	bool MapAndExecuteSync(TFunction<void(void*)> InFunction);
 
 protected:
 	FTextureRHIRef TextureRHIRef;

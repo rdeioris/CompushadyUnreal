@@ -35,6 +35,10 @@ THIRD_PARTY_INCLUDES_END
 #include "Windows/HideWindowsPlatformTypes.h"
 #endif
 
+#if WITH_EDITOR
+#include "Interfaces/IPluginManager.h"
+#endif
+
 namespace Compushady
 {
 	namespace DXC
@@ -87,14 +91,14 @@ namespace Compushady
 			{
 #if PLATFORM_WINDOWS
 #if WITH_EDITOR
-				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectPluginsDir() / TEXT("Compushady/Binaries/Win64/dxcompiler.dll")));
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("Compushady"))->GetBaseDir(), TEXT("Binaries/Win64/dxcompiler.dll"))));
 #else
 				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/dxcompiler.dll")));
 #endif
 #elif PLATFORM_LINUX || PLATFORM_ANDROID
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.so"));
 #elif PLATFORM_MAC
-                LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.dylib"));
+				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.dylib"));
 #endif
 				if (!LibHandle)
 				{
@@ -149,7 +153,7 @@ namespace Compushady
 			if (!DXILLibHandle)
 			{
 #if WITH_EDITOR
-				DXILLibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectPluginsDir() / TEXT("Compushady/Binaries/Win64/dxil.dll")));
+				DXILLibHandle = FPlatformProcess::GetDllHandle(*(FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("Compushady"))->GetBaseDir(), TEXT("Binaries/Win64/dxil.dll"))));
 #else
 				DXILLibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/dxil.dll")));
 #endif
@@ -502,7 +506,7 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 	}
 
 #endif
-    return true;
+	return true;
 }
 
 void Compushady::DXCTeardown()

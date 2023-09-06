@@ -70,6 +70,25 @@ void UCompushadyCBV::SetFloatArray(const int32 Offset, const TArray<float>& Valu
 	}
 }
 
+void UCompushadyCBV::SetInt(const int32 Offset, const int32 Value)
+{
+	if (Offset + sizeof(int32) <= BufferData.Num())
+	{
+		FMemory::Memcpy(BufferData.GetData() + Offset, &Value, sizeof(int32));
+		bBufferDataDirty = true;
+	}
+}
+
+void UCompushadyCBV::SetUInt(const int32 Offset, const int64 Value)
+{
+	const uint32 CastedValue = static_cast<uint32>(Value);
+	if (Offset + sizeof(uint32) <= BufferData.Num())
+	{
+		FMemory::Memcpy(BufferData.GetData() + Offset, &CastedValue, sizeof(uint32));
+		bBufferDataDirty = true;
+	}
+}
+
 void UCompushadyCBV::SetDouble(const int32 Offset, const double Value)
 {
 	if (Offset + sizeof(double) <= BufferData.Num())
@@ -122,4 +141,9 @@ void UCompushadyCBV::SetPerspectiveFloat(const int32 Offset, const float HalfFOV
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
 	}
+}
+
+void UCompushadyCBV::BufferDataClean()
+{
+	bBufferDataDirty = false;
 }
