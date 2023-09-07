@@ -13,7 +13,14 @@ bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 
 	TextureRHIRef = InTextureRHIRef;
 
-	UAVRHIRef = RHICreateUnorderedAccessView(TextureRHIRef);
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateUnorderedAccessView)(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{
+			UAVRHIRef = COMPUSHADY_CREATE_UAV(TextureRHIRef);
+		});
+
+	FlushRenderingCommands();
+
 	if (!UAVRHIRef)
 	{
 		return false;
@@ -43,7 +50,14 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 
 	BufferRHIRef = InBufferRHIRef;
 
-	UAVRHIRef = RHICreateUnorderedAccessView(BufferRHIRef, static_cast<uint8>(PixelFormat));
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateUnorderedAccessView)(
+		[this, PixelFormat](FRHICommandListImmediate& RHICmdList)
+		{
+			UAVRHIRef = COMPUSHADY_CREATE_UAV(BufferRHIRef, static_cast<uint8>(PixelFormat));
+		});
+
+	FlushRenderingCommands();
+
 	if (!UAVRHIRef)
 	{
 		return false;
@@ -78,7 +92,14 @@ bool UCompushadyUAV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 
 	BufferRHIRef = InBufferRHIRef;
 
-	UAVRHIRef = RHICreateUnorderedAccessView(BufferRHIRef, false, false);
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateUnorderedAccessView)(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{
+			UAVRHIRef = COMPUSHADY_CREATE_UAV(BufferRHIRef, false, false);
+		});
+
+	FlushRenderingCommands();
+
 	if (!UAVRHIRef)
 	{
 		return false;
@@ -126,10 +147,10 @@ void UCompushadyUAV::CopyToSRV(UCompushadySRV* SRV, const FCompushadySignaled& O
 		[this, SRV](FRHICommandListImmediate& RHICmdList)
 		{
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(SRV->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
+			RHICmdList.Transition(FRHITransitionInfo(SRV->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
-	RHICmdList.CopyBufferRegion(SRV->GetBufferRHI(), 0, BufferRHIRef, 0, SRV->GetBufferRHI()->GetSize());
-	WriteFence(RHICmdList);
+			RHICmdList.CopyBufferRegion(SRV->GetBufferRHI(), 0, BufferRHIRef, 0, SRV->GetBufferRHI()->GetSize());
+			WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled);
@@ -177,10 +198,10 @@ void UCompushadyUAV::CopyToStaticMeshPositions(UStaticMesh* StaticMesh, const in
 		[this, DestBufferRHIRef](FRHICommandListImmediate& RHICmdList)
 		{
 			RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(DestBufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+			RHICmdList.Transition(FRHITransitionInfo(DestBufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
-	RHICmdList.CopyBufferRegion(DestBufferRHIRef, 0, GetBufferRHI(), 0, GetBufferRHI()->GetSize());
-	WriteFence(RHICmdList);
+			RHICmdList.CopyBufferRegion(DestBufferRHIRef, 0, GetBufferRHI(), 0, GetBufferRHI()->GetSize());
+			WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled);
@@ -228,10 +249,10 @@ void UCompushadyUAV::CopyToStaticMeshTexCoords(UStaticMesh* StaticMesh, const in
 		[this, DestBufferRHIRef](FRHICommandListImmediate& RHICmdList)
 		{
 			RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(DestBufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+			RHICmdList.Transition(FRHITransitionInfo(DestBufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
-	RHICmdList.CopyBufferRegion(DestBufferRHIRef, 0, GetBufferRHI(), 0, GetBufferRHI()->GetSize());
-	WriteFence(RHICmdList);
+			RHICmdList.CopyBufferRegion(DestBufferRHIRef, 0, GetBufferRHI(), 0, GetBufferRHI()->GetSize());
+			WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled);
@@ -243,9 +264,9 @@ bool UCompushadyUAV::CopyFromRHIBuffer(FBufferRHIRef SourceBufferRHIRef)
 		[this, SourceBufferRHIRef](FRHICommandListImmediate& RHICmdList)
 		{
 			RHICmdList.Transition(FRHITransitionInfo(SourceBufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-	RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
+			RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
-	RHICmdList.CopyBufferRegion(GetBufferRHI(), 0, SourceBufferRHIRef, 0, SourceBufferRHIRef->GetSize());
+			RHICmdList.CopyBufferRegion(GetBufferRHI(), 0, SourceBufferRHIRef, 0, SourceBufferRHIRef->GetSize());
 		});
 
 	FlushRenderingCommands();

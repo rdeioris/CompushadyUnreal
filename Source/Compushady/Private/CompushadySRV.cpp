@@ -12,7 +12,15 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 
 	TextureRHIRef = InTextureRHIRef;
 
-	SRVRHIRef = RHICreateShaderResourceView(TextureRHIRef, 0);
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{
+
+			SRVRHIRef = COMPUSHADY_CREATE_SRV(TextureRHIRef, 0);
+
+		});
+
+	FlushRenderingCommands();
 	if (!SRVRHIRef)
 	{
 		return false;
@@ -46,7 +54,7 @@ bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 		[this, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 
-			SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef, GPixelFormats[PixelFormat].BlockBytes, PixelFormat);
+			SRVRHIRef = COMPUSHADY_CREATE_SRV(BufferRHIRef, GPixelFormats[PixelFormat].BlockBytes, PixelFormat);
 
 		});
 
@@ -90,7 +98,7 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
 
-			SRVRHIRef = RHICreateShaderResourceView(BufferRHIRef);
+			SRVRHIRef = COMPUSHADY_CREATE_SRV(BufferRHIRef);
 
 		});
 

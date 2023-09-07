@@ -27,12 +27,12 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 			return false;
 		}
 	}
-    else if (RHIInterfaceType == ERHIInterfaceType::Metal)
-    {
-        SPIRV = ByteCode;
-        // TODO convert to MSL
-        return false;
-    }
+	else if (RHIInterfaceType == ERHIInterfaceType::Metal)
+	{
+		SPIRV = ByteCode;
+		// TODO convert to MSL
+		return false;
+	}
 	else if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
 		DXIL = ByteCode;
@@ -150,11 +150,11 @@ bool UCompushadyCompute::ToUnrealShader(const TArray<uint8>& ByteCode, TArray<ui
 	{
 		Blob.Append(ByteCode);
 	}
-    else if (RHIInterfaceType == ERHIInterfaceType::Metal)
-    {
-        // TODO: convert to MSL
-        Blob.Append(ByteCode);
-    }
+	else if (RHIInterfaceType == ERHIInterfaceType::Metal)
+	{
+		// TODO: convert to MSL
+		Blob.Append(ByteCode);
+	}
 	else
 	{
 		return false;
@@ -355,6 +355,9 @@ bool UCompushadyCompute::SetupDispatch(const FCompushadyResourceArray& ResourceA
 void UCompushadyCompute::SetupPipeline(FRHICommandListImmediate& RHICmdList, const TArray<UCompushadyCBV*>& CBVs, const TArray<UCompushadySRV*>& SRVs, const TArray<UCompushadyUAV*>& UAVs)
 {
 	SetComputePipelineState(RHICmdList, ComputeShaderRef);
+#if COMPUSHADY_UE_VERSION >= 53
+	FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+#endif
 
 	for (int32 Index = 0; Index < CBVs.Num(); Index++)
 	{
@@ -362,20 +365,36 @@ void UCompushadyCompute::SetupPipeline(FRHICommandListImmediate& RHICmdList, con
 		{
 			CBVs[Index]->SyncBufferData(RHICmdList);
 		}
+#if COMPUSHADY_UE_VERSION >= 53
+		BatchedParameters.SetShaderUniformBuffer(CBVResourceBindings[Index].SlotIndex, CBVs[Index]->GetRHI());
+#else
 		RHICmdList.SetShaderUniformBuffer(ComputeShaderRef, CBVResourceBindings[Index].SlotIndex, CBVs[Index]->GetRHI());
+#endif
 	}
 
 	for (int32 Index = 0; Index < SRVs.Num(); Index++)
 	{
 		RHICmdList.Transition(SRVs[Index]->GetRHITransitionInfo());
+#if COMPUSHADY_UE_VERSION >= 53
+		BatchedParameters.SetShaderResourceViewParameter(SRVResourceBindings[Index].SlotIndex, SRVs[Index]->GetRHI());
+#else
 		RHICmdList.SetShaderResourceViewParameter(ComputeShaderRef, SRVResourceBindings[Index].SlotIndex, SRVs[Index]->GetRHI());
+#endif
 	}
 
 	for (int32 Index = 0; Index < UAVs.Num(); Index++)
 	{
 		RHICmdList.Transition(UAVs[Index]->GetRHITransitionInfo());
+#if COMPUSHADY_UE_VERSION >= 53
+		BatchedParameters.SetUAVParameter(UAVResourceBindings[Index].SlotIndex, UAVs[Index]->GetRHI());
+#else
 		RHICmdList.SetUAVParameter(ComputeShaderRef, UAVResourceBindings[Index].SlotIndex, UAVs[Index]->GetRHI());
+#endif
 	}
+
+#if COMPUSHADY_UE_VERSION >= 53
+	RHICmdList.SetBatchedShaderParameters(ComputeShaderRef, BatchedParameters);
+#endif
 }
 
 void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
@@ -402,9 +421,9 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		{
 			SetupPipeline(RHICmdList, CBVs, SRVs, UAVs);
 
-	RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
+			RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
 
-	WriteFence(RHICmdList);
+			WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled);
@@ -447,10 +466,10 @@ void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& Resour
 		{
 			SetupPipeline(RHICmdList, CBVs, SRVs, UAVs);
 
-	RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
-	RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);
+			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
+			RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);
 
-	WriteFence(RHICmdList);
+			WriteFence(RHICmdList);
 		});
 
 	CheckFence(OnSignaled);
