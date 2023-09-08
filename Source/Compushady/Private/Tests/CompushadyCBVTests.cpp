@@ -1,7 +1,7 @@
 // Copyright 2023 - Roberto De Ioris.
 
 #if WITH_DEV_AUTOMATION_TESTS
-#include "CompushadyCBV.h"
+#include "CompushadyFunctionLibrary.h"
 #include "Misc/AutomationTest.h"
 
 

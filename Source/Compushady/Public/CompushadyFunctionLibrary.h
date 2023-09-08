@@ -56,10 +56,16 @@ public:
     static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyUAV* CreateCompushadyUAVTexture1D(const FString& Name, const int32 Width, const EPixelFormat Format);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadyUAV* CreateCompushadyUAVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format);
+
+    UFUNCTION(BlueprintCallable, Category = "Compushady")
+    static UCompushadyUAV* CreateCompushadyUAVTexture2DArray(const FString& Name, const int32 Width, const int32 Height, const int32 Slices, const EPixelFormat Format);
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySRV* CreateCompushadySRVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format);

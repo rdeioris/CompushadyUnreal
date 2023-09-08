@@ -227,6 +227,26 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVStructuredBuffer(
 	return CompushadyUAV;
 }
 
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture1D(const FString& Name, const int32 Width, const EPixelFormat Format)
+{
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, 1, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
+	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
@@ -250,6 +270,26 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format)
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create3D(*Name, Width, Height, Depth, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
+	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2DArray(const FString& Name, const int32 Width, const int32 Height, const int32 Slices, const EPixelFormat Format)
+{
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2DArray(*Name, Width, Height, Slices, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
 	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
 
@@ -565,78 +605,6 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTargetV
 
 	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
 	if (!CompushadyUAV->InitializeFromTexture(Resource->GetTextureRHI()))
-	{
-		return nullptr;
-	}
-
-	return CompushadyUAV;
-}
-
-UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromStaticMeshPositionsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD)
-{
-	if (!StaticMesh->AreRenderingResourcesInitialized())
-	{
-		StaticMesh->InitResources();
-	}
-
-	FStaticMeshRenderData* RenderData = StaticMesh->GetRenderData();
-
-	if (LOD >= RenderData->LODResources.Num())
-	{
-		return nullptr;
-	}
-
-	FStaticMeshLODResources& LODResources = RenderData->LODResources[LOD];
-
-	FBufferRHIRef BufferRHIRef = LODResources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI;
-	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
-	{
-		return nullptr;
-	}
-
-	UCompushadyUAV* CompushadyUAV = CreateCompushadyUAVStructuredBuffer(Name, BufferRHIRef->GetSize(), sizeof(float) * 3);
-	if (!CompushadyUAV)
-	{
-		return nullptr;
-	}
-
-	if (!CompushadyUAV->CopyFromRHIBuffer(BufferRHIRef))
-	{
-		return nullptr;
-	}
-
-	return CompushadyUAV;
-}
-
-UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromStaticMeshTexCoordsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD)
-{
-	if (!StaticMesh->AreRenderingResourcesInitialized())
-	{
-		StaticMesh->InitResources();
-	}
-
-	FStaticMeshRenderData* RenderData = StaticMesh->GetRenderData();
-
-	if (LOD >= RenderData->LODResources.Num())
-	{
-		return nullptr;
-	}
-
-	FStaticMeshLODResources& LODResources = RenderData->LODResources[LOD];
-
-	FBufferRHIRef BufferRHIRef = LODResources.VertexBuffers.StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI;
-	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
-	{
-		return nullptr;
-	}
-
-	UCompushadyUAV* CompushadyUAV = CreateCompushadyUAVStructuredBuffer(Name, BufferRHIRef->GetSize(), (LODResources.VertexBuffers.StaticMeshVertexBuffer.GetUseFullPrecisionUVs() ? sizeof(float) : 2) * 2 * LODResources.VertexBuffers.StaticMeshVertexBuffer.GetNumTexCoords());
-	if (!CompushadyUAV)
-	{
-		return nullptr;
-	}
-
-	if (!CompushadyUAV->CopyFromRHIBuffer(BufferRHIRef))
 	{
 		return nullptr;
 	}

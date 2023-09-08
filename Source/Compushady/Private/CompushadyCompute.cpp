@@ -21,26 +21,14 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 	if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
 	{
 		SPIRV = ByteCode;
-
-		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return false;
-		}
 	}
 	else if (RHIInterfaceType == ERHIInterfaceType::Metal)
 	{
 		SPIRV = ByteCode;
-		// TODO convert to MSL
-		return false;
 	}
 	else if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
 		DXIL = ByteCode;
-
-		if (!FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return false;
-		}
 	}
 
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);

@@ -268,6 +268,12 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		return false;
 	}
 
+	if (TargetProfile.IsEmpty())
+	{
+		ErrorMessages = "Empty TargetProfile";
+		return false;
+	}
+
 	if (!DXC::Setup())
 	{
 		ErrorMessages = "Failed DXCompiler initialization";
@@ -374,6 +380,26 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 
 	CompiledBlob->Release();
 
+	if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
+	{
+		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return false;
+		}
+	}
+	else if (RHIInterfaceType == ERHIInterfaceType::Metal)
+	{
+		// TODO convert to MSL
+		return false;
+	}
+	else if (RHIInterfaceType == ERHIInterfaceType::D3D12)
+	{
+		if (!FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return false;
+		}
+	}
+
 	return true;
 }
 
@@ -437,30 +463,42 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 		switch (BindDesc.Type)
 		{
 		case D3D_SIT_CBUFFER:
-			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+			ResourceBinding.Type = ECompushadySharedResourceType::UniformBuffer;
 			CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case D3D_SIT_TEXTURE:
-			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_BYTEADDRESS:
+			ResourceBinding.Type = ECompushadySharedResourceType::ByteAddressBuffer;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_STRUCTURED:
+			ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case D3D_SIT_TBUFFER:
-		case D3D_SIT_STRUCTURED:
-		case D3D_SIT_BYTEADDRESS:
 			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case D3D_SIT_UAV_RWTYPED:
+			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
 		case D3D_SIT_UAV_FEEDBACKTEXTURE:
 			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case D3D_SIT_UAV_RWSTRUCTURED:
-		case D3D_SIT_UAV_RWBYTEADDRESS:
 		case D3D_SIT_UAV_APPEND_STRUCTURED:
 		case D3D_SIT_UAV_CONSUME_STRUCTURED:
 		case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
 			ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_UAV_RWBYTEADDRESS:
+			ResourceBinding.Type = ECompushadySharedResourceType::ByteAddressBuffer;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		default:
