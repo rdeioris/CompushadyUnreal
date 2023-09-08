@@ -147,11 +147,8 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 
-	TStringBuilderBase<UTF8CHAR> SourceUTF8;
-	SourceUTF8 = TCHAR_TO_UTF8(*Source);
-
 	TArray<uint8> ShaderCode;
-	ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
+	Compushady::StringToShaderCode(Source, ShaderCode);
 
 	if (!CompushadyCompute->InitFromHLSL(ShaderCode, EntryPoint, ErrorMessages))
 	{
@@ -165,11 +162,8 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 
-	TStringBuilderBase<UTF8CHAR> SourceUTF8;
-	SourceUTF8 = TCHAR_TO_UTF8(*ShaderAsset->Code);
-
 	TArray<uint8> ShaderCode;
-	ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
+	Compushady::StringToShaderCode(ShaderAsset->Code, ShaderCode);
 
 	if (!CompushadyCompute->InitFromHLSL(ShaderCode, EntryPoint, ErrorMessages))
 	{

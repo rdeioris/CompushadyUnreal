@@ -42,6 +42,8 @@ namespace Compushady
 	bool SPIRVToGLSL(const TArray<uint8>& ByteCode, FString& GLSL, FString& ErrorMessages);
 	bool SPIRVToMSL(const TArray<uint8>& ByteCode, FString& MSL, FString& ErrorMessages);
 
+	void StringToShaderCode(const FString& Code, TArray<uint8>& ShaderCode);
+
 	void DXCTeardown();
 }
 

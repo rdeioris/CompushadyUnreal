@@ -18,6 +18,17 @@ DEFINE_LOG_CATEGORY(LogCompushady);
 #include "Widgets/Text/SMultiLineEditableText.h"
 #endif
 
+namespace Compushady
+{
+	void StringToShaderCode(const FString& Code, TArray<uint8>& ShaderCode)
+	{
+		TStringBuilderBase<UTF8CHAR> SourceUTF8;
+		SourceUTF8 = TCHAR_TO_UTF8(*Code);
+
+		ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
+	}
+}
+
 #if WITH_EDITOR
 class FCompushadyShaderCustomization : public IDetailCustomization
 {
@@ -48,17 +59,17 @@ public:
 				+ SVerticalBox::Slot().MaxHeight(800)
 				[
 					SNew(SMultiLineEditableTextBox)
-					.AutoWrapText(false)
-				.Margin(0.0f)
-				.Marshaller(FCompushadyHLSLSyntaxHighlighter::Create())
-				.Text(FText::FromString(CompushadyShader->Code))
-				.OnTextChanged_Lambda([CompushadyShader](const FText& InCode)
-					{
-						CompushadyShader->Code = InCode.ToString();
-			CompushadyShader->MarkPackageDirty();
-					})
+						.AutoWrapText(false)
+						.Margin(0.0f)
+						.Marshaller(FCompushadyHLSLSyntaxHighlighter::Create())
+						.Text(FText::FromString(CompushadyShader->Code))
+						.OnTextChanged_Lambda([CompushadyShader](const FText& InCode)
+							{
+								CompushadyShader->Code = InCode.ToString();
+								CompushadyShader->MarkPackageDirty();
+							})
 				]
-			+ SVerticalBox::Slot().FillHeight(0.1)
+				+ SVerticalBox::Slot().FillHeight(0.1)
 				[
 					SNew(STextBlock).Text(FText::FromString("Test"))
 				]
