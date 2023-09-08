@@ -313,7 +313,7 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	SourceBuffer.Size = BlobSource->GetBufferSize();
 	SourceBuffer.Encoding = 0;
 
-	IDxcResult* CompileResult;
+	IDxcResult* CompileResult = nullptr;
 	HR = DXC::Compiler->Compile(&SourceBuffer, Arguments.GetData(), Arguments.Num(), nullptr, __uuidof(IDxcResult), reinterpret_cast<void**>(&CompileResult));
 	if (!SUCCEEDED(HR))
 	{

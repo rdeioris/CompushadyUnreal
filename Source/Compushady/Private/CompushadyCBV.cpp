@@ -10,7 +10,10 @@ bool UCompushadyCBV::Initialize(const FString& Name, const uint8* Data, const in
 		return false;
 	}
 
-	BufferData.AddZeroed(Size);
+	// align to 16 bytes to be d3d12 compliant
+	const int64 AlignedSize = Align(Size, 16);
+
+	BufferData.AddZeroed(AlignedSize);
 
 	if (Data)
 	{
@@ -19,7 +22,7 @@ bool UCompushadyCBV::Initialize(const FString& Name, const uint8* Data, const in
 
 	bBufferDataDirty = true;
 
-	FRHIUniformBufferLayoutInitializer LayoutInitializer(*Name, Size);
+	FRHIUniformBufferLayoutInitializer LayoutInitializer(*Name, AlignedSize);
 
 	UniformBufferLayoutRHIRef = RHICreateUniformBufferLayout(LayoutInitializer);
 	if (!UniformBufferLayoutRHIRef.IsValid())
@@ -28,7 +31,7 @@ bool UCompushadyCBV::Initialize(const FString& Name, const uint8* Data, const in
 	}
 
 	UniformBufferRHIRef = RHICreateUniformBuffer(nullptr, UniformBufferLayoutRHIRef, EUniformBufferUsage::UniformBuffer_MultiFrame, EUniformBufferValidation::None);
-	if (!UniformBufferRHIRef.IsValid())
+	if (!UniformBufferRHIRef.IsValid() || UniformBufferRHIRef->IsValid())
 	{
 		return false;
 	}
@@ -52,64 +55,43 @@ void UCompushadyCBV::SyncBufferData(FRHICommandListImmediate& RHICmdList)
 	bBufferDataDirty = false;
 }
 
-void UCompushadyCBV::SetFloat(const int32 Offset, const float Value)
+void UCompushadyCBV::SetFloat(const int64 Offset, const float Value)
 {
-	if (Offset + sizeof(float) <= BufferData.Num())
-	{
-		FMemory::Memcpy(BufferData.GetData() + Offset, &Value, sizeof(float));
-		bBufferDataDirty = true;
-	}
+	SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetFloatArray(const int32 Offset, const TArray<float>& Values)
+void UCompushadyCBV::SetFloatArray(const int64 Offset, const TArray<float>& Values)
 {
-	if (Offset + (Values.Num() * sizeof(float)) <= BufferData.Num())
-	{
-		FMemory::Memcpy(BufferData.GetData() + Offset, Values.GetData(), Values.Num() * sizeof(float));
-		bBufferDataDirty = true;
-	}
+	SetArrayValue(Offset, Values);
 }
 
-void UCompushadyCBV::SetInt(const int32 Offset, const int32 Value)
+void UCompushadyCBV::SetInt(const int64 Offset, const int32 Value)
 {
-	if (Offset + sizeof(int32) <= BufferData.Num())
-	{
-		FMemory::Memcpy(BufferData.GetData() + Offset, &Value, sizeof(int32));
-		bBufferDataDirty = true;
-	}
+	SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetUInt(const int32 Offset, const int64 Value)
+void UCompushadyCBV::SetUInt(const int64 Offset, const int64 Value)
 {
-	const uint32 CastedValue = static_cast<uint32>(Value);
-	if (Offset + sizeof(uint32) <= BufferData.Num())
+	if (Value < 0)
 	{
-		FMemory::Memcpy(BufferData.GetData() + Offset, &CastedValue, sizeof(uint32));
-		bBufferDataDirty = true;
+		return;
 	}
+	SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetDouble(const int32 Offset, const double Value)
+void UCompushadyCBV::SetDouble(const int64 Offset, const double Value)
 {
-	if (Offset + sizeof(double) <= BufferData.Num())
-	{
-		FMemory::Memcpy(BufferData.GetData() + Offset, &Value, sizeof(double));
-		bBufferDataDirty = true;
-	}
+	SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetDoubleArray(const int32 Offset, const TArray<double>& Values)
+void UCompushadyCBV::SetDoubleArray(const int64 Offset, const TArray<double>& Values)
 {
-	if (Offset + (Values.Num() * sizeof(double)) <= BufferData.Num())
-	{
-		FMemory::Memcpy(BufferData.GetData() + Offset, Values.GetData(), Values.Num() * sizeof(double));
-		bBufferDataDirty = true;
-	}
+	SetArrayValue(Offset, Values);
 }
 
-void UCompushadyCBV::SetTransformFloat(const int32 Offset, const FTransform& Transform, const bool bTranspose)
+void UCompushadyCBV::SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose)
 {
-	if (Offset + (16 * sizeof(float)) <= BufferData.Num())
+	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
 		FMatrix44f Matrix(Transform.ToMatrixWithScale());
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
@@ -117,19 +99,19 @@ void UCompushadyCBV::SetTransformFloat(const int32 Offset, const FTransform& Tra
 	}
 }
 
-void UCompushadyCBV::SetTransformDouble(const int32 Offset, const FTransform& Transform, const bool bTranspose)
+void UCompushadyCBV::SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose)
 {
-	if (Offset + (16 * sizeof(double)) <= BufferData.Num())
+	if (IsValidOffset(Offset, 16 * sizeof(double)))
 	{
 		FMatrix44d Matrix(Transform.ToMatrixWithScale());
-		FMemory::Memcpy(BufferData.GetData() + Offset, Matrix.M, 16 * sizeof(double));
+		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(double));
 		bBufferDataDirty = true;
 	}
 }
 
-void UCompushadyCBV::SetPerspectiveFloat(const int32 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose)
+void UCompushadyCBV::SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose)
 {
-	if (Offset + (16 * sizeof(float)) <= BufferData.Num())
+	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
 		FPerspectiveMatrix44f Matrix(FMath::DegreesToRadians(HalfFOV), Width, Height, ZNear, ZFar);
 		if (bRightHanded)
@@ -143,7 +125,47 @@ void UCompushadyCBV::SetPerspectiveFloat(const int32 Offset, const float HalfFOV
 	}
 }
 
+void UCompushadyCBV::SetRotationFloat2(const int64 Offset, const float Radians)
+{
+	if (IsValidOffset(Offset, 4 * sizeof(float)))
+	{
+		float Matrix[4] = { FMath::Cos(Radians), -FMath::Sin(Radians), FMath::Sin(Radians), FMath::Cos(Radians) };
+		FMemory::Memcpy(BufferData.GetData() + Offset, Matrix, 4 * sizeof(float));
+		bBufferDataDirty = true;
+	}
+}
+
 void UCompushadyCBV::BufferDataClean()
 {
 	bBufferDataDirty = false;
+}
+
+int64 UCompushadyCBV::GetBufferSize() const
+{
+	return BufferData.Num();
+}
+
+float UCompushadyCBV::GetFloat(const int64 Offset)
+{
+	return GetValue<float>(Offset);
+}
+
+double UCompushadyCBV::GetDouble(const int64 Offset)
+{
+	return GetValue<double>(Offset);
+}
+
+int32 UCompushadyCBV::GetInt(const int64 Offset)
+{
+	return GetValue<int32>(Offset);
+}
+
+int64 UCompushadyCBV::GetUInt(const int64 Offset)
+{
+	return static_cast<int64>(GetValue<uint32>(Offset));
+}
+
+bool UCompushadyCBV::IsValidOffset(const int64 Offset, const int64 Size) const
+{
+	return Offset >= 0 && (Offset + Size <= BufferData.Num());
 }
