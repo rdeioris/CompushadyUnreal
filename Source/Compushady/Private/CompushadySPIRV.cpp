@@ -83,6 +83,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 	// we need to reduce the blob size
 	else if (EntryPointCharsCounter > 23)
 	{
+		// nop
 	}
 
 	FVulkanShaderHeader VulkanShaderHeader;
@@ -350,7 +351,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			FVulkanShaderHeader::FUniformBufferInfo UniformBufferInfo = {};
 			UniformBufferInfo.ConstantDataOriginalBindingIndex = Pair.Value.Binding;
 
-			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+			ResourceBinding.Type = ECompushadySharedResourceType::UniformBuffer;
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			ResourceBinding.SlotIndex = VulkanShaderHeader.UniformBuffers.Add(UniformBufferInfo);
 			VulkanShaderHeader.UniformBufferSpirvInfos.Add(SpirvInfo);

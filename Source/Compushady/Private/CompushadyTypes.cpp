@@ -117,22 +117,22 @@ const FRHITransitionInfo& UCompushadyResource::GetRHITransitionInfo() const
 
 FStagingBufferRHIRef UCompushadyResource::GetStagingBuffer()
 {
-	if (!StagingBufferRHIRef.IsValid())
+	if (!StagingBufferRHIRef.IsValid() || !StagingBufferRHIRef->IsValid())
 	{
 		StagingBufferRHIRef = RHICreateStagingBuffer();
 	}
 	return StagingBufferRHIRef;
 }
 
-FTextureRHIRef UCompushadyResource::GetReadbackTexture()
+FBufferRHIRef UCompushadyResource::GetUploadBuffer(FRHICommandListImmediate& RHICmdList)
 {
-	if (!ReadbackTextureRHIRef.IsValid())
+	if (!UploadBufferRHIRef.IsValid() || !UploadBufferRHIRef->IsValid())
 	{
-		FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(nullptr, TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat());
-		TextureCreateDesc.SetFlags(ETextureCreateFlags::CPUReadback);
-		ReadbackTextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
+		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), EBufferUsageFlags::VertexBuffer, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
 	}
-	return ReadbackTextureRHIRef;
+
+	return UploadBufferRHIRef;
 }
 
 void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
@@ -182,7 +182,7 @@ void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, cons
 		return;
 	}
 
-	auto PngWriter = [this, Filename](void* Data)
+	auto PngWriter = [this, Filename](const void* Data)
 		{
 			FIntVector Size = GetTextureSize();
 			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
@@ -200,12 +200,12 @@ void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, cons
 			}
 		};
 
-	MapAndExecute(PngWriter, OnSignaled);
+	MapReadAndExecute(PngWriter, OnSignaled);
 }
 
 void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
 {
-	auto FileWriter = [this, Filename](void* Data)
+	auto FileWriter = [this, Filename](const void* Data)
 		{
 			int32 Size = 0;
 			if (IsValidBuffer())
@@ -218,12 +218,12 @@ void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FComp
 			}
 			if (Size > 0)
 			{
-				TArrayView<uint8> ArrayView = TArrayView<uint8>(reinterpret_cast<uint8*>(Data), Size);
+				TArrayView<const uint8> ArrayView = TArrayView<const uint8>(reinterpret_cast<const uint8*>(Data), Size);
 				FFileHelper::SaveArrayToFile(ArrayView, *Filename);
 			}
 		};
 
-	MapAndExecute(FileWriter, OnSignaled);
+	MapReadAndExecute(FileWriter, OnSignaled);
 }
 
 void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
@@ -545,7 +545,7 @@ int32 UCompushadyResource::GetTextureNumSlices() const
 	return 0;
 }
 
-void UCompushadyResource::MapAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
+void UCompushadyResource::MapReadAndExecute(TFunction<void(const void*)> InFunction, const FCompushadySignaled& OnSignaled)
 {
 	if (bRunning)
 	{
@@ -555,30 +555,7 @@ void UCompushadyResource::MapAndExecute(TFunction<void(void*)> InFunction, const
 
 	ClearFence();
 
-	if (TextureRHIRef.IsValid() && TextureRHIRef->IsValid())
-	{
-		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
-			[this, InFunction](FRHICommandListImmediate& RHICmdList)
-			{
-				FTextureRHIRef ReadbackTexture = GetReadbackTexture();
-				RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-				FRHICopyTextureInfo CopyTextureInfo;
-				RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
-				RHICmdList.SubmitCommandsAndFlushGPU();
-				RHICmdList.BlockUntilGPUIdle();
-				int32 Width = 0;
-				int32 Height = 0;
-				void* Data = nullptr;
-				RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
-				if (Data)
-				{
-					InFunction(Data);
-					RHICmdList.UnmapStagingSurface(ReadbackTexture);
-				}
-				WriteFence(RHICmdList);
-			});
-	}
-	else if (BufferRHIRef.IsValid() && BufferRHIRef->IsValid())
+	if (IsValidBuffer())
 	{
 		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
 			[this, InFunction](FRHICommandListImmediate& RHICmdList)
@@ -588,7 +565,7 @@ void UCompushadyResource::MapAndExecute(TFunction<void(void*)> InFunction, const
 				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
 				RHICmdList.SubmitCommandsAndFlushGPU();
 				RHICmdList.BlockUntilGPUIdle();
-				uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
+				void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
 				if (Data)
 				{
 					InFunction(Data);
@@ -599,43 +576,60 @@ void UCompushadyResource::MapAndExecute(TFunction<void(void*)> InFunction, const
 	}
 	else
 	{
-		OnSignaled.ExecuteIfBound(false, "The Resource is in invalid state");
+		OnSignaled.ExecuteIfBound(false, "The Resource is in invalid state or is not mappable");
 		return;
 	}
 
 	CheckFence(OnSignaled);
 }
 
-bool UCompushadyResource::MapAndExecuteSync(TFunction<void(void*)> InFunction)
+void UCompushadyResource::MapWriteAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
+{
+	if (bRunning)
+	{
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
+		return;
+	}
+
+	ClearFence();
+
+	if (IsValidBuffer())
+	{
+		ENQUEUE_RENDER_COMMAND(DoCompushadyUploadBuffer)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				FBufferRHIRef UploadBuffer = GetUploadBuffer(RHICmdList);
+				void* Data = RHICmdList.LockBuffer(UploadBuffer, 0, UploadBuffer->GetSize(), EResourceLockMode::RLM_WriteOnly);
+				if (Data)
+				{
+					InFunction(Data);
+					RHICmdList.UnlockBuffer(UploadBuffer);
+				}
+				RHICmdList.Transition(FRHITransitionInfo(UploadBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+				RHICmdList.CopyBufferRegion(BufferRHIRef, 0, UploadBuffer, 0, UploadBuffer->GetSize());
+				RHICmdList.SubmitCommandsAndFlushGPU();
+				RHICmdList.BlockUntilGPUIdle();
+				WriteFence(RHICmdList);
+			});
+	}
+	else
+	{
+		OnSignaled.ExecuteIfBound(false, "The Resource is in invalid state or is not mappable");
+		return;
+	}
+
+	CheckFence(OnSignaled);
+}
+
+bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InFunction)
 {
 	if (bRunning)
 	{
 		return false;
 	}
 
-	if (TextureRHIRef.IsValid() && TextureRHIRef->IsValid())
-	{
-		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
-			[this, InFunction](FRHICommandListImmediate& RHICmdList)
-			{
-				FTextureRHIRef ReadbackTexture = GetReadbackTexture();
-				RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-				FRHICopyTextureInfo CopyTextureInfo;
-				RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
-				RHICmdList.SubmitCommandsAndFlushGPU();
-				RHICmdList.BlockUntilGPUIdle();
-				int32 Width = 0;
-				int32 Height = 0;
-				void* Data = nullptr;
-				RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
-				if (Data)
-				{
-					InFunction(Data);
-					RHICmdList.UnmapStagingSurface(ReadbackTexture);
-				}
-			});
-	}
-	else if (BufferRHIRef.IsValid() && BufferRHIRef->IsValid())
+	if (IsValidBuffer())
 	{
 		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
 			[this, InFunction](FRHICommandListImmediate& RHICmdList)
@@ -645,7 +639,7 @@ bool UCompushadyResource::MapAndExecuteSync(TFunction<void(void*)> InFunction)
 				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
 				RHICmdList.SubmitCommandsAndFlushGPU();
 				RHICmdList.BlockUntilGPUIdle();
-				uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
+				void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
 				if (Data)
 				{
 					InFunction(Data);
@@ -662,7 +656,57 @@ bool UCompushadyResource::MapAndExecuteSync(TFunction<void(void*)> InFunction)
 	return true;
 }
 
-void UCompushadyResource::MapAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
+bool UCompushadyResource::MapWriteAndExecuteSync(TFunction<void(void*)> InFunction)
+{
+	if (bRunning)
+	{
+		return false;
+	}
+
+	if (IsValidBuffer())
+	{
+		ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateBuffer)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				FBufferRHIRef UploadBuffer = GetUploadBuffer(RHICmdList);
+				void* Data = RHICmdList.LockBuffer(UploadBuffer, 0, UploadBuffer->GetSize(), EResourceLockMode::RLM_WriteOnly);
+				if (Data)
+				{
+					InFunction(Data);
+					RHICmdList.UnlockBuffer(UploadBuffer);
+				}
+				RHICmdList.Transition(FRHITransitionInfo(UploadBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+				RHICmdList.CopyBufferRegion(BufferRHIRef, 0, UploadBuffer, 0, UploadBuffer->GetSize());
+				RHICmdList.SubmitCommandsAndFlushGPU();
+				RHICmdList.BlockUntilGPUIdle();
+				WriteFence(RHICmdList);
+			});
+	}
+	else
+	{
+		return false;
+	}
+
+	FlushRenderingCommands();
+	return true;
+}
+
+void UCompushadyResource::MapReadAndExecuteInGameThread(TFunction<void(const void*)> InFunction, const FCompushadySignaled& OnSignaled)
+{
+	auto Wrapper = [this, InFunction](const void* Data)
+		{
+			FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([this, InFunction, Data]()
+				{
+					InFunction(Data);
+				}, TStatId(), nullptr, ENamedThreads::GameThread);
+			FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
+		};
+
+	MapReadAndExecute(Wrapper, OnSignaled);
+}
+
+void UCompushadyResource::MapWriteAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
 {
 	auto Wrapper = [this, InFunction](void* Data)
 		{
@@ -673,5 +717,5 @@ void UCompushadyResource::MapAndExecuteInGameThread(TFunction<void(void*)> InFun
 			FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
 		};
 
-	MapAndExecute(Wrapper, OnSignaled);
+	MapWriteAndExecute(Wrapper, OnSignaled);
 }

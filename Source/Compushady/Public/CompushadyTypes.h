@@ -167,22 +167,26 @@ public:
 	const FRHITransitionInfo& GetRHITransitionInfo() const;
 
 	FStagingBufferRHIRef GetStagingBuffer();
-	FTextureRHIRef GetReadbackTexture();
+	FBufferRHIRef GetUploadBuffer(FRHICommandListImmediate& RHICmdList);
 
 	bool IsValidTexture() const;
 	bool IsValidBuffer() const;
 
 	void OnSignalReceived() override;
 
-	void MapAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
-	void MapAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
-	bool MapAndExecuteSync(TFunction<void(void*)> InFunction);
+	void MapReadAndExecute(TFunction<void(const void*)> InFunction, const FCompushadySignaled& OnSignaled);
+	void MapReadAndExecuteInGameThread(TFunction<void(const void*)> InFunction, const FCompushadySignaled& OnSignaled);
+	bool MapReadAndExecuteSync(TFunction<void(const void*)> InFunction);
+
+	void MapWriteAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
+	void MapWriteAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
+	bool MapWriteAndExecuteSync(TFunction<void(void*)> InFunction);
 
 protected:
 	FTextureRHIRef TextureRHIRef;
 	FBufferRHIRef BufferRHIRef;
 	FStagingBufferRHIRef StagingBufferRHIRef;
+	FBufferRHIRef UploadBufferRHIRef;
 	FRHITransitionInfo RHITransitionInfo;
 	TArray<uint8> ReadbackCache;
-	FTextureRHIRef ReadbackTextureRHIRef;
 };

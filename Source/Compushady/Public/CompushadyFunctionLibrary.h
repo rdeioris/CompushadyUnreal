@@ -131,12 +131,6 @@ public:
     static UCompushadyCompute* CreateCompushadyComputeFromHLSLShaderAsset(UCompushadyShader* ShaderAsset, FString& ErrorMessages, const FString& EntryPoint = "main");
 
     UFUNCTION(BlueprintCallable, Category = "Compushady")
-    static UCompushadyUAV* CreateCompushadyUAVFromStaticMeshPositionsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD);
-
-    UFUNCTION(BlueprintCallable, Category = "Compushady")
-    static UCompushadyUAV* CreateCompushadyUAVFromStaticMeshTexCoordsCopy(const FString& Name, UStaticMesh* StaticMesh, const int32 LOD);
-
-    UFUNCTION(BlueprintCallable, Category = "Compushady")
     static UCompushadySoundWave* CreateCompushadySoundWave(const UCompushadyCompute* Compute, const FCompushadyResourceArray& ResourceArray, const float Duration);
 
     DECLARE_FUNCTION(execCreateCompushadyCBVFromArray)
