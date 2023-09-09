@@ -135,6 +135,57 @@ FBufferRHIRef UCompushadyResource::GetUploadBuffer(FRHICommandListImmediate& RHI
 	return UploadBufferRHIRef;
 }
 
+FTextureRHIRef UCompushadyResource::GetReadbackTexture()
+{
+	if (!ReadbackTextureRHIRef.IsValid() || !ReadbackTextureRHIRef->IsValid())
+	{
+		FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(nullptr, TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat());
+		TextureCreateDesc.SetFlags(ETextureCreateFlags::CPUReadback);
+		ReadbackTextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	}
+	return ReadbackTextureRHIRef;
+}
+
+bool UCompushadyResource::UpdateTextureSync(const uint8* Ptr, const int64 Size, const FCompushadyCopyInfo& CopyInfo)
+{
+	if (bRunning || !IsValidTexture())
+	{
+		return false;
+	}
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateTexture)(
+		[this, &CopyInfo, Ptr, Size](FRHICommandListImmediate& RHICmdList)
+		{
+			const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
+			if (Dimension == ETextureDimension::Texture2D)
+			{
+				FUpdateTextureRegion2D UpdateRegion(CopyInfo.DestinationOffset.X, CopyInfo.DestinationOffset.Y, CopyInfo.SourceOffset.X, CopyInfo.SourceOffset.Y,
+					CopyInfo.SourceSize.X > 0 ? CopyInfo.SourceSize.X : TextureRHIRef->GetSizeX(),
+					CopyInfo.SourceSize.Y > 0 ? CopyInfo.SourceSize.Y : TextureRHIRef->GetSizeY());
+				RHICmdList.UpdateTexture2D(TextureRHIRef, 0, UpdateRegion, TextureRHIRef->GetSizeX() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes, Ptr);
+			}
+			else if (Dimension == ETextureDimension::Texture2DArray)
+			{
+				FUpdateTextureRegion3D UpdateRegion(CopyInfo.DestinationOffset.X, CopyInfo.DestinationOffset.Y, CopyInfo.DestinationSlice, CopyInfo.SourceOffset.X, CopyInfo.SourceOffset.Y, CopyInfo.SourceSlice,
+					CopyInfo.SourceSize.X > 0 ? CopyInfo.SourceSize.X : TextureRHIRef->GetSizeX(),
+					CopyInfo.SourceSize.Y > 0 ? CopyInfo.SourceSize.Y : TextureRHIRef->GetSizeY(),
+					1);
+				RHICmdList.UpdateTexture3D(TextureRHIRef, 0, UpdateRegion,
+					TextureRHIRef->GetSizeX() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes,
+					TextureRHIRef->GetSizeX() * TextureRHIRef->GetSizeY() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes, Ptr);
+			}
+		});
+
+	FlushRenderingCommands();
+
+	return true;
+}
+
+bool UCompushadyResource::UpdateTextureSync(const TArray<uint8>& Pixels, const FCompushadyCopyInfo& CopyInfo)
+{
+	return UpdateTextureSync(Pixels.GetData(), Pixels.Num(), CopyInfo);
+}
+
 void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
 {
 	if (bRunning)

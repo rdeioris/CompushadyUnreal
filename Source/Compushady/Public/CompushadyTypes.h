@@ -33,10 +33,10 @@ struct COMPUSHADY_API FCompushadyFloat2
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float X;
+	float X = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float Y;
+	float Y = 0;
 
 };
 
@@ -46,13 +46,13 @@ struct COMPUSHADY_API FCompushadyFloat3
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float X;
+	float X = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float Y;
+	float Y = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float Z;
+	float Z = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -61,16 +61,16 @@ struct COMPUSHADY_API FCompushadyFloat4
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float X;
+	float X = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float Y;
+	float Y = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float Z;
+	float Z = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	float W;
+	float W = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -168,6 +168,7 @@ public:
 
 	FStagingBufferRHIRef GetStagingBuffer();
 	FBufferRHIRef GetUploadBuffer(FRHICommandListImmediate& RHICmdList);
+	FTextureRHIRef GetReadbackTexture();
 
 	bool IsValidTexture() const;
 	bool IsValidBuffer() const;
@@ -182,11 +183,17 @@ public:
 	void MapWriteAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
 	bool MapWriteAndExecuteSync(TFunction<void(void*)> InFunction);
 
+	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "CopyInfo"), Category = "Compushady")
+	bool UpdateTextureSync(const TArray<uint8>& Pixels, const FCompushadyCopyInfo& CopyInfo);
+
+	bool UpdateTextureSync(const uint8* Ptr, const int64 Size, const FCompushadyCopyInfo& CopyInfo);
+
 protected:
 	FTextureRHIRef TextureRHIRef;
 	FBufferRHIRef BufferRHIRef;
 	FStagingBufferRHIRef StagingBufferRHIRef;
 	FBufferRHIRef UploadBufferRHIRef;
 	FRHITransitionInfo RHITransitionInfo;
+	FTextureRHIRef ReadbackTextureRHIRef;
 	TArray<uint8> ReadbackCache;
 };
