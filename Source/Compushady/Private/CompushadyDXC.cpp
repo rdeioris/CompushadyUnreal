@@ -39,6 +39,8 @@ THIRD_PARTY_INCLUDES_END
 #include "Interfaces/IPluginManager.h"
 #endif
 
+#include "Serialization/ArrayWriter.h"
+
 namespace Compushady
 {
 	namespace DXC
@@ -514,6 +516,12 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 	ThreadGroupSize = FIntVector(TGX, TGY, TGZ);
 
 	ShaderReflection->Release();
+
+	FShaderResourceTable ShaderResourceTable;
+	FArrayWriter Writer;
+	Writer << ShaderResourceTable;
+
+	ByteCode.Insert(Writer, 0);
 
 	// sort resources
 	TArray<uint32> CBVKeys;

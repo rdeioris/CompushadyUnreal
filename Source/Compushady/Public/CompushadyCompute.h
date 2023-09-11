@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
-#include "Compushady.h"
 #include "CompushadyCBV.h"
 #include "CompushadySRV.h"
 #include "CompushadyUAV.h"
@@ -17,10 +16,10 @@ struct FCompushadyResourceBinding
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	int32 BindingIndex;
+	int32 BindingIndex = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	int32 SlotIndex;
+	int32 SlotIndex = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	FString Name;
@@ -60,6 +59,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, meta=(AutoCreateRefTerm = "ResourceArray,OnSignaled"),Category="Compushady")
 	void Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap,OnSignaled"), Category = "Compushady")
+	void DispatchByMap(const TMap<FString, UCompushadyResource*>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
 	void DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* Buffer, const int32 Offset, const FCompushadySignaled& OnSignaled);
@@ -109,6 +111,15 @@ public:
 	{
 		return ComputeShaderRef;
 	}
+
+	/* The following block is mainly used for unit testing */
+	UFUNCTION()
+	void StoreLastSignal(bool bSuccess, const FString& ErrorMessage);
+
+	bool bLastSuccess = false;
+	FString LastErrorMessages;
+
+	/* end of testign block */
 
 protected:
 

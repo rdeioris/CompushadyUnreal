@@ -146,33 +146,46 @@ FTextureRHIRef UCompushadyResource::GetReadbackTexture()
 	return ReadbackTextureRHIRef;
 }
 
-bool UCompushadyResource::UpdateTextureSync(const uint8* Ptr, const int64 Size, const FCompushadyCopyInfo& CopyInfo)
+bool UCompushadyResource::UpdateTextureSliceSync(const uint8* Ptr, const int64 Size, const int32 Slice)
 {
 	if (bRunning || !IsValidTexture())
 	{
 		return false;
 	}
 
+	const int32 RowPitch = TextureRHIRef->GetSizeX() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes;
+
 	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateTexture)(
-		[this, &CopyInfo, Ptr, Size](FRHICommandListImmediate& RHICmdList)
+		[this, Ptr, Size, Slice, RowPitch](FRHICommandListImmediate& RHICmdList)
 		{
 			const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
 			if (Dimension == ETextureDimension::Texture2D)
 			{
-				FUpdateTextureRegion2D UpdateRegion(CopyInfo.DestinationOffset.X, CopyInfo.DestinationOffset.Y, CopyInfo.SourceOffset.X, CopyInfo.SourceOffset.Y,
-					CopyInfo.SourceSize.X > 0 ? CopyInfo.SourceSize.X : TextureRHIRef->GetSizeX(),
-					CopyInfo.SourceSize.Y > 0 ? CopyInfo.SourceSize.Y : TextureRHIRef->GetSizeY());
-				RHICmdList.UpdateTexture2D(TextureRHIRef, 0, UpdateRegion, TextureRHIRef->GetSizeX() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes, Ptr);
+				uint32 DestStride;
+				void* Data = RHICmdList.LockTexture2D(TextureRHIRef, 0, EResourceLockMode::RLM_WriteOnly, DestStride, false);
+				if (Data)
+				{
+					CopyTextureData2D(Ptr, Data, TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat(), RowPitch, DestStride);
+					RHICmdList.UnlockTexture2D(TextureRHIRef, 0, false);
+				}
 			}
 			else if (Dimension == ETextureDimension::Texture2DArray)
 			{
-				FUpdateTextureRegion3D UpdateRegion(CopyInfo.DestinationOffset.X, CopyInfo.DestinationOffset.Y, CopyInfo.DestinationSlice, CopyInfo.SourceOffset.X, CopyInfo.SourceOffset.Y, CopyInfo.SourceSlice,
-					CopyInfo.SourceSize.X > 0 ? CopyInfo.SourceSize.X : TextureRHIRef->GetSizeX(),
-					CopyInfo.SourceSize.Y > 0 ? CopyInfo.SourceSize.Y : TextureRHIRef->GetSizeY(),
+				uint32 DestStride;
+				void* Data = RHICmdList.LockTexture2DArray(TextureRHIRef, Slice, 0, EResourceLockMode::RLM_WriteOnly, DestStride, false);
+				if (Data)
+				{
+					CopyTextureData2D(Ptr, Data, TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat(), RowPitch, DestStride);
+					RHICmdList.UnlockTexture2DArray(TextureRHIRef, Slice, 0, false);
+				}
+			}
+			else if (Dimension == ETextureDimension::Texture3D)
+			{
+				FUpdateTextureRegion3D UpdateRegion(0, 0, Slice, 0, 0, 0,
+					TextureRHIRef->GetSizeX(),
+					TextureRHIRef->GetSizeY(),
 					1);
-				RHICmdList.UpdateTexture3D(TextureRHIRef, 0, UpdateRegion,
-					TextureRHIRef->GetSizeX() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes,
-					TextureRHIRef->GetSizeX() * TextureRHIRef->GetSizeY() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes, Ptr);
+				RHICmdList.UpdateTexture3D(TextureRHIRef, 0, UpdateRegion, RowPitch, RowPitch * TextureRHIRef->GetSizeY(), Ptr);
 			}
 		});
 
@@ -181,9 +194,9 @@ bool UCompushadyResource::UpdateTextureSync(const uint8* Ptr, const int64 Size, 
 	return true;
 }
 
-bool UCompushadyResource::UpdateTextureSync(const TArray<uint8>& Pixels, const FCompushadyCopyInfo& CopyInfo)
+bool UCompushadyResource::UpdateTextureSliceSync(const TArray<uint8>& Pixels, const int32 Slice)
 {
-	return UpdateTextureSync(Pixels.GetData(), Pixels.Num(), CopyInfo);
+	return UpdateTextureSliceSync(Pixels.GetData(), Pixels.Num(), Slice);
 }
 
 void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
@@ -223,6 +236,16 @@ bool UCompushadyResource::IsValidTexture() const
 bool UCompushadyResource::IsValidBuffer() const
 {
 	return BufferRHIRef.IsValid() && BufferRHIRef->IsValid();
+}
+
+EPixelFormat UCompushadyResource::GetTexturePixelFormat() const
+{
+	if (IsValidTexture())
+	{
+		return TextureRHIRef->GetFormat();
+	}
+
+	return EPixelFormat::PF_Unknown;
 }
 
 void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
@@ -306,7 +329,7 @@ void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 E
 	CheckFence(OnSignaled, ReadbackCache);
 }
 
-void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo)
+void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo)
 {
 	if (bRunning)
 	{
@@ -336,7 +359,7 @@ void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTar
 	CheckFence(OnSignaled);
 }
 
-void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo)
+void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo)
 {
 	if (bRunning)
 	{
@@ -367,7 +390,7 @@ void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, cons
 }
 
 
-void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo)
+void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo)
 {
 	if (bRunning)
 	{
@@ -397,7 +420,7 @@ void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray*
 	CheckFence(OnSignaled);
 }
 
-bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled)
+bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled)
 {
 	if (Destination->GetFormat() != Source->GetFormat())
 	{
@@ -680,30 +703,29 @@ bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InF
 		return false;
 	}
 
-	if (IsValidBuffer())
-	{
-		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
-			[this, InFunction](FRHICommandListImmediate& RHICmdList)
-			{
-				FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
-				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-				RHICmdList.SubmitCommandsAndFlushGPU();
-				RHICmdList.BlockUntilGPUIdle();
-				void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
-				if (Data)
-				{
-					InFunction(Data);
-					RHICmdList.UnlockStagingBuffer(StagingBuffer);
-				}
-			});
-	}
-	else
+	if (!IsValidBuffer())
 	{
 		return false;
 	}
 
+	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
+		[this, InFunction](FRHICommandListImmediate& RHICmdList)
+		{
+			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
+			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
+			RHICmdList.SubmitCommandsAndFlushGPU();
+			RHICmdList.BlockUntilGPUIdle();
+			void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
+			if (Data)
+			{
+				InFunction(Data);
+				RHICmdList.UnlockStagingBuffer(StagingBuffer);
+			}
+		});
+
 	FlushRenderingCommands();
+
 	return true;
 }
 
@@ -714,32 +736,31 @@ bool UCompushadyResource::MapWriteAndExecuteSync(TFunction<void(void*)> InFuncti
 		return false;
 	}
 
-	if (IsValidBuffer())
-	{
-		ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateBuffer)(
-			[this, InFunction](FRHICommandListImmediate& RHICmdList)
-			{
-				FBufferRHIRef UploadBuffer = GetUploadBuffer(RHICmdList);
-				void* Data = RHICmdList.LockBuffer(UploadBuffer, 0, UploadBuffer->GetSize(), EResourceLockMode::RLM_WriteOnly);
-				if (Data)
-				{
-					InFunction(Data);
-					RHICmdList.UnlockBuffer(UploadBuffer);
-				}
-				RHICmdList.Transition(FRHITransitionInfo(UploadBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
-				RHICmdList.CopyBufferRegion(BufferRHIRef, 0, UploadBuffer, 0, UploadBuffer->GetSize());
-				RHICmdList.SubmitCommandsAndFlushGPU();
-				RHICmdList.BlockUntilGPUIdle();
-				WriteFence(RHICmdList);
-			});
-	}
-	else
+	if (!IsValidBuffer())
 	{
 		return false;
 	}
 
+	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateBuffer)(
+		[this, InFunction](FRHICommandListImmediate& RHICmdList)
+		{
+			FBufferRHIRef UploadBuffer = GetUploadBuffer(RHICmdList);
+			void* Data = RHICmdList.LockBuffer(UploadBuffer, 0, UploadBuffer->GetSize(), EResourceLockMode::RLM_WriteOnly);
+			if (Data)
+			{
+				InFunction(Data);
+				RHICmdList.UnlockBuffer(UploadBuffer);
+			}
+			RHICmdList.Transition(FRHITransitionInfo(UploadBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+			RHICmdList.CopyBufferRegion(BufferRHIRef, 0, UploadBuffer, 0, UploadBuffer->GetSize());
+			RHICmdList.SubmitCommandsAndFlushGPU();
+			RHICmdList.BlockUntilGPUIdle();
+			WriteFence(RHICmdList);
+		});
+
 	FlushRenderingCommands();
+
 	return true;
 }
 
@@ -769,4 +790,50 @@ void UCompushadyResource::MapWriteAndExecuteInGameThread(TFunction<void(void*)> 
 		};
 
 	MapWriteAndExecute(Wrapper, OnSignaled);
+}
+
+bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const void*, const int32)> InFunction, const int32 Slice)
+{
+	if (bRunning || !IsValidTexture())
+	{
+		return false;
+	}
+
+	FRHICopyTextureInfo CopyTextureInfo;
+	CopyTextureInfo.Size.X = TextureRHIRef->GetSizeX();
+	CopyTextureInfo.Size.Y = TextureRHIRef->GetSizeY();
+	CopyTextureInfo.Size.Z = 1;
+
+	const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
+	if (Dimension == ETextureDimension::Texture2DArray)
+	{
+		CopyTextureInfo.SourceSliceIndex = Slice;
+	}
+	else if (Dimension == ETextureDimension::Texture3D)
+	{
+		CopyTextureInfo.SourcePosition.Z = Slice;
+	}
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
+		[this, InFunction, &CopyTextureInfo](FRHICommandListImmediate& RHICmdList)
+		{
+			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
+			RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+			RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
+			RHICmdList.SubmitCommandsAndFlushGPU();
+			RHICmdList.BlockUntilGPUIdle();
+			int32 Width = 0;
+			int32 Height = 0;
+			void* Data = nullptr;
+			RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
+			if (Data)
+			{
+				InFunction(Data, Width * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes);
+				RHICmdList.UnmapStagingSurface(ReadbackTexture);
+			}
+		});
+
+	FlushRenderingCommands();
+
+	return true;
 }

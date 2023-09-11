@@ -227,26 +227,6 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVStructuredBuffer(
 	return CompushadyUAV;
 }
 
-UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture1D(const FString& Name, const int32 Width, const EPixelFormat Format)
-{
-	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, 1, Format);
-	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
-
-	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
-	{
-		return nullptr;
-	}
-
-	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
-	if (!CompushadyUAV->InitializeFromTexture(TextureRHIRef))
-	{
-		return nullptr;
-	}
-
-	return CompushadyUAV;
-}
-
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
@@ -343,6 +323,32 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromTexture2D(UTe
 	FlushRenderingCommands();
 
 	FTextureResource* Resource = Texture2D->GetResource();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromTexture2DArray(UTexture2DArray* Texture2DArray)
+{
+	if (Texture2DArray->IsStreamable() && !Texture2DArray->IsFullyStreamedIn())
+	{
+		Texture2DArray->SetForceMipLevelsToBeResident(30.0f);
+		Texture2DArray->WaitForStreaming();
+	}
+
+	if (!Texture2DArray->GetResource() || !Texture2DArray->GetResource()->IsInitialized())
+	{
+		Texture2DArray->UpdateResource();
+	}
+
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = Texture2DArray->GetResource();
 
 	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
 	if (!CompushadySRV->InitializeFromTexture(Resource->GetTextureRHI()))

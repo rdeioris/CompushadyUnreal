@@ -85,9 +85,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyUAVTest_MapTextureRead, "Compushady.
 
 bool FCompushadyUAVTest_MapTextureRead::RunTest(const FString& Parameters)
 {
-	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVTexture1D(TestName, 64, EPixelFormat::PF_R32_UINT);
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(TestName, 64, 1, EPixelFormat::PF_R32_UINT);
 
-	bool bSuccess = UAV->MapWriteAndExecuteSync([](void* Data)
+	const bool bSuccess = UAV->MapReadAndExecuteSync([](const void* Data)
 		{
 			// nop
 		});
@@ -102,15 +102,51 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyUAVTest_MapTextureWrite, "Compushady
 
 bool FCompushadyUAVTest_MapTextureWrite::RunTest(const FString& Parameters)
 {
-	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVTexture1D(TestName, 64, EPixelFormat::PF_R32_UINT);
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(TestName, 64, 1, EPixelFormat::PF_R32_UINT);
 
-	bool bSuccess = UAV->MapReadAndExecuteSync([](const void* Data)
+	const bool bSuccess = UAV->MapWriteAndExecuteSync([](void* Data)
 		{
 			// nop
 		});
 
 
 	TestFalse(TEXT("bSuccess"), bSuccess);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyUAVTest_Texture2D, "Compushady.UAV.Texture2D", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyUAVTest_Texture2D::RunTest(const FString& Parameters)
+{
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(TestName, 8, 8, EPixelFormat::PF_R32G32_UINT);
+
+	TArray<uint64> Slice;
+	for (int32 Index = 0; Index < 8 * 8; Index++)
+	{
+		uint64 Value0 = Index;
+		uint64 Value1 = Index * 2;
+		Slice.Add(Value0 | Value1 << 32);
+	}
+
+	const int32 SliceSize = 8 * 8 * sizeof(uint64);
+
+
+	UAV->UpdateTextureSliceSync(reinterpret_cast<uint8*>(Slice.GetData()), SliceSize, 0);
+
+
+	TArray<uint64> Output;
+	Output.AddZeroed(8 * 8);
+
+	const bool bSuccess = UAV->MapTextureSliceAndExecuteSync([&Output, SliceSize](const void* Data, const int32 RowPitch)
+		{
+			CopyTextureData2D(Data, Output.GetData(), 8, EPixelFormat::PF_R32G32_UINT, RowPitch, 8 * sizeof(uint64));
+		}, 0);
+
+
+	TestTrue(TEXT("bSuccess"), bSuccess);
+
+	TestEqual(TEXT("Output[63]"), Output[63], 63ULL | (126ULL << 32));
 
 	return true;
 }
@@ -130,9 +166,97 @@ bool FCompushadyUAVTest_Texture2DArray::RunTest(const FString& Parameters)
 		Slices.Add(Value0 | Value1 << 32);
 	}
 
-	bool bSuccess = UAV->UpdateTextureSync(reinterpret_cast<uint8*>(Slices.GetData()), 8 * 8 * 8, FCompushadyCopyInfo());
+	const int32 SliceSize = 8 * 8 * sizeof(uint64);
+
+	for (int32 Slice = 0; Slice < 4; Slice++)
+	{
+		UAV->UpdateTextureSliceSync(reinterpret_cast<uint8*>(Slices.GetData()) + (Slice * SliceSize), SliceSize, Slice);
+	}
+
+	TArray<uint64> Output;
+	Output.AddZeroed(8 * 8);
+
+	const bool bSuccess = UAV->MapTextureSliceAndExecuteSync([&Output, SliceSize](const void* Data, const int32 RowPitch)
+		{
+			CopyTextureData2D(Data, Output.GetData(), 8, EPixelFormat::PF_R32G32_UINT, RowPitch, 8 * sizeof(uint64));
+		}, 2);
 
 	TestTrue(TEXT("bSuccess"), bSuccess);
+
+	TestEqual(TEXT("Output[0]"), Output[0], 128ULL | (256ULL << 32));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyUAVTest_Texture3D, "Compushady.UAV.Texture3D", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyUAVTest_Texture3D::RunTest(const FString& Parameters)
+{
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(TestName, 8, 8, 4, EPixelFormat::PF_R32G32_UINT);
+
+	TArray<uint64> Slices;
+	for (int32 Index = 0; Index < 8 * 8 * 4; Index++)
+	{
+		uint64 Value0 = Index;
+		uint64 Value1 = Index * 2;
+		Slices.Add(Value0 | Value1 << 32);
+	}
+
+	const int32 SliceSize = 8 * 8 * sizeof(uint64);
+
+	for (int32 Slice = 0; Slice < 4; Slice++)
+	{
+		UAV->UpdateTextureSliceSync(reinterpret_cast<uint8*>(Slices.GetData()) + (Slice * SliceSize), SliceSize, Slice);
+	}
+
+	TArray<uint64> Output;
+	Output.AddZeroed(8 * 8);
+
+	const bool bSuccess = UAV->MapTextureSliceAndExecuteSync([&Output, SliceSize](const void* Data, const int32 RowPitch)
+		{
+			CopyTextureData2D(Data, Output.GetData(), 8, EPixelFormat::PF_R32G32_UINT, RowPitch, 8 * sizeof(uint64));
+		}, 2);
+
+	TestTrue(TEXT("bSuccess"), bSuccess);
+
+	TestEqual(TEXT("Output[0]"), Output[0], 128ULL | (256ULL << 32));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyUAVTest_Texture3DSlice0, "Compushady.UAV.Texture3DSlice0", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyUAVTest_Texture3DSlice0::RunTest(const FString& Parameters)
+{
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(TestName, 8, 8, 4, EPixelFormat::PF_R32G32_UINT);
+
+	TArray<uint64> Slices;
+	for (int32 Index = 0; Index < 8 * 8 * 4; Index++)
+	{
+		uint64 Value0 = Index;
+		uint64 Value1 = Index * 2;
+		Slices.Add(Value0 | Value1 << 32);
+	}
+
+	const int32 SliceSize = 8 * 8 * sizeof(uint64);
+
+	for (int32 Slice = 0; Slice < 4; Slice++)
+	{
+		UAV->UpdateTextureSliceSync(reinterpret_cast<uint8*>(Slices.GetData()) + (Slice * SliceSize), SliceSize, Slice);
+	}
+
+	TArray<uint64> Output;
+	Output.AddZeroed(8 * 8);
+
+	const bool bSuccess = UAV->MapTextureSliceAndExecuteSync([&Output, SliceSize](const void* Data, const int32 RowPitch)
+		{
+			CopyTextureData2D(Data, Output.GetData(), 8, EPixelFormat::PF_R32G32_UINT, RowPitch, 8 * sizeof(uint64));
+		}, 0);
+
+
+	TestTrue(TEXT("bSuccess"), bSuccess);
+
+	TestEqual(TEXT("Output[63]"), Output[63], 63ULL | (126ULL << 32));
 
 	return true;
 }

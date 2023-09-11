@@ -492,9 +492,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 				for (int32 Index = 0; Index < Size; Index++)
 				{
 					SpirV[Offset + Index] = 0x00010000;
+				}
+			}
 		}
-	}
-}
 
 		Offset += Size;
 	}
@@ -504,10 +504,16 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 
 	Writer << VulkanShaderHeader;
 
+#if COMPUSHADY_UE_VERSION >= 53
+	FShaderResourceTable ShaderResourceTable;
+	Writer << ShaderResourceTable;
+#endif
+
 	int32 SpirvSize = ByteCode.Num();
 
-	// a bit annoying, but we need to manage the const here
 	Writer << SpirvSize;
+
+	// a bit annoying, but we need to manage the const here
 	Writer.Serialize(const_cast<void*>(reinterpret_cast<const void*>(ByteCode.GetData())), ByteCode.Num());
 
 	int32 MinusOne = -1;
@@ -550,6 +556,6 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 #else
 bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
-    return false;
+	return false;
 }
 #endif

@@ -123,30 +123,9 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 
 bool UCompushadyCompute::ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs)
 {
+	Blob.Append(ByteCode);
+
 	FShaderCode ShaderCode;
-
-	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
-	{
-		FShaderResourceTable ShaderResourceTable;
-		FArrayWriter Writer;
-		Writer << ShaderResourceTable;
-
-		Blob.Append(Writer);
-		ShaderCode.GetWriteAccess().Append(ByteCode);
-	}
-	else if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
-	{
-		Blob.Append(ByteCode);
-	}
-	else if (RHIInterfaceType == ERHIInterfaceType::Metal)
-	{
-		// TODO: convert to MSL
-		Blob.Append(ByteCode);
-	}
-	else
-	{
-		return false;
-	}
 
 	FShaderCodePackedResourceCounts PackedResourceCounts = {};
 	PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::GlobalUniformBuffer;
@@ -417,6 +396,63 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 	CheckFence(OnSignaled);
 }
 
+void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
+{
+	FCompushadyResourceArray ResourceArray;
+	for (int32 Index = 0; Index < CBVResourceBindings.Num(); Index++)
+	{
+		const FString& Name = CBVResourceBindings[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
+			return;
+		}
+		UCompushadyCBV* CBV = Cast<UCompushadyCBV>(ResourceMap[Name]);
+		if (!CBV)
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a CBV"), *Name));
+			return;
+		}
+		ResourceArray.CBVs.Add(CBV);
+	}
+
+	for (int32 Index = 0; Index < SRVResourceBindings.Num(); Index++)
+	{
+		const FString& Name = SRVResourceBindings[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
+			return;
+		}
+		UCompushadySRV* SRV = Cast<UCompushadySRV>(ResourceMap[Name]);
+		if (!SRV)
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a SRV"), *Name));
+			return;
+		}
+		ResourceArray.SRVs.Add(SRV);
+	}
+
+	for (int32 Index = 0; Index < UAVResourceBindings.Num(); Index++)
+	{
+		const FString& Name = UAVResourceBindings[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
+			return;
+		}
+		UCompushadyUAV* UAV = Cast<UCompushadyUAV>(ResourceMap[Name]);
+		if (!UAV)
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be an UAV"), *Name));
+			return;
+		}
+		ResourceArray.UAVs.Add(UAV);
+	}
+
+	UCompushadyCompute::Dispatch(ResourceArray, XYZ, OnSignaled);
+}
+
 void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* Buffer, const int32 Offset, const FCompushadySignaled& OnSignaled)
 {
 	if (!Buffer)
@@ -488,4 +524,10 @@ const TArray<uint8>& UCompushadyCompute::GetDXIL() const
 FIntVector UCompushadyCompute::GetThreadGroupSize() const
 {
 	return ThreadGroupSize;
+}
+
+void UCompushadyCompute::StoreLastSignal(bool bSuccess, const FString& ErrorMessage)
+{
+	bLastSuccess = bSuccess;
+	LastErrorMessages = ErrorMessage;
 }

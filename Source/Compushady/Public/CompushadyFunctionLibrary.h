@@ -9,6 +9,7 @@
 #include "CompushadySoundWave.h"
 #include "CompushadyUAV.h"
 #include "Curves/CurveFloat.h"
+#include "Engine/Texture2DArray.h"
 #include "Engine/TextureCube.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
@@ -53,9 +54,6 @@ public:
 	static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadyUAV* CreateCompushadyUAVTexture1D(const FString& Name, const int32 Width, const EPixelFormat Format);
-
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -72,6 +70,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromTexture2D(UTexture2D* Texture2D);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromTexture2DArray(UTexture2DArray* Texture2DArray);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);

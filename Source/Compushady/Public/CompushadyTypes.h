@@ -3,26 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Compushady.h"
 #include "UObject/NoExportTypes.h"
 #include "Engine/Texture2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
 #include "MediaTexture.h"
 #include "CompushadyTypes.generated.h"
-
-#if ENGINE_MAJOR_VERSION == 5
-#if ENGINE_MINOR_VERSION == 2
-#define COMPUSHADY_UE_VERSION 52
-#define COMPUSHADY_CREATE_BUFFER RHICreateBuffer
-#define COMPUSHADY_CREATE_SRV RHICreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICreateUnorderedAccessView
-#elif ENGINE_MINOR_VERSION == 3
-#define COMPUSHADY_UE_VERSION 53
-#define COMPUSHADY_CREATE_BUFFER RHICmdList.CreateBuffer
-#define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
-#endif
-#endif
 
 /**
  *
@@ -74,27 +61,27 @@ struct COMPUSHADY_API FCompushadyFloat4
 };
 
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyCopyInfo
+struct COMPUSHADY_API FCompushadyTextureCopyInfo
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FIntVector SourceOffset;
+	FIntVector SourceOffset{};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FIntVector SourceSize;
+	FIntVector SourceSize{};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 SourceSlice = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FIntVector DestinationOffset;
+	FIntVector DestinationOffset{};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 DestinationSlice = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	int32 NumSlices = 1;
+	int32 NumSlices = 0;
 };
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
@@ -114,8 +101,9 @@ public:
 	void CheckFence(FCompushadySignaledWithFloatArrayPayload OnSignal, TArray<uint8>& Data);
 	void WriteFence(FRHICommandListImmediate& RHICmdList);
 	virtual void OnSignalReceived() = 0;
+
 protected:
-	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
+	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
 
 	bool bRunning;
 	FGPUFenceRHIRef FenceRHIRef;
@@ -141,13 +129,13 @@ public:
 	void ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
-	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo);
+	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
-	void CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo);
+	void CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
-	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyCopyInfo& CopyInfo);
+	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const;
@@ -160,6 +148,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	int32 GetTextureNumSlices() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	EPixelFormat GetTexturePixelFormat() const;
 
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;
@@ -183,10 +174,12 @@ public:
 	void MapWriteAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
 	bool MapWriteAndExecuteSync(TFunction<void(void*)> InFunction);
 
-	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "CopyInfo"), Category = "Compushady")
-	bool UpdateTextureSync(const TArray<uint8>& Pixels, const FCompushadyCopyInfo& CopyInfo);
+	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "UpdateInfo", AutoCreateRefTerm = "UpdateInfo"), Category = "Compushady")
+	bool UpdateTextureSliceSync(const TArray<uint8>& Pixels, const int32 Slice);
 
-	bool UpdateTextureSync(const uint8* Ptr, const int64 Size, const FCompushadyCopyInfo& CopyInfo);
+	bool UpdateTextureSliceSync(const uint8* Ptr, const int64 Size, const int32 Slice);
+
+	bool MapTextureSliceAndExecuteSync(TFunction<void(const void*, const int32)> InFunction, const int32 Slice);
 
 protected:
 	FTextureRHIRef TextureRHIRef;
