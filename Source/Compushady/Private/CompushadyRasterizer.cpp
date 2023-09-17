@@ -37,7 +37,7 @@ bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode
 
 	TArray<uint8> MeshShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings;
-	if (!Compushady::CompileHLSL(MeshShaderCode, MeshShaderEntryPoint, "ms_6_0", MeshShaderByteCode, MeshShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::CompileHLSL(MeshShaderCode, MeshShaderEntryPoint, "ms_6_5", MeshShaderByteCode, MeshShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
 		return false;
 	}
@@ -286,7 +286,7 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
 	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
 	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
-	PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = GEmptyVertexDeclaration.VertexDeclarationRHI;
+	PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = nullptr;
 	PipelineStateInitializer.BoundShaderState.SetMeshShader(MeshShaderRef);
 	PipelineStateInitializer.BoundShaderState.PixelShaderRHI = PixelShaderRef;
 
@@ -472,7 +472,7 @@ void UCompushadyRasterizer::DispatchMesh(const FCompushadyResourceArray& MSResou
 	EnqueueToGPU(
 		[this, XYZ, MSResourceArray, PSResourceArray, RenderTargets](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIRenderPassInfo PassInfo(RenderTargets.GetData()[0], ERenderTargetActions::Load_Store);
+			FRHIRenderPassInfo PassInfo(PipelineStateInitializer.RenderTargetsEnabled, const_cast<FRHITexture**>(RenderTargets.GetData()), ERenderTargetActions::Clear_Store);
 			RHICmdList.BeginRenderPass(PassInfo, TEXT("UCompushadyRasterizer::DispatchMesh"));
 			RHICmdList.SetViewport(0, 0, 0.0f, RenderTargets[0]->GetDesc().Extent.X, RenderTargets[0]->GetDesc().Extent.Y, 1.0f);
 

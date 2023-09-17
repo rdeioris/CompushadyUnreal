@@ -175,6 +175,24 @@ UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterize
 	return CompushadyRasterizer;
 }
 
+UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyMSPSRasterizerFromHLSLString(const FString& MeshShaderSource, const FString& PixelShaderSource, FString& ErrorMessages, const FString& MeshShaderEntryPoint, const FString& PixelShaderEntryPoint)
+{
+	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
+
+	TArray<uint8> MeshShaderCode;
+	Compushady::StringToShaderCode(MeshShaderSource, MeshShaderCode);
+
+	TArray<uint8> PixelShaderCode;
+	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
+
+	if (!CompushadyRasterizer->InitMSPSFromHLSL(MeshShaderCode, MeshShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyRasterizer;
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLShaderAsset(UCompushadyShader* ShaderAsset, FString& ErrorMessages, const FString& EntryPoint)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();

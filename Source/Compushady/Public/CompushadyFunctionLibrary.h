@@ -138,6 +138,9 @@ public:
 	static UCompushadyRasterizer* CreateCompushadyVSPSRasterizerFromHLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, FString& ErrorMessages, const FString& VertexShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main");
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyRasterizer* CreateCompushadyMSPSRasterizerFromHLSLString(const FString& MeshShaderSource, const FString& PixelShaderSource, FString& ErrorMessages, const FString& MeshShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main");
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromHLSLShaderAsset(UCompushadyShader* ShaderAsset, FString& ErrorMessages, const FString& EntryPoint = "main");
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
