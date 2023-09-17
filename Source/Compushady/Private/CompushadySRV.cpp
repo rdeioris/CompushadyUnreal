@@ -26,10 +26,7 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 		return false;
 	}
 
-	if (!InitFence(this))
-	{
-		return false;
-	}
+	InitFence(this);
 
 	if (InTextureRHIRef->GetOwnerName() == NAME_None)
 	{
@@ -65,10 +62,7 @@ bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 		return false;
 	}
 
-	if (!InitFence(this))
-	{
-		return false;
-	}
+	InitFence(this);
 
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{
@@ -109,10 +103,7 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 		return false;
 	}
 
-	if (!InitFence(this))
-	{
-		return false;
-	}
+	InitFence(this);
 
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{

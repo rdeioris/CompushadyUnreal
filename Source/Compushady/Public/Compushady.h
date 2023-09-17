@@ -32,6 +32,7 @@ namespace Compushady
 		ByteAddressBuffer,
 		Texture
 	};
+
 	struct FCompushadyShaderResourceBinding
 	{
 		uint32 BindingIndex;
@@ -40,11 +41,35 @@ namespace Compushady
 		ECompushadySharedResourceType Type;
 	};
 
+	struct FCompushadyShaderSemantic
+	{
+		FString Name;
+		uint32 Index;
+		uint32 Register;
+		uint32 Mask;
+
+		bool operator==(const FCompushadyShaderSemantic& Other) const
+		{
+			return Name == Other.Name && Index == Other.Index && Register == Other.Register && Mask == Other.Mask;
+		}
+
+		FCompushadyShaderSemantic(const FString& InName, const uint32 InIndex, const uint32 InRegister, const uint32 InMask)
+		{
+			Name = InName;
+			Index = InIndex;
+			Register = InRegister;
+			Mask = InMask;
+		}
+	};
+
 	struct FCompushadyShaderResourceBindings
 	{
 		TArray<FCompushadyShaderResourceBinding> CBVs;
 		TArray<FCompushadyShaderResourceBinding> SRVs;
 		TArray<FCompushadyShaderResourceBinding> UAVs;
+
+		TArray<FCompushadyShaderSemantic> InputSemantics;
+		TArray<FCompushadyShaderSemantic> OutputSemantics;
 	};
 
 	bool CompileHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
@@ -58,6 +83,7 @@ namespace Compushady
 	bool SPIRVToMSL(const TArray<uint8>& ByteCode, FString& MSL, FString& ErrorMessages);
 
 	void StringToShaderCode(const FString& Code, TArray<uint8>& ShaderCode);
+	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs);
 
 	void DXCTeardown();
 }

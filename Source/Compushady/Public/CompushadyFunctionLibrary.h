@@ -7,6 +7,9 @@
 #include "CompushadyCompute.h"
 #include "CompushadyShader.h"
 #include "CompushadySoundWave.h"
+#include "CompushadySRV.h"
+#include "CompushadyRasterizer.h"
+#include "CompushadyRTV.h"
 #include "CompushadyUAV.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/Texture2DArray.h"
@@ -78,6 +81,12 @@ public:
 	static UCompushadySRV* CreateCompushadySRVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyRTV* CreateCompushadyRTVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyRTV* CreateCompushadyRTVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromTextureCube(UTextureCube* TextureCube);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -124,6 +133,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint = "main");
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyRasterizer* CreateCompushadyVSPSRasterizerFromHLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, FString& ErrorMessages, const FString& VertexShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main");
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromHLSLShaderAsset(UCompushadyShader* ShaderAsset, FString& ErrorMessages, const FString& EntryPoint = "main");

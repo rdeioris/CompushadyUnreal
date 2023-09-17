@@ -7,8 +7,6 @@
 
 bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
-	bRunning = false;
-
 	RHIInterfaceType = RHIGetInterfaceType();
 
 	TArray<uint8> ByteCode;
@@ -36,8 +34,6 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 
 bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
-	bRunning = false;
-
 	RHIInterfaceType = RHIGetInterfaceType();
 
 	TArray<uint8> ByteCode;
@@ -76,8 +72,6 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 
 bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
 {
-	bRunning = false;
-
 	RHIInterfaceType = RHIGetInterfaceType();
 
 	if (RHIInterfaceType != ERHIInterfaceType::Vulkan)
@@ -99,8 +93,6 @@ bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString&
 
 bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
 {
-	bRunning = false;
-
 	RHIInterfaceType = RHIGetInterfaceType();
 
 	if (RHIInterfaceType != ERHIInterfaceType::D3D12)
@@ -119,28 +111,6 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 	}
 
 	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
-}
-
-bool UCompushadyCompute::ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs)
-{
-	Blob.Append(ByteCode);
-
-	FShaderCode ShaderCode;
-
-	FShaderCodePackedResourceCounts PackedResourceCounts = {};
-	PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::GlobalUniformBuffer;
-	PackedResourceCounts.NumCBs = NumCBVs;
-	PackedResourceCounts.NumSRVs = NumSRVs;
-	PackedResourceCounts.NumUAVs = NumUAVs;
-	ShaderCode.AddOptionalData<FShaderCodePackedResourceCounts>(PackedResourceCounts);
-
-	FShaderCodeResourceMasks ResourceMasks = {};
-	ResourceMasks.UAVMask = 0xffffffff;
-	ShaderCode.AddOptionalData<FShaderCodeResourceMasks>(ResourceMasks);
-
-	Blob.Append(ShaderCode.GetReadAccess());
-
-	return true;
 }
 
 bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages)
@@ -222,7 +192,7 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 	}
 
 	TArray<uint8> UnrealByteCode;
-	if (!ToUnrealShader(ByteCode, UnrealByteCode, NumCBVs, NumSRVs, NumUAVs))
+	if (!Compushady::ToUnrealShader(ByteCode, UnrealByteCode, NumCBVs, NumSRVs, NumUAVs))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the shader";
 		return false;
@@ -247,18 +217,14 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 		return false;
 	}
 
-	if (!InitFence(this))
-	{
-		ErrorMessages = "Unable to create Compute Fence";
-		return false;
-	}
+	InitFence(this);
 
 	return true;
 }
 
 bool UCompushadyCompute::SetupDispatch(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The Compute Shader is already running");
 		return false;
@@ -381,19 +347,13 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
 	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
 
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushady)(
+	EnqueueToGPU(
 		[this, ResourceArray, XYZ, CBVs, SRVs, UAVs](FRHICommandListImmediate& RHICmdList)
 		{
 			SetupPipeline(RHICmdList, CBVs, SRVs, UAVs);
 
 			RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
-
-			WriteFence(RHICmdList);
-		});
-
-	CheckFence(OnSignaled);
+		}, OnSignaled);
 }
 
 void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
@@ -483,25 +443,19 @@ void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& Resour
 	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
 	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
 
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushady)(
+	EnqueueToGPU(
 		[this, ResourceArray, BufferRHIRef, Offset, CBVs, SRVs, UAVs](FRHICommandListImmediate& RHICmdList)
 		{
 			SetupPipeline(RHICmdList, CBVs, SRVs, UAVs);
 
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
 			RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);
-
-			WriteFence(RHICmdList);
-		});
-
-	CheckFence(OnSignaled);
+		}, OnSignaled);
 }
 
 bool UCompushadyCompute::IsRunning() const
 {
-	return bRunning;
+	return ICompushadySignalable::IsRunning();
 }
 
 void UCompushadyCompute::OnSignalReceived()

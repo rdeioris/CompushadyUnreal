@@ -81,7 +81,61 @@ struct COMPUSHADY_API FCompushadyTextureCopyInfo
 	int32 DestinationSlice = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	int32 NumSlices = 0;
+	int32 NumSlices = 1;
+};
+
+USTRUCT(BlueprintType)
+struct FCompushadyResourceBinding
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	int32 BindingIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	int32 SlotIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	FString Name;
+};
+
+USTRUCT(BlueprintType)
+struct FCompushadyResourceBindings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TArray<FCompushadyResourceBinding> CBVs;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TMap<FString, FCompushadyResourceBinding> CBVsMap;
+
+	uint32 NumCBVs = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TMap<int32, FCompushadyResourceBinding> CBVsSlotMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TArray<FCompushadyResourceBinding> SRVs;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TMap<FString, FCompushadyResourceBinding> SRVsMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TMap<int32, FCompushadyResourceBinding> SRVsSlotMap;
+
+	uint32 NumSRVs = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TArray<FCompushadyResourceBinding> UAVs;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TMap<FString, FCompushadyResourceBinding> UAVsMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	TMap<int32, FCompushadyResourceBinding> UAVsSlotMap;
+
+	uint32 NumUAVs = 0;
 };
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
@@ -89,25 +143,82 @@ DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FS
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatPayload, bool, bSuccess, float&, Payload, const FString&, ErrorMessage);
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatArrayPayload, bool, bSuccess, const TArray<float>&, Payload, const FString&, ErrorMessage);
 
-
 class COMPUSHADY_API ICompushadySignalable
 {
 public:
 	virtual ~ICompushadySignalable() = default;
-	bool InitFence(UObject* InOwningObject);
-	void ClearFence();
-	void CheckFence(FCompushadySignaled OnSignal);
-	void CheckFence(FCompushadySignaledWithFloatPayload OnSignal, TArray<uint8>& Data);
-	void CheckFence(FCompushadySignaledWithFloatArrayPayload OnSignal, TArray<uint8>& Data);
-	void WriteFence(FRHICommandListImmediate& RHICmdList);
+
+	void InitFence(UObject* InOwningObject)
+	{
+		OwningObject = InOwningObject;
+	}
+
+	bool IsRunning() const
+	{
+		return CompletionEvent && !CompletionEvent->IsComplete();
+	}
+
+	void BeginFence(const FCompushadySignaled& OnSignaled)
+	{
+		CompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		FGraphEventArray Prerequisites;
+		Prerequisites.Add(CompletionEvent);
+		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
+			{
+				OnSignaled.ExecuteIfBound(true, "");
+				OnSignalReceived();
+			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
+	}
+
+	void BeginFence(const FCompushadySignaledWithFloatArrayPayload& OnSignaled, const TArray<float>& ReadbackCacheFloats)
+	{
+		CompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		FGraphEventArray Prerequisites;
+		Prerequisites.Add(CompletionEvent);
+		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, ReadbackCacheFloats]
+			{
+				OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
+				OnSignalReceived();
+			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
+	}
+
+	void WaitForGPU(FRHICommandListImmediate& RHICmdList)
+	{
+		RHICmdList.SubmitCommandsAndFlushGPU();
+		RHICmdList.BlockUntilGPUIdle();
+	}
+
+	template<typename DELEGATE, typename... TArgs>
+	void EnqueueToGPU(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const DELEGATE& OnSignaled, TArgs... Args)
+	{
+		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				InFunction(RHICmdList);
+				WaitForGPU(RHICmdList);
+			});
+
+		BeginFence(OnSignaled, Args...);
+	}
+
+	void EnqueueToGPUSync(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction)
+	{
+		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				InFunction(RHICmdList);
+			});
+
+		FlushRenderingCommands();
+	}
+
 	virtual void OnSignalReceived() = 0;
 
 protected:
 	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
 
-	bool bRunning;
-	FGPUFenceRHIRef FenceRHIRef;
-	TWeakObjectPtr<UObject> OwningObject;
+	TWeakObjectPtr<UObject> OwningObject = nullptr;
+	FGraphEventRef CompletionEvent = nullptr;
 };
 
 UCLASS(Abstract)
@@ -188,5 +299,6 @@ protected:
 	FBufferRHIRef UploadBufferRHIRef;
 	FRHITransitionInfo RHITransitionInfo;
 	FTextureRHIRef ReadbackTextureRHIRef;
-	TArray<uint8> ReadbackCache;
+	TArray<uint8> ReadbackCacheBytes;
+	TArray<float> ReadbackCacheFloats;
 };

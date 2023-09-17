@@ -13,23 +13,18 @@ bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 
 	TextureRHIRef = InTextureRHIRef;
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateUnorderedAccessView)(
+	EnqueueToGPUSync(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
 			UAVRHIRef = COMPUSHADY_CREATE_UAV(TextureRHIRef);
 		});
-
-	FlushRenderingCommands();
 
 	if (!UAVRHIRef)
 	{
 		return false;
 	}
 
-	if (!InitFence(this))
-	{
-		return false;
-	}
+	InitFence(this);
 
 	if (InTextureRHIRef->GetOwnerName() == NAME_None)
 	{
@@ -50,23 +45,18 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 
 	BufferRHIRef = InBufferRHIRef;
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateUnorderedAccessView)(
+	EnqueueToGPUSync(
 		[this, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			UAVRHIRef = COMPUSHADY_CREATE_UAV(BufferRHIRef, static_cast<uint8>(PixelFormat));
 		});
-
-	FlushRenderingCommands();
 
 	if (!UAVRHIRef)
 	{
 		return false;
 	}
 
-	if (!InitFence(this))
-	{
-		return false;
-	}
+	InitFence(this);
 
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{
@@ -92,23 +82,18 @@ bool UCompushadyUAV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 
 	BufferRHIRef = InBufferRHIRef;
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateUnorderedAccessView)(
+	EnqueueToGPUSync(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
 			UAVRHIRef = COMPUSHADY_CREATE_UAV(BufferRHIRef, false, false);
 		});
-
-	FlushRenderingCommands();
 
 	if (!UAVRHIRef)
 	{
 		return false;
 	}
 
-	if (!InitFence(this))
-	{
-		return false;
-	}
+	InitFence(this);
 
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{

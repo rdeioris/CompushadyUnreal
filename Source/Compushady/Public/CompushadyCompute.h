@@ -11,21 +11,6 @@
 #include "CompushadyCompute.generated.h"
 
 USTRUCT(BlueprintType)
-struct FCompushadyResourceBinding
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	int32 BindingIndex = 0;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	int32 SlotIndex = 0;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	FString Name;
-};
-
-USTRUCT(BlueprintType)
 struct FCompushadyResourceArray
 {
 	GENERATED_BODY()
@@ -119,13 +104,11 @@ public:
 	bool bLastSuccess = false;
 	FString LastErrorMessages;
 
-	/* end of testign block */
+	/* end of testing block */
 
 protected:
 
 	bool CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages);
-
-	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs);
 
 	ERHIInterfaceType RHIInterfaceType;
 	FComputeShaderRHIRef ComputeShaderRef;

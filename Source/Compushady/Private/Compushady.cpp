@@ -27,6 +27,28 @@ namespace Compushady
 
 		ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
 	}
+
+	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs)
+	{
+		Blob.Append(ByteCode);
+
+		FShaderCode ShaderCode;
+
+		FShaderCodePackedResourceCounts PackedResourceCounts = {};
+		PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::GlobalUniformBuffer;
+		PackedResourceCounts.NumCBs = NumCBVs;
+		PackedResourceCounts.NumSRVs = NumSRVs;
+		PackedResourceCounts.NumUAVs = NumUAVs;
+		ShaderCode.AddOptionalData<FShaderCodePackedResourceCounts>(PackedResourceCounts);
+
+		FShaderCodeResourceMasks ResourceMasks = {};
+		ResourceMasks.UAVMask = 0xffffffff;
+		ShaderCode.AddOptionalData<FShaderCodeResourceMasks>(ResourceMasks);
+
+		Blob.Append(ShaderCode.GetReadAccess());
+
+		return true;
+	}
 }
 
 #if WITH_EDITOR

@@ -435,6 +435,26 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 	D3D12_SHADER_DESC ShaderDesc;
 	ShaderReflection->GetDesc(&ShaderDesc);
 
+	for (uint32 Index = 0; Index < ShaderDesc.InputParameters; Index++)
+	{
+		D3D12_SIGNATURE_PARAMETER_DESC SignatureDesc;
+		ShaderReflection->GetInputParameterDesc(Index, &SignatureDesc);
+		if (SignatureDesc.SystemValueType == D3D_NAME_UNDEFINED)
+		{
+			ShaderResourceBindings.InputSemantics.Add(FCompushadyShaderSemantic(UTF8_TO_TCHAR(SignatureDesc.SemanticName), SignatureDesc.SemanticIndex, SignatureDesc.Register, SignatureDesc.Mask));
+		}
+	}
+
+	for (uint32 Index = 0; Index < ShaderDesc.OutputParameters; Index++)
+	{
+		D3D12_SIGNATURE_PARAMETER_DESC SignatureDesc;
+		ShaderReflection->GetOutputParameterDesc(Index, &SignatureDesc);
+		if (SignatureDesc.SystemValueType == D3D_NAME_UNDEFINED)
+		{
+			ShaderResourceBindings.OutputSemantics.Add(FCompushadyShaderSemantic(UTF8_TO_TCHAR(SignatureDesc.SemanticName), SignatureDesc.SemanticIndex, SignatureDesc.Register, SignatureDesc.Mask));
+		}
+	}
+
 	/*
 		D3D_SIT_CBUFFER
 		D3D_SIT_TBUFFER

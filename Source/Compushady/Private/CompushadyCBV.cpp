@@ -31,7 +31,7 @@ bool UCompushadyCBV::Initialize(const FString& Name, const uint8* Data, const in
 	}
 
 	UniformBufferRHIRef = RHICreateUniformBuffer(nullptr, UniformBufferLayoutRHIRef, EUniformBufferUsage::UniformBuffer_MultiFrame, EUniformBufferValidation::None);
-	if (!UniformBufferRHIRef.IsValid() || UniformBufferRHIRef->IsValid())
+	if (!UniformBufferRHIRef.IsValid() || !UniformBufferRHIRef->IsValid())
 	{
 		return false;
 	}

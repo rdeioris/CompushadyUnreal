@@ -5,53 +5,7 @@
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Serialization/ArrayWriter.h"
-
-bool ICompushadySignalable::InitFence(UObject* InOwningObject)
-{
-	OwningObject = InOwningObject;
-
-	FenceRHIRef = RHICreateGPUFence(TEXT("CompushadyFence"));
-	if (!FenceRHIRef.IsValid() || !FenceRHIRef->IsValid())
-	{
-		return false;
-	}
-
-	return true;
-}
-
-void ICompushadySignalable::WriteFence(FRHICommandListImmediate& RHICmdList)
-{
-	RHICmdList.WriteGPUFence(FenceRHIRef);
-}
-
-void ICompushadySignalable::ClearFence()
-{
-	bRunning = true;
-	FenceRHIRef->Clear();
-}
-
-void ICompushadySignalable::CheckFence(FCompushadySignaled OnSignal)
-{
-	if (!OwningObject.IsValid(false, true))
-	{
-		return;
-	}
-
-	if (!FenceRHIRef->Poll())
-	{
-		AsyncTask(ENamedThreads::AnyBackgroundHiPriTask, [this, OnSignal]() { CheckFence(OnSignal); });
-	}
-	else
-	{
-		AsyncTask(ENamedThreads::GameThread, [this, OnSignal]()
-			{
-				bRunning = false;
-				OnSignal.ExecuteIfBound(true, "");
-				OnSignalReceived();
-			});
-	}
-}
-
+/*
 void ICompushadySignalable::CheckFence(FCompushadySignaledWithFloatPayload OnSignal, TArray<uint8>& Data)
 {
 	if (!OwningObject.IsValid(false, true))
@@ -99,7 +53,7 @@ void ICompushadySignalable::CheckFence(FCompushadySignaledWithFloatArrayPayload 
 			});
 	}
 }
-
+*/
 FTextureRHIRef UCompushadyResource::GetTextureRHI() const
 {
 	return TextureRHIRef;
@@ -148,7 +102,7 @@ FTextureRHIRef UCompushadyResource::GetReadbackTexture()
 
 bool UCompushadyResource::UpdateTextureSliceSync(const uint8* Ptr, const int64 Size, const int32 Slice)
 {
-	if (bRunning || !IsValidTexture())
+	if (IsRunning() || !IsValidTexture())
 	{
 		return false;
 	}
@@ -201,31 +155,26 @@ bool UCompushadyResource::UpdateTextureSliceSync(const TArray<uint8>& Pixels, co
 
 void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		TArray<float> Values;
 		OnSignaled.ExecuteIfBound(false, Values, "The Resource is already being processed by another task");
 		return;
 	}
 
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadback)(
+	EnqueueToGPU(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-			RHICmdList.SubmitCommandsAndFlushGPU();
-			RHICmdList.BlockUntilGPUIdle();
+			WaitForGPU(RHICmdList);
 			uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-			ReadbackCache.Empty(BufferRHIRef->GetSize());
-			ReadbackCache.Append(Data, (BufferRHIRef->GetSize() / sizeof(float)) * sizeof(float));
+			const uint32 FloatBufferSize = BufferRHIRef->GetSize() / sizeof(float);
+			ReadbackCacheFloats.Empty(FloatBufferSize);
+			ReadbackCacheFloats.Append(reinterpret_cast<const float*>(Data), FloatBufferSize);
 			RHICmdList.UnlockStagingBuffer(StagingBuffer);
-			WriteFence(RHICmdList);
-		});
-
-	CheckFence(OnSignaled, ReadbackCache);
+		}, OnSignaled, ReadbackCacheFloats);
 }
 
 bool UCompushadyResource::IsValidTexture() const
@@ -242,7 +191,7 @@ EPixelFormat UCompushadyResource::GetTexturePixelFormat() const
 {
 	if (IsValidTexture())
 	{
-		return TextureRHIRef->GetFormat();
+		return TextureRHIRef->GetDesc().Format;
 	}
 
 	return EPixelFormat::PF_Unknown;
@@ -302,36 +251,30 @@ void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FComp
 
 void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		TArray<float> Values;
 		OnSignaled.ExecuteIfBound(false, Values, "The Resource is already being processed by another task");
 		return;
 	}
 
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadback)(
+	EnqueueToGPU(
 		[this, Offset, Elements](FRHICommandListImmediate& RHICmdList)
 		{
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-			RHICmdList.SubmitCommandsAndFlushGPU();
-			RHICmdList.BlockUntilGPUIdle();
+			WaitForGPU(RHICmdList);
 			uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-			ReadbackCache.Empty(Elements * sizeof(float));
-			ReadbackCache.Append(Data + sizeof(float) * Offset, Elements * sizeof(float));
+			ReadbackCacheFloats.Empty(Elements * sizeof(float));
+			ReadbackCacheFloats.Append(reinterpret_cast<const float*>(Data) + Offset, Elements);
 			RHICmdList.UnlockStagingBuffer(StagingBuffer);
-			WriteFence(RHICmdList);
-		});
-
-	CheckFence(OnSignaled, ReadbackCache);
+		}, OnSignaled, ReadbackCacheFloats);
 }
 
 void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
@@ -355,13 +298,11 @@ void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTar
 	{
 		return;
 	}
-
-	CheckFence(OnSignaled);
 }
 
 void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
@@ -385,14 +326,12 @@ void UCompushadyResource::CopyFromMediaTexture(UMediaTexture* MediaTexture, cons
 	{
 		return;
 	}
-
-	CheckFence(OnSignaled);
 }
 
 
 void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
@@ -416,8 +355,6 @@ void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray*
 	{
 		return;
 	}
-
-	CheckFence(OnSignaled);
 }
 
 bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled)
@@ -546,17 +483,14 @@ bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTe
 		return false;
 	}
 
-	ClearFence();
-
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCopyTexture)(
+	EnqueueToGPU(
 		[this, Destination, Source, CopyTextureInfo](FRHICommandListImmediate& RHICmdList)
 		{
 			RHICmdList.Transition(FRHITransitionInfo(Source, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.Transition(FRHITransitionInfo(Destination, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
 			RHICmdList.CopyTexture(Source, Destination, CopyTextureInfo);
-			WriteFence(RHICmdList);
-		});
+		}, OnSignaled);
 
 	return true;
 }
@@ -621,13 +555,11 @@ int32 UCompushadyResource::GetTextureNumSlices() const
 
 void UCompushadyResource::MapReadAndExecute(TFunction<void(const void*)> InFunction, const FCompushadySignaled& OnSignaled)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
 	}
-
-	ClearFence();
 
 	if (IsValidBuffer())
 	{
@@ -637,15 +569,14 @@ void UCompushadyResource::MapReadAndExecute(TFunction<void(const void*)> InFunct
 				FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-				RHICmdList.SubmitCommandsAndFlushGPU();
-				RHICmdList.BlockUntilGPUIdle();
+				WaitForGPU(RHICmdList);
 				void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
 				if (Data)
 				{
 					InFunction(Data);
 					RHICmdList.UnlockStagingBuffer(StagingBuffer);
 				}
-				WriteFence(RHICmdList);
+				WaitForGPU(RHICmdList);
 			});
 	}
 	else
@@ -654,22 +585,20 @@ void UCompushadyResource::MapReadAndExecute(TFunction<void(const void*)> InFunct
 		return;
 	}
 
-	CheckFence(OnSignaled);
+	BeginFence(OnSignaled);
 }
 
 void UCompushadyResource::MapWriteAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
 		return;
 	}
 
-	ClearFence();
-
 	if (IsValidBuffer())
 	{
-		ENQUEUE_RENDER_COMMAND(DoCompushadyUploadBuffer)(
+		EnqueueToGPU(
 			[this, InFunction](FRHICommandListImmediate& RHICmdList)
 			{
 				FBufferRHIRef UploadBuffer = GetUploadBuffer(RHICmdList);
@@ -682,23 +611,18 @@ void UCompushadyResource::MapWriteAndExecute(TFunction<void(void*)> InFunction, 
 				RHICmdList.Transition(FRHITransitionInfo(UploadBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 				RHICmdList.CopyBufferRegion(BufferRHIRef, 0, UploadBuffer, 0, UploadBuffer->GetSize());
-				RHICmdList.SubmitCommandsAndFlushGPU();
-				RHICmdList.BlockUntilGPUIdle();
-				WriteFence(RHICmdList);
-			});
+			}, OnSignaled);
 	}
 	else
 	{
 		OnSignaled.ExecuteIfBound(false, "The Resource is in invalid state or is not mappable");
 		return;
 	}
-
-	CheckFence(OnSignaled);
 }
 
 bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InFunction)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		return false;
 	}
@@ -708,14 +632,13 @@ bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InF
 		return false;
 	}
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
+	EnqueueToGPUSync(
 		[this, InFunction](FRHICommandListImmediate& RHICmdList)
 		{
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-			RHICmdList.SubmitCommandsAndFlushGPU();
-			RHICmdList.BlockUntilGPUIdle();
+			WaitForGPU(RHICmdList);
 			void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
 			if (Data)
 			{
@@ -724,14 +647,12 @@ bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InF
 			}
 		});
 
-	FlushRenderingCommands();
-
 	return true;
 }
 
 bool UCompushadyResource::MapWriteAndExecuteSync(TFunction<void(void*)> InFunction)
 {
-	if (bRunning)
+	if (IsRunning())
 	{
 		return false;
 	}
@@ -741,7 +662,7 @@ bool UCompushadyResource::MapWriteAndExecuteSync(TFunction<void(void*)> InFuncti
 		return false;
 	}
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateBuffer)(
+	EnqueueToGPUSync(
 		[this, InFunction](FRHICommandListImmediate& RHICmdList)
 		{
 			FBufferRHIRef UploadBuffer = GetUploadBuffer(RHICmdList);
@@ -754,12 +675,7 @@ bool UCompushadyResource::MapWriteAndExecuteSync(TFunction<void(void*)> InFuncti
 			RHICmdList.Transition(FRHITransitionInfo(UploadBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 			RHICmdList.CopyBufferRegion(BufferRHIRef, 0, UploadBuffer, 0, UploadBuffer->GetSize());
-			RHICmdList.SubmitCommandsAndFlushGPU();
-			RHICmdList.BlockUntilGPUIdle();
-			WriteFence(RHICmdList);
 		});
-
-	FlushRenderingCommands();
 
 	return true;
 }
@@ -794,7 +710,7 @@ void UCompushadyResource::MapWriteAndExecuteInGameThread(TFunction<void(void*)> 
 
 bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const void*, const int32)> InFunction, const int32 Slice)
 {
-	if (bRunning || !IsValidTexture())
+	if (IsRunning() || !IsValidTexture())
 	{
 		return false;
 	}
@@ -814,14 +730,13 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 		CopyTextureInfo.SourcePosition.Z = Slice;
 	}
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
+	EnqueueToGPUSync(
 		[this, InFunction, &CopyTextureInfo](FRHICommandListImmediate& RHICmdList)
 		{
 			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
 			RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
-			RHICmdList.SubmitCommandsAndFlushGPU();
-			RHICmdList.BlockUntilGPUIdle();
+			WaitForGPU(RHICmdList);
 			int32 Width = 0;
 			int32 Height = 0;
 			void* Data = nullptr;
@@ -832,8 +747,6 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 				RHICmdList.UnmapStagingSurface(ReadbackTexture);
 			}
 		});
-
-	FlushRenderingCommands();
 
 	return true;
 }

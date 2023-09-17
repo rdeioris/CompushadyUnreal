@@ -2,7 +2,6 @@
 
 
 #include "CompushadyFunctionLibrary.h"
-#include "CompushadyTypes.h"
 #include "Serialization/ArrayWriter.h"
 
 UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBV(const FString& Name, const int64 Size)
@@ -158,6 +157,24 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 	return CompushadyCompute;
 }
 
+UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterizerFromHLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, FString& ErrorMessages, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint)
+{
+	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
+
+	TArray<uint8> VertexShaderCode;
+	Compushady::StringToShaderCode(VertexShaderSource, VertexShaderCode);
+
+	TArray<uint8> PixelShaderCode;
+	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
+
+	if (!CompushadyRasterizer->InitVSPSFromHLSL(VertexShaderCode, VertexShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyRasterizer;
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLShaderAsset(UCompushadyShader* ShaderAsset, FString& ErrorMessages, const FString& EntryPoint)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
@@ -245,6 +262,26 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 	}
 
 	return CompushadyUAV;
+}
+
+UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
+{
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::RenderTargetable);
+	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyRTV* CompushadyRTV = NewObject<UCompushadyRTV>();
+	if (!CompushadyRTV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyRTV;
 }
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format)
@@ -462,6 +499,27 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromRenderTarget2
 	}
 
 	return CompushadySRV;
+}
+
+UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget)
+{
+	if (!RenderTarget->GetResource() || !RenderTarget->GetResource()->IsInitialized())
+	{
+		RenderTarget->UpdateResource();
+	}
+
+	RenderTarget->UpdateResourceImmediate(false);
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = RenderTarget->GetResource();
+
+	UCompushadyRTV* CompushadyRTV = NewObject<UCompushadyRTV>();
+	if (!CompushadyRTV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadyRTV;
 }
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromCurveFloat(const FString& Name, UCurveFloat* CurveFloat, const float StartTime, const float EndTime, const int32 Steps)
