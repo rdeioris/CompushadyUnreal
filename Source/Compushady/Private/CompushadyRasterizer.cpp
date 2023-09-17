@@ -128,6 +128,7 @@ bool UCompushadyRasterizer::CreateResourceBindings(Compushady::FCompushadyShader
 		OutBindings.UAVsSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
 	}
 
+	return true;
 }
 
 bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, FString& ErrorMessages)
