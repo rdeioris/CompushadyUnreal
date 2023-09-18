@@ -52,85 +52,6 @@ bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode
 	return CreateMSPSRasterizerPipeline(MeshShaderByteCode, PixelShaderByteCode, MeshShaderResourceBindings, PixelShaderResourceBindings, ErrorMessages);
 }
 
-bool UCompushadyRasterizer::CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages)
-{
-	// configure CBV resource bindings
-	for (int32 Index = 0; Index < InBindings.CBVs.Num(); Index++)
-	{
-		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.CBVs[Index];
-		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumCBVs)
-		{
-			OutBindings.NumCBVs = ShaderResourceBinding.SlotIndex + 1;
-		}
-
-		FCompushadyResourceBinding ResourceBinding;
-		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
-		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
-		ResourceBinding.Name = ShaderResourceBinding.Name;
-
-		OutBindings.CBVs.Add(ResourceBinding);
-		OutBindings.CBVsMap.Add(ResourceBinding.Name, ResourceBinding);
-		OutBindings.CBVsSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
-	}
-
-	// check for holes in the CBVs
-	for (int32 Index = 0; Index < static_cast<int32>(OutBindings.NumCBVs); Index++)
-	{
-		bool bFound = false;
-		for (const FCompushadyResourceBinding& Binding : OutBindings.CBVs)
-		{
-			if (Binding.SlotIndex == Index)
-			{
-				bFound = true;
-				break;
-			}
-		}
-		if (!bFound)
-		{
-			ErrorMessages = "Binding holes not allowed in CBVs";
-			return false;
-		}
-	}
-
-	// configure SRV resource bindings
-	for (int32 Index = 0; Index < InBindings.SRVs.Num(); Index++)
-	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.SRVs[Index];
-		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumSRVs)
-		{
-			OutBindings.NumSRVs = ShaderResourceBinding.SlotIndex + 1;
-		}
-
-		FCompushadyResourceBinding ResourceBinding;
-		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
-		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
-		ResourceBinding.Name = ShaderResourceBinding.Name;
-		OutBindings.SRVs.Add(ResourceBinding);
-		OutBindings.SRVsMap.Add(ResourceBinding.Name, ResourceBinding);
-		OutBindings.SRVsSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
-	}
-
-	// configure UAV resource bindings
-	for (int32 Index = 0; Index < InBindings.UAVs.Num(); Index++)
-	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.UAVs[Index];
-		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumUAVs)
-		{
-			OutBindings.NumUAVs = ShaderResourceBinding.SlotIndex + 1;
-		}
-
-		FCompushadyResourceBinding ResourceBinding;
-		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
-		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
-		ResourceBinding.Name = ShaderResourceBinding.Name;
-		OutBindings.UAVs.Add(ResourceBinding);
-		OutBindings.UAVsMap.Add(ResourceBinding.Name, ResourceBinding);
-		OutBindings.UAVsSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
-	}
-
-	return true;
-}
-
 bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, FString& ErrorMessages)
 {
 	// check for semantics
@@ -295,77 +216,6 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 	return true;
 }
 
-bool UCompushadyRasterizer::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled)
-{
-	const TArray<UCompushadyCBV*>& CBVs = ResourceArray.CBVs;
-	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
-	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
-
-	if (CBVs.Num() != ResourceBindings.CBVs.Num())
-	{
-		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS CBVs got %d"), ResourceBindings.CBVs.Num(), CBVs.Num()));
-		return false;
-	}
-
-	if (SRVs.Num() != ResourceBindings.SRVs.Num())
-	{
-		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS SRVs got %d"), ResourceBindings.SRVs.Num(), SRVs.Num()));
-		return false;
-	}
-
-	if (UAVs.Num() != ResourceBindings.UAVs.Num())
-	{
-		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS UAVs got %d"), ResourceBindings.UAVs.Num(), UAVs.Num()));
-		return false;
-	}
-
-	return true;
-}
-
-void UCompushadyRasterizer::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FRHIGraphicsShader* Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
-{
-#if COMPUSHADY_UE_VERSION >= 53
-	FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
-#endif
-
-	for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
-	{
-		if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
-		{
-			ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
-		}
-#if COMPUSHADY_UE_VERSION >= 53
-		BatchedParameters.SetShaderUniformBuffer(ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-#else
-		RHICmdList.SetShaderUniformBuffer(VertexShaderRef, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-#endif
-	}
-
-	for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
-	{
-		RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-#if COMPUSHADY_UE_VERSION >= 53
-		BatchedParameters.SetShaderResourceViewParameter(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-#else
-		RHICmdList.SetShaderResourceViewParameter(VertexShaderRef, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-#endif
-	}
-
-	for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
-	{
-		RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
-#if COMPUSHADY_UE_VERSION >= 53
-		BatchedParameters.SetUAVParameter(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
-#else
-		RHICmdList.SetUAVParameter(VertexShaderRef, UAVResourceBindings[Index].SlotIndex, UAVs[Index]->GetRHI());
-#endif
-	}
-
-#if COMPUSHADY_UE_VERSION >= 53
-	RHICmdList.SetBatchedShaderParameters(VertexShaderRef, BatchedParameters);
-#endif
-}
-
 void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, const int32 NumVertices, const FCompushadySignaled& OnSignaled)
 {
 	if (IsRunning())
@@ -489,34 +339,6 @@ void UCompushadyRasterizer::DispatchMesh(const FCompushadyResourceArray& MSResou
 bool UCompushadyRasterizer::IsRunning() const
 {
 	return ICompushadySignalable::IsRunning();
-}
-
-void UCompushadyRasterizer::TrackResource(UObject* InResource)
-{
-	CurrentTrackedResources.Add(InResource);
-}
-
-void UCompushadyRasterizer::TrackResources(const FCompushadyResourceArray& ResourceArray)
-{
-	for (UCompushadyCBV* Resource : ResourceArray.CBVs)
-	{
-		TrackResource(Resource);
-	}
-
-	for (UCompushadySRV* Resource : ResourceArray.SRVs)
-	{
-		TrackResource(Resource);
-	}
-
-	for (UCompushadyUAV* Resource : ResourceArray.UAVs)
-	{
-		TrackResource(Resource);
-	}
-}
-
-void UCompushadyRasterizer::OnSignalReceived()
-{
-	CurrentTrackedResources.Empty();
 }
 
 void UCompushadyRasterizer::StoreLastSignal(bool bSuccess, const FString& ErrorMessage)

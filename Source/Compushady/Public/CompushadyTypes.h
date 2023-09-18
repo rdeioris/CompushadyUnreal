@@ -138,6 +138,21 @@ struct FCompushadyResourceBindings
 	uint32 NumUAVs = 0;
 };
 
+USTRUCT(BlueprintType)
+struct FCompushadyResourceArray
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<class UCompushadyCBV*> CBVs;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<class UCompushadySRV*> SRVs;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<class UCompushadyUAV*> UAVs;
+};
+
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
 
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatPayload, bool, bSuccess, float&, Payload, const FString&, ErrorMessage);
@@ -155,15 +170,15 @@ public:
 
 	bool IsRunning() const
 	{
-		return CompletionEvent && !CompletionEvent->IsComplete();
+		return (RenderThreadCompletionEvent && !RenderThreadCompletionEvent->IsComplete()) || (GameThreadCompletionEvent && !GameThreadCompletionEvent->IsComplete());
 	}
 
 	void BeginFence(const FCompushadySignaled& OnSignaled)
 	{
-		CompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
 		FGraphEventArray Prerequisites;
-		Prerequisites.Add(CompletionEvent);
-		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
+		Prerequisites.Add(RenderThreadCompletionEvent);
+		GameThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
 			{
 				OnSignaled.ExecuteIfBound(true, "");
 				OnSignalReceived();
@@ -172,10 +187,10 @@ public:
 
 	void BeginFence(const FCompushadySignaledWithFloatArrayPayload& OnSignaled, const TArray<float>& ReadbackCacheFloats)
 	{
-		CompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
 		FGraphEventArray Prerequisites;
-		Prerequisites.Add(CompletionEvent);
-		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, ReadbackCacheFloats]
+		Prerequisites.Add(RenderThreadCompletionEvent);
+		GameThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, ReadbackCacheFloats]
 			{
 				OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
 				OnSignalReceived();
@@ -218,7 +233,28 @@ protected:
 	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
 
 	TWeakObjectPtr<UObject> OwningObject = nullptr;
-	FGraphEventRef CompletionEvent = nullptr;
+	FGraphEventRef RenderThreadCompletionEvent = nullptr;
+	FGraphEventRef GameThreadCompletionEvent = nullptr;
+};
+
+class COMPUSHADY_API ICompushadyPipeline : public ICompushadySignalable
+{
+public:
+	virtual ~ICompushadyPipeline() = default;
+
+	void OnSignalReceived() override;
+
+protected:
+	bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
+	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled);
+
+	template<typename SHADER_TYPE>
+	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+	void TrackResource(UObject* InResource);
+	void TrackResources(const FCompushadyResourceArray& ResourceArray);
+
+	// this will avoid the resources to be GC'd
+	TArray<TStrongObjectPtr<UObject>> CurrentTrackedResources;
 };
 
 UCLASS(Abstract)

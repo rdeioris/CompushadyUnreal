@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "Camera/CameraComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
 #include "CompushadyCBV.generated.h"
 
 /**
@@ -26,82 +28,100 @@ public:
 	FUniformBufferRHIRef GetRHI();
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetFloat(const int64 Offset, const float Value);
+	bool SetFloat(const int64 Offset, const float Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetDouble(const int64 Offset, const double Value);
+	bool SetDouble(const int64 Offset, const double Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetInt(const int64 Offset, const int32 Value);
+	bool SetInt(const int64 Offset, const int32 Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetUInt(const int64 Offset, const int64 Value);
+	bool SetUInt(const int64 Offset, const int64 Value);
+
+	bool SetUInt(const int64 Offset, const uint32 Value);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Values"), Category = "Compushady")
-	void SetFloatArray(const int64 Offset, const TArray<float>& Values);
+	bool SetFloatArray(const int64 Offset, const TArray<float>& Values);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Values"), Category = "Compushady")
-	void SetDoubleArray(const int64 Offset, const TArray<double>& Values);
+	bool SetDoubleArray(const int64 Offset, const TArray<double>& Values);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
-	void SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose = true);
+	bool SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose = true);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
-	void SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose = true);
+	bool SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = true, const bool bTranspose = true);
+	bool SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = true, const bool bTranspose = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void SetRotationFloat2(const int64 Offset, const float Radians);
+	bool SetRotationFloat2(const int64 Offset, const float Radians);
 
 	const TArray<uint8>& GetBufferData() const { return BufferData; }
 
 	int64 GetBufferSize() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	float GetFloat(const int64 Offset);
+	bool GetFloat(const int64 Offset, float& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	double GetDouble(const int64 Offset);
+	bool GetDouble(const int64 Offset, double& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	int32 GetInt(const int64 Offset);
+	bool GetInt(const int64 Offset, int32& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	int64 GetUInt(const int64 Offset);
+	bool GetUInt(const int64 Offset, int64& Value);
+
+	bool GetUInt(const int64 Offset, uint32& Value);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool SetPerspectiveFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool SetPerspectiveFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool SetPerspectiveFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose = true);
 
 	bool IsValidOffset(const int64 Offset, const int64 Size) const;
 
 	template<typename T>
-	void SetValue(const int64 Offset, const T Value)
+	bool SetValue(const int64 Offset, const T Value)
 	{
 		if (IsValidOffset(Offset, sizeof(T)))
 		{
 			FMemory::Memcpy(BufferData.GetData() + Offset, &Value, sizeof(T));
 			bBufferDataDirty = true;
+			return true;
 		}
+		return false;
 	}
 
 	template<typename T>
-	void SetArrayValue(const int64 Offset, const TArray<T>& Values)
+	bool SetArrayValue(const int64 Offset, const TArray<T>& Values)
 	{
 		if (IsValidOffset(Offset, (Values.Num() * sizeof(T))))
 		{
 			FMemory::Memcpy(BufferData.GetData() + Offset, Values.GetData(), Values.Num() * sizeof(T));
 			bBufferDataDirty = true;
+			return true;
 		}
+		return false;
 	}
 
 	template<typename T>
-	T GetValue(const int64 Offset) const
+	bool GetValue(const int64 Offset, T& OutValue) const
 	{
 		if (IsValidOffset(Offset, sizeof(T)))
 		{
 			const T* Value = reinterpret_cast<const T*>(BufferData.GetData() + Offset);
-			return *Value;
+			OutValue = *Value;
+			return true;
 		}
-		return 0;
+		return false;
 	}
 
 protected:

@@ -14,7 +14,7 @@
  *
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadyRasterizer : public UObject, public ICompushadySignalable
+class COMPUSHADY_API UCompushadyRasterizer : public UObject, public ICompushadyPipeline
 {
 	GENERATED_BODY()
 
@@ -40,8 +40,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	FCompushadyResourceBindings PSResourceBindings;
 
-	void OnSignalReceived() override;
-
 	/* The following block is mainly used for unit testing */
 	UFUNCTION()
 	void StoreLastSignal(bool bSuccess, const FString& ErrorMessage);
@@ -52,7 +50,6 @@ public:
 	/* end of testing block */
 
 protected:
-	bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
 	bool CreateVSPSRasterizerPipeline(TArray<uint8>& VertexShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, FString& ErrorMessages);
 	bool CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, FString& ErrorMessages);
 
@@ -61,13 +58,4 @@ protected:
 	FPixelShaderRHIRef PixelShaderRef;
 	FMeshShaderRHIRef MeshShaderRef;
 	FGraphicsPipelineStateInitializer PipelineStateInitializer;
-
-	// this will avoid the resources to be GC'd
-	UPROPERTY()
-	TArray<UObject*> CurrentTrackedResources;
-
-	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled);
-	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FRHIGraphicsShader* Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-	void TrackResource(UObject* InResource);
-	void TrackResources(const FCompushadyResourceArray& ResourceArray);
 };

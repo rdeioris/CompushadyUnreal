@@ -40,7 +40,8 @@ bool FCompushadyCBVTest_Float::RunTest(const FString& Parameters)
 
 	CBV->SetFloat(0, 0.1);
 
-	const float Value = CBV->GetFloat(0);
+	float Value = 0;
+	CBV->GetFloat(0, Value);
 
 	TestEqual(TEXT("Value"), Value, 0.1f);
 
@@ -56,7 +57,8 @@ bool FCompushadyCBVTest_Int::RunTest(const FString& Parameters)
 
 	CBV->SetInt(0, 0xdeadbeef);
 
-	const int32 Value = CBV->GetInt(0);
+	int32 Value = 0;
+	CBV->GetInt(0, Value);
 
 	TestEqual(TEXT("Value"), Value, 0xdeadbeef);
 
@@ -70,11 +72,29 @@ bool FCompushadyCBVTest_UInt::RunTest(const FString& Parameters)
 	UCompushadyCBV* CBV = NewObject<UCompushadyCBV>();
 	const bool bSuccess = CBV->Initialize(TestName, nullptr, 4);
 
-	CBV->SetUInt(0, 100);
+	CBV->SetUInt(0, 100U);
 
-	const uint32 Value = static_cast<uint32>(CBV->GetUInt(0));
+	uint32 Value = 0;
+	CBV->GetUInt(0, Value);
 
 	TestEqual(TEXT("Value"), Value, 100);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyCBVTest_UIntFromInt64, "Compushady.CBV.UIntFromInt64", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyCBVTest_UIntFromInt64::RunTest(const FString& Parameters)
+{
+	UCompushadyCBV* CBV = NewObject<UCompushadyCBV>();
+	const bool bSuccess = CBV->Initialize(TestName, nullptr, 4);
+
+	CBV->SetUInt(0, 100LL);
+
+	int64 Value = 0;
+	CBV->GetUInt(0, Value);
+
+	TestEqual(TEXT("Value"), static_cast<uint32>(Value), 100);
 
 	return true;
 }
@@ -86,9 +106,10 @@ bool FCompushadyCBVTest_UIntNegative::RunTest(const FString& Parameters)
 	UCompushadyCBV* CBV = NewObject<UCompushadyCBV>();
 	const bool bSuccess = CBV->Initialize(TestName, nullptr, 4);
 
-	CBV->SetUInt(0, -17);
+	CBV->SetUInt(0, static_cast<int64>(-17));
 
-	const uint32 Value = static_cast<uint32>(CBV->GetUInt(0));
+	uint32 Value = 0;
+	CBV->GetUInt(0, Value);
 
 	TestEqual(TEXT("Value"), Value, 0);
 
@@ -102,7 +123,8 @@ bool FCompushadyCBVTest_Zero::RunTest(const FString& Parameters)
 	UCompushadyCBV* CBV = NewObject<UCompushadyCBV>();
 	const bool bSuccess = CBV->Initialize(TestName, nullptr, 4);
 
-	const int32 Value = CBV->GetInt(0);
+	int32 Value = 0;
+	CBV->GetInt(0, Value);
 
 	TestEqual(TEXT("Value"), Value, 0);
 
@@ -116,9 +138,10 @@ bool FCompushadyCBVTest_ZeroOutOfBounds::RunTest(const FString& Parameters)
 	UCompushadyCBV* CBV = NewObject<UCompushadyCBV>();
 	const bool bSuccess = CBV->Initialize(TestName, nullptr, 4);
 
-	const int32 Value = CBV->GetInt(64);
+	int32 Value;
+	const bool bGetIntSuccess = CBV->GetInt(64, Value);
 
-	TestEqual(TEXT("Value"), Value, 0);
+	TestFalse(TEXT("bGetIntSuccess"), bGetIntSuccess);
 
 	return true;
 }

@@ -282,9 +282,10 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 	return CompushadyUAV;
 }
 
-UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
+UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format, const FLinearColor ClearColor)
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
+	TextureCreateDesc.ClearValue = FClearValueBinding(ClearColor);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::RenderTargetable);
 	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
 

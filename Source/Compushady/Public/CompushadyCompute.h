@@ -10,26 +10,11 @@
 #include "CompushadyTypes.h"
 #include "CompushadyCompute.generated.h"
 
-USTRUCT(BlueprintType)
-struct FCompushadyResourceArray
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<UCompushadyCBV*> CBVs;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<UCompushadySRV*> SRVs;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<UCompushadyUAV*> UAVs;
-};
-
 /**
  * 
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadyCompute : public UObject, public ICompushadySignalable
+class COMPUSHADY_API UCompushadyCompute : public UObject, public ICompushadyPipeline
 {
 	GENERATED_BODY()
 
@@ -55,33 +40,7 @@ public:
 	bool IsRunning() const;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TMap<FString, FCompushadyResourceBinding> CBVResourceBindingsMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TMap<FString, FCompushadyResourceBinding> SRVResourceBindingsMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TMap<FString, FCompushadyResourceBinding> UAVResourceBindingsMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TMap<int32, FCompushadyResourceBinding> CBVResourceBindingsSlotMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TMap<int32, FCompushadyResourceBinding> SRVResourceBindingsSlotMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TMap<int32, FCompushadyResourceBinding> UAVResourceBindingsSlotMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TArray<FCompushadyResourceBinding> CBVResourceBindings;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TArray<FCompushadyResourceBinding> SRVResourceBindings;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
-	TArray<FCompushadyResourceBinding> UAVResourceBindings;
-
-	void OnSignalReceived() override;
+	FCompushadyResourceBindings ResourceBindings;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	const TArray<uint8>& GetSPIRV() const;
@@ -114,16 +73,10 @@ protected:
 	FComputeShaderRHIRef ComputeShaderRef;
 	FComputePipelineStateRHIRef ComputePipelineStateRef;
 
-	// this will avoid the resources to be GC'd
-	UPROPERTY()
-	FCompushadyResourceArray CurrentResourceArray;
-
 	FIntVector ThreadGroupSize;
 
 	TArray<uint8> SPIRV;
 	TArray<uint8> DXIL;
 
 	bool SetupDispatch(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled);
-	void SetupPipeline(FRHICommandListImmediate& RHICmdList, const TArray<UCompushadyCBV*>& CBVs, const TArray<UCompushadySRV*>& SRVs, const TArray<UCompushadyUAV*>& UAVs);
-
 };

@@ -1,6 +1,5 @@
 // Copyright 2023 - Roberto De Ioris.
 
-
 #include "CompushadyCBV.h"
 
 bool UCompushadyCBV::Initialize(const FString& Name, const uint8* Data, const int64 Size)
@@ -55,61 +54,70 @@ void UCompushadyCBV::SyncBufferData(FRHICommandListImmediate& RHICmdList)
 	bBufferDataDirty = false;
 }
 
-void UCompushadyCBV::SetFloat(const int64 Offset, const float Value)
+bool UCompushadyCBV::SetFloat(const int64 Offset, const float Value)
 {
-	SetValue(Offset, Value);
+	return SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetFloatArray(const int64 Offset, const TArray<float>& Values)
+bool UCompushadyCBV::SetFloatArray(const int64 Offset, const TArray<float>& Values)
 {
-	SetArrayValue(Offset, Values);
+	return SetArrayValue(Offset, Values);
 }
 
-void UCompushadyCBV::SetInt(const int64 Offset, const int32 Value)
+bool UCompushadyCBV::SetInt(const int64 Offset, const int32 Value)
 {
-	SetValue(Offset, Value);
+	return SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetUInt(const int64 Offset, const int64 Value)
+bool UCompushadyCBV::SetUInt(const int64 Offset, const int64 Value)
 {
 	if (Value < 0)
 	{
-		return;
+		return false;
 	}
-	SetValue(Offset, Value);
+	return SetValue(Offset, static_cast<uint32>(Value));
 }
 
-void UCompushadyCBV::SetDouble(const int64 Offset, const double Value)
+bool UCompushadyCBV::SetUInt(const int64 Offset, const uint32 Value)
 {
-	SetValue(Offset, Value);
+	return SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetDoubleArray(const int64 Offset, const TArray<double>& Values)
+bool UCompushadyCBV::SetDouble(const int64 Offset, const double Value)
 {
-	SetArrayValue(Offset, Values);
+	return SetValue(Offset, Value);
 }
 
-void UCompushadyCBV::SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose)
+bool UCompushadyCBV::SetDoubleArray(const int64 Offset, const TArray<double>& Values)
+{
+	return SetArrayValue(Offset, Values);
+}
+
+bool UCompushadyCBV::SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
 		FMatrix44f Matrix(Transform.ToMatrixWithScale());
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
+		return true;
 	}
+	return false;
 }
 
-void UCompushadyCBV::SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose)
+bool UCompushadyCBV::SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(double)))
 	{
 		FMatrix44d Matrix(Transform.ToMatrixWithScale());
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(double));
 		bBufferDataDirty = true;
+		return true;
 	}
+	return false;
 }
 
-void UCompushadyCBV::SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose)
+bool UCompushadyCBV::SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
@@ -122,17 +130,21 @@ void UCompushadyCBV::SetPerspectiveFloat(const int64 Offset, const float HalfFOV
 		}
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
+		return true;
 	}
+	return false;
 }
 
-void UCompushadyCBV::SetRotationFloat2(const int64 Offset, const float Radians)
+bool UCompushadyCBV::SetRotationFloat2(const int64 Offset, const float Radians)
 {
 	if (IsValidOffset(Offset, 4 * sizeof(float)))
 	{
 		float Matrix[4] = { FMath::Cos(Radians), -FMath::Sin(Radians), FMath::Sin(Radians), FMath::Cos(Radians) };
 		FMemory::Memcpy(BufferData.GetData() + Offset, Matrix, 4 * sizeof(float));
 		bBufferDataDirty = true;
+		return true;
 	}
+	return false;
 }
 
 void UCompushadyCBV::BufferDataClean()
@@ -145,27 +157,64 @@ int64 UCompushadyCBV::GetBufferSize() const
 	return BufferData.Num();
 }
 
-float UCompushadyCBV::GetFloat(const int64 Offset)
+bool UCompushadyCBV::GetFloat(const int64 Offset, float& Value)
 {
-	return GetValue<float>(Offset);
+	return GetValue(Offset, Value);
 }
 
-double UCompushadyCBV::GetDouble(const int64 Offset)
+bool UCompushadyCBV::GetDouble(const int64 Offset, double& Value)
 {
-	return GetValue<double>(Offset);
+	return GetValue(Offset, Value);
 }
 
-int32 UCompushadyCBV::GetInt(const int64 Offset)
+bool UCompushadyCBV::GetInt(const int64 Offset, int32& Value)
 {
-	return GetValue<int32>(Offset);
+	return GetValue(Offset, Value);
 }
 
-int64 UCompushadyCBV::GetUInt(const int64 Offset)
+bool UCompushadyCBV::GetUInt(const int64 Offset, int64& Value)
 {
-	return static_cast<int64>(GetValue<uint32>(Offset));
+	uint32 OutValue;
+	if (GetValue(Offset, OutValue))
+	{
+		Value = static_cast<uint32>(OutValue);
+		return true;
+	}
+	return false;
+}
+
+bool UCompushadyCBV::GetUInt(const int64 Offset, uint32& Value)
+{
+	return GetValue(Offset, Value);
 }
 
 bool UCompushadyCBV::IsValidOffset(const int64 Offset, const int64 Size) const
 {
 	return Offset >= 0 && (Offset + Size <= BufferData.Num());
+}
+
+bool UCompushadyCBV::SetPerspectiveFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose)
+{
+	if (IsValidOffset(Offset, 16 * sizeof(float)))
+	{
+		FMatrix Matrix = MinimalViewInfo.CalculateProjectionMatrix();
+		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
+		bBufferDataDirty = true;
+		return true;
+	}
+	return false;
+}
+
+bool UCompushadyCBV::SetPerspectiveFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose)
+{
+	FMinimalViewInfo MinimalViewInfo;
+	CameraComponent->GetCameraView(0, MinimalViewInfo);
+	return SetPerspectiveFromMinimalViewInfo(Offset, MinimalViewInfo, bTranspose);
+}
+
+bool UCompushadyCBV::SetPerspectiveFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose)
+{
+	FMinimalViewInfo MinimalViewInfo;
+	SceneCaptureComponent->GetCameraView(0, MinimalViewInfo);
+	return SetPerspectiveFromMinimalViewInfo(Offset, MinimalViewInfo, bTranspose);
 }
