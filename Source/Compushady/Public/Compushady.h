@@ -14,7 +14,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 #define COMPUSHADY_CREATE_BUFFER RHICreateBuffer
 #define COMPUSHADY_CREATE_SRV RHICreateShaderResourceView
 #define COMPUSHADY_CREATE_UAV RHICreateUnorderedAccessView
-#elif ENGINE_MINOR_VERSION == 3
+#elif ENGINE_MINOR_VERSION >= 3
 #define COMPUSHADY_UE_VERSION 53
 #define COMPUSHADY_CREATE_BUFFER RHICmdList.CreateBuffer
 #define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView

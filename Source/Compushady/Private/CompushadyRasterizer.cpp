@@ -270,7 +270,7 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 			SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
 			SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings);
 
-			RHICmdList.DrawPrimitive(0, NumVertices, 1);
+			RHICmdList.DrawPrimitive(0, NumVertices / 3, 1);
 
 			RHICmdList.EndRenderPass();
 		}, OnSignaled);
