@@ -230,7 +230,7 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>
 		ResourceArray.UAVs.Add(UAV);
 	}
 
-	UCompushadyCompute::Dispatch(ResourceArray, XYZ, OnSignaled);
+	Dispatch(ResourceArray, XYZ, OnSignaled);
 }
 
 void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* Buffer, const int32 Offset, const FCompushadySignaled& OnSignaled)

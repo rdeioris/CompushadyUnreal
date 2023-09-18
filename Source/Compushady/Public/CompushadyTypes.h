@@ -250,6 +250,15 @@ protected:
 
 	template<typename SHADER_TYPE>
 	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+
+	// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
+#if COMPUSHADY_UE_VERSION < 53
+	template<>
+	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+	template<>
+	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+#endif
+
 	void TrackResource(UObject* InResource);
 	void TrackResources(const FCompushadyResourceArray& ResourceArray);
 
