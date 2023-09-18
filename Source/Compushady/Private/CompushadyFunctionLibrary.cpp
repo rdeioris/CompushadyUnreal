@@ -266,8 +266,8 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
 
+	FTextureRHIRef TextureRHIRef= RHICreateTexture(TextureCreateDesc);
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
 		return nullptr;

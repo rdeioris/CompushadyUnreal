@@ -41,7 +41,7 @@ bool FCompushadyRasterizerTest_Simple::RunTest(const FString& Parameters)
 
 	FCompushadySignaled Signal;
 	Signal.BindUFunction(Rasterizer, TEXT("StoreLastSignal"));
-	Rasterizer->Draw({}, {}, { RTV }, 1, Signal);
+	Rasterizer->Draw({}, {}, { RTV }, 3, Signal);
 
 	ADD_LATENT_AUTOMATION_COMMAND(FCompushadyWaitRasterizer(this, Rasterizer, [this, Rasterizer, RTV]()
 		{
@@ -55,9 +55,9 @@ bool FCompushadyRasterizerTest_Simple::RunTest(const FString& Parameters)
 					CopyTextureData2D(Data, Output.GetData(), 8, EPixelFormat::PF_R8G8B8A8, RowPitch, 8 * sizeof(uint32));
 				}, 0);
 
-			TestEqual(TEXT("Output[0]"), Output[7 * 8], 0xff0000ff);
-			TestEqual(TEXT("Output[1]"), Output[7 * 8 + 7], 0xff0000ff);
-			TestEqual(TEXT("Output[2]"), Output[3 * 8 + 4], 0xff0000ff);
+			TestEqual(TEXT("Output[7 * 8]"), Output[7 * 8], 0xff0000ff);
+			TestEqual(TEXT("Output[7 * 8 + 7]"), Output[7 * 8 + 7], 0xff0000ff);
+			TestEqual(TEXT("Output[3 * 8 + 4]"), Output[3 * 8 + 4], 0xff0000ff);
 
 		}));
 

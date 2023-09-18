@@ -35,7 +35,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			break;
 		}
 
-		if (Opcode == 15 && (Offset + Size < SpirV.Num()) && Size > 3 && SpirV[Offset + 1] == 5) // OpEntryPoint(15) + ExecutionModel(GLCompute/5) + id + Name + ...)
+		if (Opcode == 15 && (Offset + Size < SpirV.Num()) && Size > 3) // OpEntryPoint(15) + ExecutionModel(GLCompute/*) + id + Name + ...)
 		{
 			EntryPointOffset = Offset;
 			bool bFoundNull = false;
@@ -182,15 +182,12 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			}
 		}
 		// patch the EntryPoint Name
-		else if (Opcode == 15 && (Offset + Size < SpirV.Num())) // OpEntryPoint(15) + ExecutionModel + id + Name + ...
+		else if (Opcode == 15 && (Offset + Size < SpirV.Num()) && Size > 8) // OpEntryPoint(15) + ExecutionModel + id + Name + ...
 		{
-			if (Size > 8 && SpirV[Offset + 1] == 5) // ExecutionModel == GLCompute
+			uint32* EntryPointPtr = reinterpret_cast<uint32*>(SpirVEntryPoint);
+			for (int32 Index = 0; Index < 6; Index++)
 			{
-				uint32* EntryPointPtr = reinterpret_cast<uint32*>(SpirVEntryPoint);
-				for (int32 Index = 0; Index < 6; Index++)
-				{
-					SpirV[Offset + 3 + Index] = EntryPointPtr[Index];
-				}
+				SpirV[Offset + 3 + Index] = EntryPointPtr[Index];
 			}
 		}
 		else if (Opcode == 59 && (Offset + Size < SpirV.Num()) && Size > 3) // OpVariable + id_type + id + StorageClass
