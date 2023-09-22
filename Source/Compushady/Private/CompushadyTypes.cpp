@@ -221,7 +221,7 @@ void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 E
 			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
 			WaitForGPU(RHICmdList);
 			uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-			ReadbackCacheFloats.Empty(Elements * sizeof(float));
+			ReadbackCacheFloats.Empty(Elements);
 			ReadbackCacheFloats.Append(reinterpret_cast<const float*>(Data) + Offset, Elements);
 			RHICmdList.UnlockStagingBuffer(StagingBuffer);
 		}, OnSignaled, ReadbackCacheFloats);
