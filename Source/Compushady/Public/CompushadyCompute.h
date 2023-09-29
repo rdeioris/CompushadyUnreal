@@ -39,7 +39,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	bool IsRunning() const;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FCompushadyResourceBindings ResourceBindings;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
