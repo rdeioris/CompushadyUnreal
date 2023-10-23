@@ -14,6 +14,7 @@ DEFINE_LOG_CATEGORY(LogCompushady);
 #include "DetailWidgetRow.h"
 #include "IDetailCustomization.h"
 #include "PropertyEditorModule.h"
+#include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Layout/SScrollBar.h"
 #include "Widgets/Text/SMultiLineEditableText.h"
 #endif
@@ -28,7 +29,7 @@ namespace Compushady
 		ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
 	}
 
-	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs)
+	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs, FSHAHash& Hash)
 	{
 		Blob.Append(ByteCode);
 
@@ -47,7 +48,16 @@ namespace Compushady
 
 		Blob.Append(ShaderCode.GetReadAccess());
 
+		Hash = GetHash(Blob);
+
 		return true;
+	}
+
+	FSHAHash GetHash(const TArrayView<uint8>& Data)
+	{
+		FSHA1 Sha1;
+		Sha1.Update(Data.GetData(), Data.Num());
+		return Sha1.Finalize();
 	}
 }
 

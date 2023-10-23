@@ -121,15 +121,12 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 	}
 
 	TArray<uint8> UnrealByteCode;
-	if (!Compushady::ToUnrealShader(ByteCode, UnrealByteCode, ResourceBindings.NumCBVs, ResourceBindings.NumSRVs, ResourceBindings.NumUAVs))
+	FSHAHash Hash;
+	if (!Compushady::ToUnrealShader(ByteCode, UnrealByteCode, ResourceBindings.NumCBVs, ResourceBindings.NumSRVs, ResourceBindings.NumUAVs, Hash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the shader";
 		return false;
 	}
-
-	FSHA1 Sha1;
-	Sha1.Update(UnrealByteCode.GetData(), UnrealByteCode.Num());
-	FSHAHash Hash = Sha1.Finalize();
 
 	ComputeShaderRef = RHICreateComputeShader(UnrealByteCode, Hash);
 	if (!ComputeShaderRef.IsValid() || !ComputeShaderRef->IsValid())

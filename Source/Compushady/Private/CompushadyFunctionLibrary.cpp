@@ -157,7 +157,7 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 	return CompushadyCompute;
 }
 
-UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterizerFromHLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, FString& ErrorMessages, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint)
+UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterizerFromHLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint)
 {
 	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
 
@@ -167,7 +167,7 @@ UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterize
 	TArray<uint8> PixelShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
 
-	if (!CompushadyRasterizer->InitVSPSFromHLSL(VertexShaderCode, VertexShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	if (!CompushadyRasterizer->InitVSPSFromHLSL(VertexShaderCode, VertexShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, RasterizerConfig, ErrorMessages))
 	{
 		return nullptr;
 	}
@@ -175,7 +175,7 @@ UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterize
 	return CompushadyRasterizer;
 }
 
-UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyMSPSRasterizerFromHLSLString(const FString& MeshShaderSource, const FString& PixelShaderSource, FString& ErrorMessages, const FString& MeshShaderEntryPoint, const FString& PixelShaderEntryPoint)
+UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyMSPSRasterizerFromHLSLString(const FString& MeshShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& MeshShaderEntryPoint, const FString& PixelShaderEntryPoint)
 {
 	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
 
@@ -185,7 +185,7 @@ UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyMSPSRasterize
 	TArray<uint8> PixelShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
 
-	if (!CompushadyRasterizer->InitMSPSFromHLSL(MeshShaderCode, MeshShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	if (!CompushadyRasterizer->InitMSPSFromHLSL(MeshShaderCode, MeshShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, RasterizerConfig, ErrorMessages))
 	{
 		return nullptr;
 	}
@@ -267,7 +267,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
 
-	FTextureRHIRef TextureRHIRef= RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
 		return nullptr;
@@ -301,6 +301,37 @@ UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const F
 	}
 
 	return CompushadyRTV;
+}
+
+UCompushadyDSV* UCompushadyFunctionLibrary::CreateCompushadyDSVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format, const float DepthClearValue, const int32 StencilClearValue)
+{
+	if (StencilClearValue < 0)
+	{
+		return nullptr;
+	}
+
+	if (Format != EPixelFormat::PF_D24 && Format != EPixelFormat::PF_ShadowDepth && Format != EPixelFormat::PF_DepthStencil)
+	{
+		return nullptr;
+	}
+
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
+	TextureCreateDesc.ClearValue = FClearValueBinding(DepthClearValue, static_cast<uint32>(StencilClearValue));
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::DepthStencilTargetable);
+	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyDSV* CompushadyDSV = NewObject<UCompushadyDSV>();
+	if (!CompushadyDSV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyDSV;
 }
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format)
@@ -541,6 +572,51 @@ UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVFromRenderTarget2
 	return CompushadyRTV;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromDataTable(const FString& Name, UDataTable* DataTable, const EPixelFormat PixelFormat)
+{
+	if (!DataTable)
+	{
+		return nullptr;
+	}
+
+	int64 Size = 0;
+	TArray<FProperty*> Columns;
+
+	// compute size of the buffer
+	const UScriptStruct* ScriptStruct = DataTable->GetRowStruct();
+	for (TFieldIterator<FProperty> It(ScriptStruct); It; ++It)
+	{
+		FProperty* Property = *It;
+
+		if (CastField<FFloatProperty>(Property))
+		{
+			Size += sizeof(float);
+			Columns.Add(Property);
+		}
+	}
+
+	const TMap<FName, uint8*> RowMap = DataTable->GetRowMap();
+
+	Size *= RowMap.Num();
+
+	TArray<uint8> Data;
+	Data.AddUninitialized(Size);
+
+	int64 Offset = 0;
+
+	for (const TPair<FName, uint8*>& Pair : RowMap)
+	{
+		for (const FProperty* Property : Columns)
+		{
+			float* Value = Property->ContainerPtrToValuePtr<float>(Pair.Value);
+			FMemory::Memcpy(Data.GetData() + Offset, Value, sizeof(float));
+			Offset += sizeof(float);
+		}
+	}
+
+	return CreateCompushadySRVBufferFromByteArray(Name, Data, PixelFormat);
+}
+
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromCurveFloat(const FString& Name, UCurveFloat* CurveFloat, const float StartTime, const float EndTime, const int32 Steps)
 {
 	if (!CurveFloat || Steps <= 0 || EndTime <= StartTime)
@@ -703,7 +779,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromFloatAr
 		[&BufferRHIRef, Name, Data, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVCompute, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask, ResourceCreateInfo);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -727,13 +803,18 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromFloatAr
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromByteArray(const FString& Name, const TArray<uint8>& Data, const EPixelFormat PixelFormat)
 {
+	if (PixelFormat == EPixelFormat::PF_Unknown || Data.Num() == 0)
+	{
+		return nullptr;
+	}
+
 	FBufferRHIRef BufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Data, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVCompute, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask, ResourceCreateInfo);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -764,6 +845,36 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
 			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
+			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
+			RHICmdList.UnlockBuffer(BufferRHIRef);
+		});
+
+	FlushRenderingCommands();
+
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromStructuredBuffer(BufferRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromByteArray(const FString& Name, const TArray<uint8>& Data, const int32 Stride)
+{
+	FBufferRHIRef BufferRHIRef;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
+		[&BufferRHIRef, Name, Data, Stride](FRHICommandListImmediate& RHICmdList)
+		{
+			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);

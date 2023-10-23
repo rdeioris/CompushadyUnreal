@@ -6,7 +6,7 @@
 #include "Compushady.h"
 #include "Serialization/ArrayWriter.h"
 
-bool UCompushadyRasterizer::InitVSPSFromHLSL(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, FString& ErrorMessages)
+bool UCompushadyRasterizer::InitVSPSFromHLSL(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
 	RHIInterfaceType = RHIGetInterfaceType();
 
@@ -26,10 +26,10 @@ bool UCompushadyRasterizer::InitVSPSFromHLSL(const TArray<uint8>& VertexShaderCo
 		return false;
 	}
 
-	return CreateVSPSRasterizerPipeline(VertexShaderByteCode, PixelShaderByteCode, VertexShaderResourceBindings, PixelShaderResourceBindings, ErrorMessages);
+	return CreateVSPSRasterizerPipeline(VertexShaderByteCode, PixelShaderByteCode, VertexShaderResourceBindings, PixelShaderResourceBindings, RasterizerConfig, ErrorMessages);
 }
 
-bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode, const FString& MeshShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, FString& ErrorMessages)
+bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode, const FString& MeshShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
 	RHIInterfaceType = RHIGetInterfaceType();
 
@@ -49,10 +49,10 @@ bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode
 		return false;
 	}
 
-	return CreateMSPSRasterizerPipeline(MeshShaderByteCode, PixelShaderByteCode, MeshShaderResourceBindings, PixelShaderResourceBindings, ErrorMessages);
+	return CreateMSPSRasterizerPipeline(MeshShaderByteCode, PixelShaderByteCode, MeshShaderResourceBindings, PixelShaderResourceBindings, RasterizerConfig, ErrorMessages);
 }
 
-bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, FString& ErrorMessages)
+bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
 	// check for semantics
 	if (VertexShaderResourceBindings.InputSemantics.Num() > 0)
@@ -81,50 +81,41 @@ bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexSh
 	}
 
 	TArray<uint8> VSByteCode;
-	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VSResourceBindings.NumCBVs, VSResourceBindings.NumSRVs, VSResourceBindings.NumUAVs))
+	FSHAHash VSHash;
+	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VSResourceBindings.NumCBVs, VSResourceBindings.NumSRVs, VSResourceBindings.NumUAVs, VSHash))
 	{
-		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
+		ErrorMessages = "Unable to add Unreal metadata to the Vertex Shader";
 		return false;
 	}
 
-	FSHA1 Sha1;
-	Sha1.Update(VSByteCode.GetData(), VSByteCode.Num());
-	FSHAHash Hash = Sha1.Finalize();
-
-	VertexShaderRef = RHICreateVertexShader(VSByteCode, Hash);
+	VertexShaderRef = RHICreateVertexShader(VSByteCode, VSHash);
 	if (!VertexShaderRef.IsValid() || !VertexShaderRef->IsValid())
 	{
 		ErrorMessages = "Unable to create Vertex Shader";
 		return false;
 	}
 
-	VertexShaderRef->SetHash(Hash);
+	VertexShaderRef->SetHash(VSHash);
 
 	TArray<uint8> PSByteCode;
-	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs))
+	FSHAHash PSHash;
+	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSHash))
 	{
-		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
+		ErrorMessages = "Unable to add Unreal metadata to the Pixel Shader";
 		return false;
 	}
 
-	Sha1 = {};
-	Sha1.Update(PSByteCode.GetData(), PSByteCode.Num());
-	Hash = Sha1.Finalize();
-
-	PixelShaderRef = RHICreatePixelShader(PSByteCode, Hash);
+	PixelShaderRef = RHICreatePixelShader(PSByteCode, PSHash);
 	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
 	{
 		ErrorMessages = "Unable to create Pixel Shader";
 		return false;
 	}
 
-	PixelShaderRef->SetHash(Hash);
+	PixelShaderRef->SetHash(PSHash);
 
-	PipelineStateInitializer.NumSamples = 1;
-	PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
-	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
-	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
-	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
+	FillPipelineStateInitializer(RasterizerConfig);
+
 	PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = GEmptyVertexDeclaration.VertexDeclarationRHI;
 	PipelineStateInitializer.BoundShaderState.VertexShaderRHI = VertexShaderRef;
 	PipelineStateInitializer.BoundShaderState.PixelShaderRHI = PixelShaderRef;
@@ -134,7 +125,45 @@ bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexSh
 	return true;
 }
 
-bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, FString& ErrorMessages)
+void UCompushadyRasterizer::FillPipelineStateInitializer(const FCompushadyRasterizerConfig& RasterizerConfig)
+{
+	if (RasterizerConfig.FillMode == ECompushadyRasterizerFillMode::Solid)
+	{
+		switch (RasterizerConfig.CullMode)
+		{
+		case(ECompushadyRasterizerCullMode::None):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::ClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CW>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::CounterClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CCW>::GetRHI();
+			break;
+		}
+	}
+	else if (RasterizerConfig.FillMode == ECompushadyRasterizerFillMode::Wireframe)
+	{
+		switch (RasterizerConfig.CullMode)
+		{
+		case(ECompushadyRasterizerCullMode::None):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_None>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::ClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_CW>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::CounterClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_CCW>::GetRHI();
+			break;
+		}
+	}
+
+	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
+	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
+}
+
+bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
 	// check for semantics
 	if (MeshShaderResourceBindings.InputSemantics.Num() > 0)
@@ -163,50 +192,41 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 	}
 
 	TArray<uint8> MSByteCode;
-	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MSResourceBindings.NumCBVs, MSResourceBindings.NumSRVs, MSResourceBindings.NumUAVs))
+	FSHAHash MSHash;
+	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MSResourceBindings.NumCBVs, MSResourceBindings.NumSRVs, MSResourceBindings.NumUAVs, MSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
 		return false;
 	}
 
-	FSHA1 Sha1;
-	Sha1.Update(MSByteCode.GetData(), MSByteCode.Num());
-	FSHAHash Hash = Sha1.Finalize();
-
-	MeshShaderRef = RHICreateMeshShader(MSByteCode, Hash);
+	MeshShaderRef = RHICreateMeshShader(MSByteCode, MSHash);
 	if (!MeshShaderRef.IsValid() || !MeshShaderRef->IsValid())
 	{
 		ErrorMessages = "Unable to create Mesh Shader";
 		return false;
 	}
 
-	MeshShaderRef->SetHash(Hash);
+	MeshShaderRef->SetHash(MSHash);
 
 	TArray<uint8> PSByteCode;
-	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs))
+	FSHAHash PSHash;
+	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
 		return false;
 	}
 
-	Sha1 = {};
-	Sha1.Update(PSByteCode.GetData(), PSByteCode.Num());
-	Hash = Sha1.Finalize();
-
-	PixelShaderRef = RHICreatePixelShader(PSByteCode, Hash);
+	PixelShaderRef = RHICreatePixelShader(PSByteCode, PSHash);
 	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
 	{
 		ErrorMessages = "Unable to create Pixel Shader";
 		return false;
 	}
 
-	PixelShaderRef->SetHash(Hash);
+	PixelShaderRef->SetHash(PSHash);
 
-	PipelineStateInitializer.NumSamples = 1;
-	PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
-	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
-	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
-	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
+	FillPipelineStateInitializer(RasterizerConfig);
+
 	PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = nullptr;
 	PipelineStateInitializer.BoundShaderState.SetMeshShader(MeshShaderRef);
 	PipelineStateInitializer.BoundShaderState.PixelShaderRHI = PixelShaderRef;
@@ -216,7 +236,7 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 	return true;
 }
 
-void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, const int32 NumVertices, const FCompushadySignaled& OnSignaled)
+void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const bool bClearColor, const bool bClearDepthStencil, const FCompushadySignaled& OnSignaled)
 {
 	if (IsRunning())
 	{
@@ -227,6 +247,12 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 	if (NumVertices <= 0)
 	{
 		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid number of vertices %d"), NumVertices));
+		return;
+	}
+
+	if (NumInstances <= 0)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid number of instances %d"), NumInstances));
 		return;
 	}
 
@@ -247,12 +273,14 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 	}
 
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
-	PipelineStateInitializer.RenderTargetsEnabled = 0;
+	uint32 RenderTargetsEnabled = 0;
+	//PipelineStateInitializer.RenderTargetsEnabled = 0;
 	for (int32 Index = 0; Index < RTVs.Num(); Index++)
 	{
 		RenderTargets[Index] = RTVs[Index]->GetTextureRHI();
-		PipelineStateInitializer.RenderTargetsEnabled++;
-		PipelineStateInitializer.RenderTargetFormats[Index] = RTVs[Index]->GetTexturePixelFormat();
+		RenderTargetsEnabled++;
+		//PipelineStateInitializer.RenderTargetsEnabled++;
+		//PipelineStateInitializer.RenderTargetFormats[Index] = RTVs[Index]->GetTexturePixelFormat();
 		TrackResource(RTVs[Index]);
 	}
 
@@ -260,19 +288,36 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 	TrackResources(PSResourceArray);
 
 	EnqueueToGPU(
-		[this, NumVertices, VSResourceArray, PSResourceArray, RenderTargets](FRHICommandListImmediate& RHICmdList)
+		[this, NumVertices, NumInstances, VSResourceArray, PSResourceArray, RenderTargets, RenderTargetsEnabled, bClearColor, bClearDepthStencil](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIRenderPassInfo PassInfo(PipelineStateInitializer.RenderTargetsEnabled, const_cast<FRHITexture**>(RenderTargets.GetData()), ERenderTargetActions::Load_Store);
-			RHICmdList.BeginRenderPass(PassInfo, TEXT("UCompushadyRasterizer::Draw"));
-			RHICmdList.SetViewport(0, 0, 0.0f, RenderTargets[0]->GetDesc().Extent.X, RenderTargets[0]->GetDesc().Extent.Y, 1.0f);
+			for (uint32 RenderTargetIndex = 0; RenderTargetIndex < RenderTargetsEnabled; RenderTargetIndex++)
+			{
+				RHICmdList.Transition(FRHITransitionInfo(RenderTargets[RenderTargetIndex], ERHIAccess::Unknown, ERHIAccess::RTV));
+				if (bClearColor)
+				{
+					ClearRenderTarget(RHICmdList, RenderTargets[RenderTargetIndex]);
+				}
+			}
 
-			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);
+			FRHIRenderPassInfo PassInfo(RenderTargetsEnabled, const_cast<FRHITexture**>(RenderTargets.GetData()), ERenderTargetActions::Load_Store);
+			RHICmdList.BeginRenderPass(PassInfo, TEXT("UCompushadyRasterizer::Draw"));
+
+			//RHICmdList.SetViewport(0, 0, 0.0f, RenderTargets[0]->GetDesc().Extent.X, RenderTargets[0]->GetDesc().Extent.Y, 1.0f);
+			RHICmdList.SetViewport(0, 0, 0.0f, 1024, 1024, 1.0f);
+			RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
+			RHICmdList.SetStencilRef(0);
+
+			RHICmdList.ApplyCachedRenderTargets(PipelineStateInitializer);
+
+			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);// , EApplyRendertargetOption::DoNothing, false, EPSOPrecacheResult::Untracked);
+
 			SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
 			SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings);
 
-			RHICmdList.DrawPrimitive(0, NumVertices / 3, 1);
+			RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
 
 			RHICmdList.EndRenderPass();
+
 		}, OnSignaled);
 }
 

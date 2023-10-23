@@ -239,6 +239,7 @@ void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTar
 	{
 		RenderTarget->UpdateResource();
 		RenderTarget->UpdateResourceImmediate(false);
+		FlushRenderingCommands();
 	}
 
 	FTextureResource* Resource = RenderTarget->GetResource();
@@ -296,6 +297,7 @@ void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray*
 	{
 		RenderTargetArray->UpdateResource();
 		RenderTargetArray->UpdateResourceImmediate(false);
+		FlushRenderingCommands();
 	}
 
 	FTextureResource* Resource = RenderTargetArray->GetResource();
@@ -706,12 +708,120 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 	return true;
 }
 
-template<typename SHADER_TYPE>
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+namespace Compushady
 {
+	namespace Pipeline
+	{
+		template<typename SHADER_TYPE>
+		void SetupParameters(FRHICommandListImmediate& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+		{
 #if COMPUSHADY_UE_VERSION >= 53
-	FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+			FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
 #endif
+
+			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
+			{
+				if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
+				{
+					ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
+				}
+#if COMPUSHADY_UE_VERSION >= 53
+				BatchedParameters.SetShaderUniformBuffer(ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
+#else
+				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
+#endif
+			}
+
+			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
+			{
+				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+#if COMPUSHADY_UE_VERSION >= 53
+				BatchedParameters.SetShaderResourceViewParameter(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+#else
+				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+#endif
+			}
+
+			for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
+			{
+				RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
+#if COMPUSHADY_UE_VERSION >= 53
+				BatchedParameters.SetUAVParameter(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
+#else
+				RHICmdList.SetUAVParameter(Shader, ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
+#endif
+			}
+
+#if COMPUSHADY_UE_VERSION >= 53
+			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
+#endif
+		}
+
+		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
+#if COMPUSHADY_UE_VERSION < 53
+		template<>
+		void SetupParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+		{
+			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
+			{
+				if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
+				{
+					ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
+				}
+				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
+			}
+
+			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
+			{
+				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+			}
+		}
+
+		template<>
+		void void SetupParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+		{
+			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
+			{
+				if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
+				{
+					ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
+				}
+				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
+			}
+
+			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
+			{
+				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+			}
+		}
+#endif
+	}
+}
+
+void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+{
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+}
+
+void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+{
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+}
+
+void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+{
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+}
+
+void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+{
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+}
+void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+{
+	FRayTracingShaderBindingsWriter GlobalResources;
 
 	for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
 	{
@@ -719,77 +829,22 @@ void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHIC
 		{
 			ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
 		}
-#if COMPUSHADY_UE_VERSION >= 53
-		BatchedParameters.SetShaderUniformBuffer(ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-#else
-		RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-#endif
+
+		GlobalResources.SetUniformBuffer(ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
 	}
 
 	for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
 	{
 		RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-#if COMPUSHADY_UE_VERSION >= 53
-		BatchedParameters.SetShaderResourceViewParameter(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-#else
-		RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-#endif
+		GlobalResources.SetSRV(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
 	}
 
 	for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
 	{
 		RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
-#if COMPUSHADY_UE_VERSION >= 53
-		BatchedParameters.SetUAVParameter(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
-#else
-		RHICmdList.SetUAVParameter(Shader, ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
-#endif
-	}
-
-#if COMPUSHADY_UE_VERSION >= 53
-	RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
-#endif
+		GlobalResources.SetUAV(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
 }
-
-#if COMPUSHADY_UE_VERSION < 53
-template<>
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
-{
-	for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
-	{
-		if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
-		{
-			ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
-		}
-		RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-	}
-
-	for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
-	{
-		RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-		RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-	}
 }
-
-template<>
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
-{
-	for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
-	{
-		if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
-		{
-			ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
-		}
-		RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-	}
-
-	for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
-	{
-		RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-		RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-	}
-}
-#endif
 
 void ICompushadyPipeline::TrackResource(UObject* InResource)
 {
@@ -831,16 +886,43 @@ bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& 
 		return false;
 	}
 
+	for (int32 Index = 0; Index < CBVs.Num(); Index++)
+	{
+		if (!CBVs[Index])
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV %d cannot be null"), Index));
+			return false;
+		}
+	}
+
 	if (SRVs.Num() != ResourceBindings.SRVs.Num())
 	{
 		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS SRVs got %d"), ResourceBindings.SRVs.Num(), SRVs.Num()));
 		return false;
 	}
 
+	for (int32 Index = 0; Index < SRVs.Num(); Index++)
+	{
+		if (!SRVs[Index])
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("SRV %d cannot be null"), Index));
+			return false;
+		}
+	}
+
 	if (UAVs.Num() != ResourceBindings.UAVs.Num())
 	{
 		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS UAVs got %d"), ResourceBindings.UAVs.Num(), UAVs.Num()));
 		return false;
+	}
+
+	for (int32 Index = 0; Index < UAVs.Num(); Index++)
+	{
+		if (!UAVs[Index])
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("UAV %d cannot be null"), Index));
+			return false;
+		}
 	}
 
 	return true;

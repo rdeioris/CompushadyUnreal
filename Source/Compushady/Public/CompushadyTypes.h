@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Compushady.h"
 #include "UObject/NoExportTypes.h"
+#include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
@@ -15,7 +16,7 @@
  *
  */
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyFloat2
+struct COMPUSHADY_API FCompushadyFloat2 : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -28,7 +29,7 @@ struct COMPUSHADY_API FCompushadyFloat2
 };
 
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyFloat3
+struct COMPUSHADY_API FCompushadyFloat3 : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -43,7 +44,7 @@ struct COMPUSHADY_API FCompushadyFloat3
 };
 
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyFloat4
+struct COMPUSHADY_API FCompushadyFloat4 : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -248,16 +249,11 @@ protected:
 	bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
 	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled);
 
-	template<typename SHADER_TYPE>
-	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-
-	// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
-#if COMPUSHADY_UE_VERSION < 53
-	template<>
+	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
 	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-	template<>
 	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-#endif
+	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
 
 	void TrackResource(UObject* InResource);
 	void TrackResources(const FCompushadyResourceArray& ResourceArray);

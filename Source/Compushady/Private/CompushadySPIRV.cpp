@@ -88,6 +88,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 
 	FVulkanShaderHeader VulkanShaderHeader;
 	VulkanShaderHeader.SpirvCRC = FCrc::MemCrc32(ByteCode.GetData(), ByteCode.Num());
+	VulkanShaderHeader.InOutMask = 0xffffffff;
 
 	// the entry point is fixed to "main_00000000_00000000"
 	// update it to pass the size/crc check

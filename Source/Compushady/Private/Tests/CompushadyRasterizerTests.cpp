@@ -35,13 +35,13 @@ bool FCompushadyRasterizerTest_Simple::RunTest(const FString& Parameters)
 	FString ErrorMessages;
 	const FString VSCode = "float4 main(uint vid : SV_VertexID) : SV_Position { if (vid == 0) { return float4(-1, -1, 0, 1); } else if (vid == 1) { return float4(0, 1, 0, 1); } else if (vid == 2) { return float4(1, -1, 0, 1); } return float4(0, 0, 0, 0); }";
 	const FString PSCode = "float4 main(float4 pos : SV_position) : SV_Target0 { return float4(1, 0, 0, 1); }";
-	UCompushadyRasterizer* Rasterizer = UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterizerFromHLSLString(VSCode, PSCode, ErrorMessages, "main", "main");
+	UCompushadyRasterizer* Rasterizer = UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterizerFromHLSLString(VSCode, PSCode, FCompushadyRasterizerConfig(), ErrorMessages, "main", "main");
 
 	UCompushadyRTV* RTV = UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(TestName, 8, 8, EPixelFormat::PF_R8G8B8A8, FLinearColor::Black);
 
 	FCompushadySignaled Signal;
 	Signal.BindUFunction(Rasterizer, TEXT("StoreLastSignal"));
-	Rasterizer->Draw({}, {}, { RTV }, 3, Signal);
+	Rasterizer->Draw({}, {}, { RTV }, nullptr, 3, 1, true, false, Signal);
 
 	ADD_LATENT_AUTOMATION_COMMAND(FCompushadyWaitRasterizer(this, Rasterizer, [this, Rasterizer, RTV]()
 		{
