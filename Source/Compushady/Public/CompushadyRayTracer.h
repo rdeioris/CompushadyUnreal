@@ -25,13 +25,13 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	bool IsRunning() const;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FCompushadyResourceBindings RayGenResourceBindings;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FCompushadyResourceBindings RayMissResourceBindings;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FCompushadyResourceBindings RayHitGroupResourceBindings;
 
 	/* The following block is mainly used for unit testing */
