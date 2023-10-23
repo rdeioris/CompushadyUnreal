@@ -90,13 +90,13 @@ struct FCompushadyResourceBinding
 {
 	GENERATED_BODY()
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	int32 BindingIndex = 0;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	int32 SlotIndex = 0;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FString Name;
 };
 
@@ -105,35 +105,35 @@ struct FCompushadyResourceBindings
 {
 	GENERATED_BODY()
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TArray<FCompushadyResourceBinding> CBVs;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<FString, FCompushadyResourceBinding> CBVsMap;
 
 	uint32 NumCBVs = 0;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> CBVsSlotMap;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TArray<FCompushadyResourceBinding> SRVs;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<FString, FCompushadyResourceBinding> SRVsMap;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> SRVsSlotMap;
 
 	uint32 NumSRVs = 0;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TArray<FCompushadyResourceBinding> UAVs;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<FString, FCompushadyResourceBinding> UAVsMap;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> UAVsSlotMap;
 
 	uint32 NumUAVs = 0;
@@ -144,13 +144,13 @@ struct FCompushadyResourceArray
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	TArray<class UCompushadyCBV*> CBVs;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	TArray<class UCompushadySRV*> SRVs;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	TArray<class UCompushadyUAV*> UAVs;
 };
 
