@@ -18,6 +18,8 @@ class COMPUSHADY_API UCompushadyVideoEncoder : public UObject
 	
 public:
 
+	~UCompushadyVideoEncoder();
+
 	bool Initialize();
 
 	UFUNCTION(BlueprintCallable, Category="Compushady")
@@ -25,6 +27,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool DequeueEncodedFrame(TArray<uint8>& FrameData);
+
+	bool DequeueEncodedFrame(uint8* FrameData, int32& FrameDataSize);
 
 protected:
 

@@ -66,6 +66,9 @@ public:
 	static UCompushadyUAV* CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyUAV* CreateCompushadyUAVSharedTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")

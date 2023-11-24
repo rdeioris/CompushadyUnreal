@@ -59,3 +59,30 @@ bool UCompushadyVideoEncoder::DequeueEncodedFrame(TArray<uint8>& FrameData)
 
 	return true;
 }
+
+bool UCompushadyVideoEncoder::DequeueEncodedFrame(uint8* FrameData, int32& FrameDataSize)
+{
+	FVideoPacket VideoPacket;
+	if (!VideoEncoder->ReceivePacket(VideoPacket))
+	{
+		return false;
+	}
+
+	if (VideoPacket.DataSize > FrameDataSize)
+	{
+		return false;
+	}
+
+	FMemory::Memcpy(FrameData, VideoPacket.DataPtr.Get(), VideoPacket.DataSize);
+	FrameDataSize = VideoPacket.DataSize;
+
+	return true;
+}
+
+UCompushadyVideoEncoder::~UCompushadyVideoEncoder()
+{
+	if (VideoEncoder)
+	{
+		VideoEncoder->Close();
+	}
+}
