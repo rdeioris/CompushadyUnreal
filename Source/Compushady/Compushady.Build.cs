@@ -13,7 +13,8 @@ public class Compushady : ModuleRules
             new string[]
             {
                 "Core",
-                "MediaAssets"
+                "MediaAssets",
+                "AVCodecsCore",
             }
             );
 
@@ -29,7 +30,6 @@ public class Compushady : ModuleRules
                 "Slate",
                 "UMG",
                 "AudioExtensions",
-                "AVCodecsCore",
                 "AVCodecsCoreRHI",
             }
             );
