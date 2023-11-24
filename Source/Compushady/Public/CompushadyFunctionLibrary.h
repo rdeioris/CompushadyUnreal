@@ -12,6 +12,7 @@
 #include "CompushadyRasterizer.h"
 #include "CompushadyRTV.h"
 #include "CompushadyUAV.h"
+#include "CompushadyVideoEncoder.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2DArray.h"
@@ -123,6 +124,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyVideoEncoder* CreateCompushadyVideoEncoder();
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static bool DisassembleSPIRVFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages);

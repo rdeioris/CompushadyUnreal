@@ -88,6 +88,18 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRV
 	return CompushadyCompute;
 }
 
+UCompushadyVideoEncoder* UCompushadyFunctionLibrary::CreateCompushadyVideoEncoder()
+{
+	UCompushadyVideoEncoder* CompushadyVideoEncoder = NewObject<UCompushadyVideoEncoder>();
+
+	if (!CompushadyVideoEncoder->Initialize())
+	{
+		return nullptr;
+	}
+
+	return CompushadyVideoEncoder;
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();

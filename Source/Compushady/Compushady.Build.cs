@@ -29,6 +29,8 @@ public class Compushady : ModuleRules
                 "Slate",
                 "UMG",
                 "AudioExtensions",
+                "AVCodecsCore",
+                "AVCodecsCoreRHI",
             }
             );
 
