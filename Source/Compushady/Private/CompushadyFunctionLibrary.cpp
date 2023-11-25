@@ -88,11 +88,11 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRV
 	return CompushadyCompute;
 }
 
-UCompushadyVideoEncoder* UCompushadyFunctionLibrary::CreateCompushadyVideoEncoder()
+UCompushadyVideoEncoder* UCompushadyFunctionLibrary::CreateCompushadyVideoEncoder(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency)
 {
 	UCompushadyVideoEncoder* CompushadyVideoEncoder = NewObject<UCompushadyVideoEncoder>();
 
-	if (!CompushadyVideoEncoder->Initialize())
+	if (!CompushadyVideoEncoder->Initialize(Codec, Quality, Latency))
 	{
 		return nullptr;
 	}

@@ -129,7 +129,7 @@ public:
 	static UCompushadyCompute* CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadyVideoEncoder* CreateCompushadyVideoEncoder();
+	static UCompushadyVideoEncoder* CreateCompushadyVideoEncoder(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static bool DisassembleSPIRVFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages);

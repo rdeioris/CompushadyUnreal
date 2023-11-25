@@ -8,6 +8,32 @@
 #include "Video/VideoEncoder.h"
 #include "CompushadyVideoEncoder.generated.h"
 
+UENUM(BlueprintType)
+enum class ECompushadyVideoEncoderCodec : uint8
+{
+	H264Main UMETA(DisplayName = "H.264 / Main"),
+	H264Baseline UMETA(DisplayName = "H.264 / Baseline"),
+	H264High UMETA(DisplayName = "H.264 / High")
+};
+
+UENUM(BlueprintType)
+enum class ECompushadyVideoEncoderQuality : uint8
+{
+	Default,
+	High,
+	Low,
+	UltraLow,
+	Lossless
+};
+
+UENUM(BlueprintType)
+enum class ECompushadyVideoEncoderLatency : uint8
+{
+	Default,
+	Low,
+	UltraLow
+};
+
 /**
  * 
  */
@@ -20,7 +46,7 @@ public:
 
 	~UCompushadyVideoEncoder();
 
-	bool Initialize();
+	bool Initialize(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency);
 
 	UFUNCTION(BlueprintCallable, Category="Compushady")
 	bool EncodeFrame(UCompushadyResource* FrameResource, const bool bForceKeyFrame);
