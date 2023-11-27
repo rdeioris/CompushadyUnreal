@@ -20,5 +20,19 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "AVCodecsCore",
+			"Enabled": true
+		},
+		{
+			"Name": "NVCodecs",
+			"Enabled": true
+		},
+		{
+			"Name": "AMFCodecs",
+			"Enabled": true
+		}
 	]
 }

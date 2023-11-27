@@ -12,6 +12,7 @@
 #include "CompushadyRasterizer.h"
 #include "CompushadyRTV.h"
 #include "CompushadyUAV.h"
+#include "CompushadyVideoEncoder.h"
 #include "Curves/CurveFloat.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2DArray.h"
@@ -63,6 +64,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyUAV* CreateCompushadyUAVSharedTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format);
@@ -123,6 +127,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyVideoEncoder* CreateCompushadyVideoEncoder(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static bool DisassembleSPIRVFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages);

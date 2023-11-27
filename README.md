@@ -11,6 +11,8 @@ Currently Windows (D3D12 and Vulkan), Linux and Android (Vulkan) are supported. 
 
 Like the python module, the plugin makes heavy use of the DirectXShaderCompiler project (https://github.com/Microsoft/DirectXShaderCompiler) as well as the various Khronos projects for SPIRV management.
 
+Join the Discord server for support: https://discord.gg/2WvdpkYXHW
+
 ## Quickstart
 
 ## The Sandbox

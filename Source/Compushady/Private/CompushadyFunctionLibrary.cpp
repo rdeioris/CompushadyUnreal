@@ -88,6 +88,18 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRV
 	return CompushadyCompute;
 }
 
+UCompushadyVideoEncoder* UCompushadyFunctionLibrary::CreateCompushadyVideoEncoder(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency)
+{
+	UCompushadyVideoEncoder* CompushadyVideoEncoder = NewObject<UCompushadyVideoEncoder>();
+
+	if (!CompushadyVideoEncoder->Initialize(Codec, Quality, Latency))
+	{
+		return nullptr;
+	}
+
+	return CompushadyVideoEncoder;
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
@@ -266,6 +278,26 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
+
+	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVSharedTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
+{
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV | ETextureCreateFlags::Shared);
 
 	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
