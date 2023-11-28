@@ -32,7 +32,8 @@
 		},
 		{
 			"Name": "AMFCodecs",
-			"Enabled": true
+			"Enabled": true,
+			"PlatformDenyList": [ "Linux" ]
 		}
 	]
 }
