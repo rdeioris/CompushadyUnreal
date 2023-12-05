@@ -508,10 +508,12 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
+#ifndef __D3D12SHADER_H__
 		case D3D_SIT_UAV_FEEDBACKTEXTURE:
 			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
+#endif
 		case D3D_SIT_UAV_RWSTRUCTURED:
 		case D3D_SIT_UAV_APPEND_STRUCTURED:
 		case D3D_SIT_UAV_CONSUME_STRUCTURED:

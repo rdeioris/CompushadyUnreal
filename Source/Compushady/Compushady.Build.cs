@@ -26,6 +26,7 @@ public class Compushady : ModuleRules
                 "Engine",
                 "RHI",
                 "RenderCore",
+                "Renderer",
                 "SlateCore",
                 "Slate",
                 "UMG",
