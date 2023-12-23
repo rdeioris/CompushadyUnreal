@@ -22,6 +22,10 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 #endif
 #endif
 
+#if PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_WINDOWS
+#define COMPUSHADY_SUPPORTS_VIDEO_ENCODING
+#endif
+
 namespace Compushady
 {
 	enum class ECompushadySharedResourceType : uint8

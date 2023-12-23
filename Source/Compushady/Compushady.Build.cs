@@ -14,7 +14,6 @@ public class Compushady : ModuleRules
             {
                 "Core",
                 "MediaAssets",
-                "AVCodecsCore",
             }
             );
 
@@ -31,7 +30,6 @@ public class Compushady : ModuleRules
                 "Slate",
                 "UMG",
                 "AudioExtensions",
-                "AVCodecsCoreRHI",
             }
             );
 
@@ -47,6 +45,8 @@ public class Compushady : ModuleRules
         // DirectXCompiler
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
+            PublicDependencyModuleNames.Add("AVCodecsCore");
+            PrivateDependencyModuleNames.Add("AVCodecsCoreRHI");
             PrivateDependencyModuleNames.Add("VulkanRHI");
             AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_windows");
@@ -57,6 +57,8 @@ public class Compushady : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
+            PublicDependencyModuleNames.Add("AVCodecsCore");
+            PrivateDependencyModuleNames.Add("AVCodecsCoreRHI");
             PrivateDependencyModuleNames.Add("VulkanRHI");
             AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             string ThirdPartyDirectoryLinux = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_linux");
@@ -75,6 +77,8 @@ public class Compushady : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Mac)
         {
+            PublicDependencyModuleNames.Add("AVCodecsCore");
+            PrivateDependencyModuleNames.Add("AVCodecsCoreRHI");
             string ThirdPartyDirectoryMac = System.IO.Path.Combine(ThirdPartyDirectory, "dxc_2023_03_01_mac");
             string ThirdPartyDirectoryMacLibs = System.IO.Path.Combine(ThirdPartyDirectoryMac, "lib");
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryMac, "include", "dxc");

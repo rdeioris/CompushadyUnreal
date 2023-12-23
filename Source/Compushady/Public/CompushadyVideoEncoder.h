@@ -5,8 +5,9 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "CompushadyTypes.h"
-#include "Video/VideoEncoder.h"
 #include "CompushadyVideoEncoder.generated.h"
+
+struct FCompushadyVideoEncoder;
 
 UENUM(BlueprintType)
 enum class ECompushadyVideoEncoderCodec : uint8
@@ -58,7 +59,7 @@ public:
 
 protected:
 
-	TSharedPtr<TVideoEncoder<class FVideoResourceRHI>> VideoEncoder;
+	TSharedPtr<FCompushadyVideoEncoder> VideoEncoder;
 
 	uint32 Timestamp;
 };

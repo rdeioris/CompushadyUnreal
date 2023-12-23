@@ -2,13 +2,20 @@
 
 
 #include "CompushadyVideoEncoder.h"
+#ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
+#include "Video/VideoEncoder.h"
 #include "Video/Encoders/Configs/VideoEncoderConfigH264.h"
 #include "Video/Resources/VideoResourceRHI.h"
+struct FCompushadyVideoEncoder
+{
+	TSharedPtr<TVideoEncoder<FVideoResourceRHI>> Encoder;
+};
+#endif
 
 
 bool UCompushadyVideoEncoder::Initialize(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency)
 {
-
+#ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
 	auto ApplyConfig = [](TSharedPtr<FVideoEncoderConfig> Config, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency)
 		{
 			switch (Quality)
@@ -67,23 +74,34 @@ bool UCompushadyVideoEncoder::Initialize(const ECompushadyVideoEncoderCodec Code
 		Config->RepeatSPSPPS = true;
 		Config->Profile = EH264Profile::High;
 	}
-	
+
 	ApplyConfig(Config, Quality, Latency);
 
-	VideoEncoder = TVideoEncoder<FVideoResourceRHI>::Create<FVideoResourceRHI>(FAVDevice::GetHardwareDevice(), *Config.Get());
-
+	VideoEncoder = MakeShared<FCompushadyVideoEncoder>();
 	if (!VideoEncoder)
 	{
+		return false;
+	}
+
+	VideoEncoder->Encoder = TVideoEncoder<FVideoResourceRHI>::Create<FVideoResourceRHI>(FAVDevice::GetHardwareDevice(), *Config.Get());
+
+	if (!VideoEncoder->Encoder)
+	{
+		VideoEncoder = nullptr;
 		return false;
 	}
 
 	Timestamp = 0;
 
 	return true;
+#else
+	return false;
+#endif
 }
 
 bool UCompushadyVideoEncoder::EncodeFrame(UCompushadyResource* FrameResource, const bool bForceKeyFrame)
 {
+#ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
 	if (!FrameResource)
 	{
 		return false;
@@ -94,28 +112,32 @@ bool UCompushadyVideoEncoder::EncodeFrame(UCompushadyResource* FrameResource, co
 		return false;
 	}
 
-	FVideoEncoderConfigH264& Config = VideoEncoder->GetInstance()->Edit<FVideoEncoderConfigH264>();
+	FVideoEncoderConfigH264& Config = VideoEncoder->Encoder->GetInstance()->Edit<FVideoEncoderConfigH264>();
 
 	Config.Width = FrameResource->GetTextureSize().X;
 	Config.Height = FrameResource->GetTextureSize().Y;
 
-	VideoEncoder->SetMinimalConfig(Config);
+	VideoEncoder->Encoder->SetMinimalConfig(Config);
 
-	FVideoDescriptor RawDescriptor = FVideoResourceRHI::GetDescriptorFrom(VideoEncoder->GetDevice().ToSharedRef(), FrameResource->GetTextureRHI());
+	FVideoDescriptor RawDescriptor = FVideoResourceRHI::GetDescriptorFrom(VideoEncoder->Encoder->GetDevice().ToSharedRef(), FrameResource->GetTextureRHI());
 
 	TSharedPtr<FVideoResourceRHI> VideoResource = MakeShared<FVideoResourceRHI>(
-		VideoEncoder->GetDevice().ToSharedRef(),
+		VideoEncoder->Encoder->GetDevice().ToSharedRef(),
 		FVideoResourceRHI::FRawData{ FrameResource->GetTextureRHI(), nullptr, 0 }, RawDescriptor);
 
-	VideoEncoder->SendFrame(VideoResource, Timestamp++, bForceKeyFrame);
+	VideoEncoder->Encoder->SendFrame(VideoResource, Timestamp++, bForceKeyFrame);
 
 	return true;
+#else
+	return false;
+#endif
 }
 
 bool UCompushadyVideoEncoder::DequeueEncodedFrame(TArray<uint8>& FrameData)
 {
+#ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
 	FVideoPacket VideoPacket;
-	if (!VideoEncoder->ReceivePacket(VideoPacket))
+	if (!VideoEncoder->Encoder->ReceivePacket(VideoPacket))
 	{
 		return false;
 	}
@@ -124,12 +146,16 @@ bool UCompushadyVideoEncoder::DequeueEncodedFrame(TArray<uint8>& FrameData)
 	FrameData.Append(VideoPacket.DataPtr.Get(), VideoPacket.DataSize);
 
 	return true;
+#else
+	return false;
+#endif
 }
 
 bool UCompushadyVideoEncoder::DequeueEncodedFrame(uint8* FrameData, int32& FrameDataSize)
 {
+#ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
 	FVideoPacket VideoPacket;
-	if (!VideoEncoder->ReceivePacket(VideoPacket))
+	if (!VideoEncoder->Encoder->ReceivePacket(VideoPacket))
 	{
 		return false;
 	}
@@ -143,12 +169,17 @@ bool UCompushadyVideoEncoder::DequeueEncodedFrame(uint8* FrameData, int32& Frame
 	FrameDataSize = VideoPacket.DataSize;
 
 	return true;
+#else
+	return false;
+#endif
 }
 
 UCompushadyVideoEncoder::~UCompushadyVideoEncoder()
 {
+#ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
 	if (VideoEncoder)
 	{
-		VideoEncoder->Close();
+		VideoEncoder->Encoder->Close();
 	}
+#endif
 }

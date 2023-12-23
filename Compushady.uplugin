@@ -24,16 +24,18 @@
 	"Plugins": [
 		{
 			"Name": "AVCodecsCore",
-			"Enabled": true
+			"Enabled": true,
+			"PlatformDenyList": [ "Android" ]
 		},
 		{
 			"Name": "NVCodecs",
-			"Enabled": true
+			"Enabled": true,
+			"PlatformDenyList": [ "Android" ]
 		},
 		{
 			"Name": "AMFCodecs",
 			"Enabled": true,
-			"PlatformDenyList": [ "Linux" ]
+			"PlatformDenyList": [ "Linux", "Android" ]
 		}
 	]
 }
