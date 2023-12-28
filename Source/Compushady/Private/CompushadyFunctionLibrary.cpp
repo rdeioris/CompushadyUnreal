@@ -939,3 +939,63 @@ UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadySoundWave(cons
 
 	return CompushadySoundWave;
 }
+
+UCompushadySampler* UCompushadyFunctionLibrary::CreateCompushadySampler(TextureFilter Filter)
+{
+	UCompushadySampler* CompushadySampler = NewObject<UCompushadySampler>();
+
+	ESamplerFilter SamplerFilter = ESamplerFilter::SF_Point;
+	if (Filter == TextureFilter::TF_Bilinear)
+	{
+		SamplerFilter = ESamplerFilter::SF_Bilinear;
+	}
+	else if (Filter == TextureFilter::TF_Trilinear)
+	{
+		SamplerFilter = ESamplerFilter::SF_Trilinear;
+	}
+	FSamplerStateInitializerRHI SamplerStateInitializer(SamplerFilter);
+	FSamplerStateRHIRef SamplerState = RHICreateSamplerState(SamplerStateInitializer);
+	if (!SamplerState.IsValid() || !SamplerState->IsValid())
+	{
+		return nullptr;
+	}
+
+	if (!CompushadySampler->InitializeFromSamplerState(SamplerState))
+	{
+		return nullptr;
+	}
+
+	return CompushadySampler;
+}
+
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromHLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint)
+{
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
+
+	TArray<uint8> ShaderCode;
+	Compushady::StringToShaderCode(PixelShaderSource, ShaderCode);
+
+	if (!CompushadyBlendable->InitFromHLSL(ShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyBlendable->UpdateResources(PSResourceArray, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyBlendable;
+
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture)
+{
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromSceneTexture(SceneTexture))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}

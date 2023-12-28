@@ -70,19 +70,19 @@ bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexSh
 		}
 	}
 
-	if (!CreateResourceBindings(VertexShaderResourceBindings, VSResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::CreateResourceBindings(VertexShaderResourceBindings, VSResourceBindings, ErrorMessages))
 	{
 		return false;
 	}
 
-	if (!CreateResourceBindings(PixelShaderResourceBindings, PSResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, PSResourceBindings, ErrorMessages))
 	{
 		return false;
 	}
 
 	TArray<uint8> VSByteCode;
 	FSHAHash VSHash;
-	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VSResourceBindings.NumCBVs, VSResourceBindings.NumSRVs, VSResourceBindings.NumUAVs, VSHash))
+	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VSResourceBindings.NumCBVs, VSResourceBindings.NumSRVs, VSResourceBindings.NumUAVs, VSResourceBindings.NumSamplers, VSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the Vertex Shader";
 		return false;
@@ -99,7 +99,7 @@ bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexSh
 
 	TArray<uint8> PSByteCode;
 	FSHAHash PSHash;
-	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSHash))
+	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSResourceBindings.NumSamplers, PSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the Pixel Shader";
 		return false;
@@ -181,19 +181,19 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 		}
 	}
 
-	if (!CreateResourceBindings(MeshShaderResourceBindings, MSResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::CreateResourceBindings(MeshShaderResourceBindings, MSResourceBindings, ErrorMessages))
 	{
 		return false;
 	}
 
-	if (!CreateResourceBindings(PixelShaderResourceBindings, PSResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, PSResourceBindings, ErrorMessages))
 	{
 		return false;
 	}
 
 	TArray<uint8> MSByteCode;
 	FSHAHash MSHash;
-	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MSResourceBindings.NumCBVs, MSResourceBindings.NumSRVs, MSResourceBindings.NumUAVs, MSHash))
+	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MSResourceBindings.NumCBVs, MSResourceBindings.NumSRVs, MSResourceBindings.NumUAVs, MSResourceBindings.NumSamplers, MSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
 		return false;
@@ -210,7 +210,7 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 
 	TArray<uint8> PSByteCode;
 	FSHAHash PSHash;
-	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSHash))
+	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSResourceBindings.NumSamplers, PSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
 		return false;
@@ -311,8 +311,8 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 
 			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);// , EApplyRendertargetOption::DoNothing, false, EPSOPrecacheResult::Untracked);
 
-			SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
-			SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings);
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
 
 			RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
 
@@ -372,8 +372,8 @@ void UCompushadyRasterizer::DispatchMesh(const FCompushadyResourceArray& MSResou
 			RHICmdList.SetViewport(0, 0, 0.0f, RenderTargets[0]->GetDesc().Extent.X, RenderTargets[0]->GetDesc().Extent.Y, 1.0f);
 
 			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);
-			SetupPipelineParameters(RHICmdList, MeshShaderRef, MSResourceArray, MSResourceBindings);
-			SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings);
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, MeshShaderRef, MSResourceArray, MSResourceBindings);
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
 
 			RHICmdList.DispatchMeshShader(XYZ.X, XYZ.Y, XYZ.Z);
 

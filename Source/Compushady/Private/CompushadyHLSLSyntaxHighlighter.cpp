@@ -47,6 +47,9 @@ TSharedRef<FCompushadyHLSLSyntaxHighlighter> FCompushadyHLSLSyntaxHighlighter::C
 	ADD_RULE("float4x4");
 	ADD_RULE("half");
 	ADD_RULE("int");
+	ADD_RULE("int2");
+	ADD_RULE("int3");
+	ADD_RULE("int4");
 	ADD_RULE("matrix");
 	ADD_RULE("min16float");
 	ADD_RULE("min10float");
@@ -54,6 +57,9 @@ TSharedRef<FCompushadyHLSLSyntaxHighlighter> FCompushadyHLSLSyntaxHighlighter::C
 	ADD_RULE("min12int");
 	ADD_RULE("min16uint");
 	ADD_RULE("uint");
+	ADD_RULE("uint2");
+	ADD_RULE("uint3");
+	ADD_RULE("uint4");
 	ADD_RULE("void");
 
 	// templated types
@@ -161,7 +167,7 @@ void FCompushadyHLSLSyntaxHighlighter::ParseTokens(const FString& SourceString, 
 			}
 			else
 			{
-				RunInfo.Name = TEXT("SyntaxHighlight.LuaMachine.WhiteSpace");
+				RunInfo.Name = TEXT("SyntaxHighlight.CompushadyHLSL.WhiteSpace");
 				TSharedRef<ISlateRun> Run = FSlateTextRun::Create(RunInfo, ModelString, BaseStyle /* use normal style here*/, ModelRange);
 				Runs.Add(Run);
 			}

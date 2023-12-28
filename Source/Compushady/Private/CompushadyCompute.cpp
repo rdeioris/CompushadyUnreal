@@ -115,14 +115,14 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 
 bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages)
 {
-	if (!CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages))
 	{
 		return false;
 	}
 
 	TArray<uint8> UnrealByteCode;
 	FSHAHash Hash;
-	if (!Compushady::ToUnrealShader(ByteCode, UnrealByteCode, ResourceBindings.NumCBVs, ResourceBindings.NumSRVs, ResourceBindings.NumUAVs, Hash))
+	if (!Compushady::ToUnrealShader(ByteCode, UnrealByteCode, ResourceBindings.NumCBVs, ResourceBindings.NumSRVs, ResourceBindings.NumUAVs, ResourceBindings.NumSamplers, Hash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the shader";
 		return false;
@@ -167,15 +167,16 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		[this, ResourceArray, XYZ](FRHICommandListImmediate& RHICmdList)
 		{
 			SetComputePipelineState(RHICmdList, ComputeShaderRef);
-			SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
 
 			RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
 		}, OnSignaled);
 }
 
-void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
+void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled, const TMap<FString, UCompushadySampler*>& SamplerMap)
 {
 	FCompushadyResourceArray ResourceArray;
+
 	for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
 	{
 		const FString& Name = ResourceBindings.CBVs[Index].Name;
@@ -227,6 +228,23 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>
 		ResourceArray.UAVs.Add(UAV);
 	}
 
+	for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
+	{
+		const FString& Name = ResourceBindings.Samplers[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Sampler \"%s\" not found in supplied map"), *Name));
+			return;
+		}
+		UCompushadySampler* Sampler = Cast<UCompushadySampler>(ResourceMap[Name]);
+		if (!Sampler)
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a Sampler"), *Name));
+			return;
+		}
+		ResourceArray.Samplers.Add(Sampler);
+	}
+
 	Dispatch(ResourceArray, XYZ, OnSignaled);
 }
 
@@ -262,7 +280,7 @@ void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& Resour
 		[this, ResourceArray, BufferRHIRef, Offset](FRHICommandListImmediate& RHICmdList)
 		{
 			SetComputePipelineState(RHICmdList, ComputeShaderRef);
-			SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
 
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
 			RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);

@@ -21,7 +21,7 @@ public:
 
 	bool BufferDataIsDirty() const;
 
-	void SyncBufferData(FRHICommandListImmediate& RHICmdList);
+	void SyncBufferData(FRHICommandList& RHICmdList);
 
 	void BufferDataClean();
 

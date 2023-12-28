@@ -48,7 +48,7 @@ bool UCompushadyCBV::BufferDataIsDirty() const
 	return bBufferDataDirty;
 }
 
-void UCompushadyCBV::SyncBufferData(FRHICommandListImmediate& RHICmdList)
+void UCompushadyCBV::SyncBufferData(FRHICommandList& RHICmdList)
 {
 	RHICmdList.UpdateUniformBuffer(UniformBufferRHIRef, BufferData.GetData());
 	bBufferDataDirty = false;

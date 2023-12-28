@@ -417,6 +417,7 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
+	TMap<uint32, FCompushadyShaderResourceBinding> SamplerMapping;
 
 	ID3D12ShaderReflection* ShaderReflection;
 
@@ -491,6 +492,10 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 		case D3D_SIT_TEXTURE:
 			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case D3D_SIT_SAMPLER:
+			ResourceBinding.Type = ECompushadySharedResourceType::Sampler;
+			SamplerMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case D3D_SIT_BYTEADDRESS:
 			ResourceBinding.Type = ECompushadySharedResourceType::ByteAddressBuffer;
@@ -571,6 +576,15 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 	for (uint32 UAVIndex : UAVKeys)
 	{
 		ShaderResourceBindings.UAVs.Add(UAVMapping[UAVIndex]);
+	}
+
+	TArray<uint32> SamplerKeys;
+	SamplerMapping.GetKeys(SamplerKeys);
+	SamplerKeys.Sort();
+
+	for (uint32 SamplerIndex : SamplerKeys)
+	{
+		ShaderResourceBindings.Samplers.Add(SamplerMapping[SamplerIndex]);
 	}
 
 #endif

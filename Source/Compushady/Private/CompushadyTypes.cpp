@@ -3,6 +3,7 @@
 
 #include "CompushadyTypes.h"
 #include "CompushadyCBV.h"
+#include "CompushadySampler.h"
 #include "CompushadySRV.h"
 #include "CompushadyUAV.h"
 #include "IImageWrapper.h"
@@ -713,7 +714,7 @@ namespace Compushady
 	namespace Pipeline
 	{
 		template<typename SHADER_TYPE>
-		void SetupParameters(FRHICommandListImmediate& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
 		{
 #if COMPUSHADY_UE_VERSION >= 53
 			FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
@@ -734,12 +735,25 @@ namespace Compushady
 
 			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
 			{
-				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+				if (!ResourceArray.SRVs[Index]->IsSceneTexture())
+				{
+					RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
 #if COMPUSHADY_UE_VERSION >= 53
-				BatchedParameters.SetShaderResourceViewParameter(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+					BatchedParameters.SetShaderResourceViewParameter(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
 #else
-				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+					RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
 #endif
+				}
+				else
+				{
+					FTextureRHIRef Texture = ResourceArray.SRVs[Index]->GetRHI(PPInputs);
+					RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+#if COMPUSHADY_UE_VERSION >= 53
+					BatchedParameters.SetShaderTexture(ResourceBindings.SRVs[Index].SlotIndex, Texture);
+#else
+					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, Texture);
+#endif
+				}
 			}
 
 			for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
@@ -749,6 +763,15 @@ namespace Compushady
 				BatchedParameters.SetUAVParameter(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
 #else
 				RHICmdList.SetUAVParameter(Shader, ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
+#endif
+			}
+
+			for (int32 Index = 0; Index < ResourceArray.Samplers.Num(); Index++)
+			{
+#if COMPUSHADY_UE_VERSION >= 53
+				BatchedParameters.SetShaderSampler(ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
+#else
+				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
 #endif
 			}
 
@@ -776,6 +799,11 @@ namespace Compushady
 				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
 				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
 			}
+
+			for (int32 Index = 0; Index < ResourceArray.Samplers.Num(); Index++)
+			{
+				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
+			}
 		}
 
 		template<>
@@ -795,31 +823,36 @@ namespace Compushady
 				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
 				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
 			}
+
+			for (int32 Index = 0; Index < ResourceArray.Samplers.Num(); Index++)
+			{
+				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
+			}
 		}
 #endif
 	}
 }
 
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {});
 }
 
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {});
 }
 
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {});
 }
 
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings);
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, PPInputs);
 }
-void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
 	FRayTracingShaderBindingsWriter GlobalResources;
 
@@ -843,7 +876,7 @@ void ICompushadyPipeline::SetupPipelineParameters(FRHICommandListImmediate& RHIC
 	{
 		RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
 		GlobalResources.SetUAV(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
-}
+	}
 }
 
 void ICompushadyPipeline::TrackResource(UObject* InResource)
@@ -869,20 +902,26 @@ void ICompushadyPipeline::TrackResources(const FCompushadyResourceArray& Resourc
 	}
 }
 
-void ICompushadyPipeline::OnSignalReceived()
+void ICompushadyPipeline::UntrackResources()
 {
 	CurrentTrackedResources.Empty();
 }
 
-bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled)
+void ICompushadyPipeline::OnSignalReceived()
+{
+	UntrackResources();
+}
+
+bool Compushady::Utils::ValidateResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
 {
 	const TArray<UCompushadyCBV*>& CBVs = ResourceArray.CBVs;
 	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
 	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
+	const TArray<UCompushadySampler*>& Samplers = ResourceArray.Samplers;
 
 	if (CBVs.Num() != ResourceBindings.CBVs.Num())
 	{
-		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS CBVs got %d"), ResourceBindings.CBVs.Num(), CBVs.Num()));
+		ErrorMessages = FString::Printf(TEXT("Expected %d VS CBVs got %d"), ResourceBindings.CBVs.Num(), CBVs.Num());
 		return false;
 	}
 
@@ -890,14 +929,14 @@ bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& 
 	{
 		if (!CBVs[Index])
 		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("CBV %d cannot be null"), Index));
+			ErrorMessages = FString::Printf(TEXT("CBV %d cannot be null"), Index);
 			return false;
 		}
 	}
 
 	if (SRVs.Num() != ResourceBindings.SRVs.Num())
 	{
-		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS SRVs got %d"), ResourceBindings.SRVs.Num(), SRVs.Num()));
+		ErrorMessages = FString::Printf(TEXT("Expected %d SRVs got %d"), ResourceBindings.SRVs.Num(), SRVs.Num());
 		return false;
 	}
 
@@ -905,14 +944,14 @@ bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& 
 	{
 		if (!SRVs[Index])
 		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("SRV %d cannot be null"), Index));
+			ErrorMessages = FString::Printf(TEXT("SRV %d cannot be null"), Index);
 			return false;
 		}
 	}
 
 	if (UAVs.Num() != ResourceBindings.UAVs.Num())
 	{
-		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected %d VS UAVs got %d"), ResourceBindings.UAVs.Num(), UAVs.Num()));
+		ErrorMessages = FString::Printf(TEXT("Expected %d UAVs got %d"), ResourceBindings.UAVs.Num(), UAVs.Num());
 		return false;
 	}
 
@@ -920,7 +959,22 @@ bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& 
 	{
 		if (!UAVs[Index])
 		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("UAV %d cannot be null"), Index));
+			ErrorMessages = FString::Printf(TEXT("UAV %d cannot be null"), Index);
+			return false;
+		}
+	}
+
+	if (Samplers.Num() != ResourceBindings.Samplers.Num())
+	{
+		ErrorMessages = FString::Printf(TEXT("Expected %d Samplers got %d"), ResourceBindings.Samplers.Num(), Samplers.Num());
+		return false;
+	}
+
+	for (int32 Index = 0; Index < Samplers.Num(); Index++)
+	{
+		if (!Samplers[Index])
+		{
+			ErrorMessages = FString::Printf(TEXT("Sampler %d cannot be null"), Index);
 			return false;
 		}
 	}
@@ -928,7 +982,24 @@ bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& 
 	return true;
 }
 
-bool ICompushadyPipeline::CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages)
+bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled)
+{
+	const TArray<UCompushadyCBV*>& CBVs = ResourceArray.CBVs;
+	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
+	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
+	const TArray<UCompushadySampler*>& Samplers = ResourceArray.Samplers;
+
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return false;
+	}
+
+	return true;
+}
+
+bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages)
 {
 	// configure CBV resource bindings
 	for (int32 Index = 0; Index < InBindings.CBVs.Num(); Index++)
@@ -1004,5 +1075,58 @@ bool ICompushadyPipeline::CreateResourceBindings(Compushady::FCompushadyShaderRe
 		OutBindings.UAVsSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
 	}
 
+	// configure Samplers resource bindings
+	for (int32 Index = 0; Index < InBindings.Samplers.Num(); Index++)
+	{
+		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.Samplers[Index];
+		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumSamplers)
+		{
+			OutBindings.NumSamplers = ShaderResourceBinding.SlotIndex + 1;
+		}
+
+		FCompushadyResourceBinding ResourceBinding;
+		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
+		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
+		ResourceBinding.Name = ShaderResourceBinding.Name;
+		OutBindings.Samplers.Add(ResourceBinding);
+		OutBindings.SamplersMap.Add(ResourceBinding.Name, ResourceBinding);
+		OutBindings.SamplersSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
+	}
+
 	return true;
+}
+
+FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	FIntVector ThreadGroupSize;
+	TArray<uint8> PixelShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "ps_6_0", PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, ResourceBindings, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> PSByteCode;
+	FSHAHash PSHash;
+	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PixelShaderResourceBindings.CBVs.Num(), PixelShaderResourceBindings.SRVs.Num(), PixelShaderResourceBindings.UAVs.Num(), PixelShaderResourceBindings.Samplers.Num(), PSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
+		return nullptr;
+	}
+
+	FPixelShaderRHIRef PixelShaderRef = RHICreatePixelShader(PSByteCode, PSHash);
+	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Pixel Shader";
+		return nullptr;
+	}
+
+	PixelShaderRef->SetHash(PSHash);
+
+	return PixelShaderRef;
 }

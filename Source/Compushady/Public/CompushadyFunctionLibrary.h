@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CompushadyBlendable.h"
 #include "CompushadyCBV.h"
 #include "CompushadyCompute.h"
 #include "CompushadyDSV.h"
@@ -11,6 +12,7 @@
 #include "CompushadySRV.h"
 #include "CompushadyRasterizer.h"
 #include "CompushadyRTV.h"
+#include "CompushadySampler.h"
 #include "CompushadyUAV.h"
 #include "CompushadyVideoEncoder.h"
 #include "Curves/CurveFloat.h"
@@ -93,6 +95,9 @@ public:
 	static UCompushadyRTV* CreateCompushadyRTVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySampler* CreateCompushadySampler(TextureFilter Filter);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyRTV* CreateCompushadyRTVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format, const FLinearColor ClearColor);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -163,5 +168,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySoundWave* CreateCompushadySoundWave(const UCompushadyCompute* Compute, const FCompushadyResourceArray& ResourceArray, const float Duration);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "PSResourceArray,SceneTexturesMap"), Category = "Compushady")
+	static UCompushadyBlendable* CreateCompushadyBlendableFromHLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main");
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture);
 
 };

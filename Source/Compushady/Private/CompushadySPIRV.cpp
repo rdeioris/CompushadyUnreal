@@ -15,6 +15,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
+	TMap<uint32, FCompushadyShaderResourceBinding> SamplerMapping;
 
 	// SPIR-V is generally managed as an array of 32bit words
 	TArrayView<uint32> SpirV = TArrayView<uint32>((uint32*)ByteCode.GetData(), ByteCode.Num() / sizeof(uint32));

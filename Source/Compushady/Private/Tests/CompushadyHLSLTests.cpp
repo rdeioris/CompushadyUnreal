@@ -40,7 +40,7 @@ bool FCompushadyHLSLTest_RWTexture2D::RunTest(const FString& Parameters)
 
 	FCompushadySignaled Signal;
 	Signal.BindUFunction(Compute, TEXT("StoreLastSignal"));
-	Compute->DispatchByMap({ {"Output", UAV} }, UAV->GetTextureThreadGroupSize(Compute->GetThreadGroupSize(), false), Signal);
+	Compute->DispatchByMap({ {"Output", UAV} }, UAV->GetTextureThreadGroupSize(Compute->GetThreadGroupSize(), false), Signal, {});
 
 	ADD_LATENT_AUTOMATION_COMMAND(FCompushadyWaitCompute(this, Compute, [this, Compute, UAV]()
 		{
@@ -76,7 +76,7 @@ bool FCompushadyHLSLTest_RWBuffer::RunTest(const FString& Parameters)
 
 	FCompushadySignaled Signal;
 	Signal.BindUFunction(Compute, TEXT("StoreLastSignal"));
-	Compute->DispatchByMap({ {"Output", UAV} }, FIntVector(8, 1, 1), Signal);
+	Compute->DispatchByMap({ {"Output", UAV} }, FIntVector(8, 1, 1), Signal, {});
 
 	ADD_LATENT_AUTOMATION_COMMAND(FCompushadyWaitCompute(this, Compute, [this, Compute, UAV]()
 		{

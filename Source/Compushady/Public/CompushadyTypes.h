@@ -10,6 +10,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
 #include "MediaTexture.h"
+#include "PostProcess/PostProcessMaterialInputs.h"
 #include "CompushadyTypes.generated.h"
 
 /**
@@ -137,6 +138,17 @@ struct FCompushadyResourceBindings
 	TMap<int32, FCompushadyResourceBinding> UAVsSlotMap;
 
 	uint32 NumUAVs = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
+	TArray<FCompushadyResourceBinding> Samplers;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
+	TMap<FString, FCompushadyResourceBinding> SamplersMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
+	TMap<int32, FCompushadyResourceBinding> SamplersSlotMap;
+
+	uint32 NumSamplers = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -152,6 +164,9 @@ struct FCompushadyResourceArray
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	TArray<class UCompushadyUAV*> UAVs;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	TArray<class UCompushadySampler*> Samplers;
 };
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
@@ -246,17 +261,11 @@ public:
 	void OnSignalReceived() override;
 
 protected:
-	bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
 	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled);
-
-	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-	void SetupPipelineParameters(FRHICommandListImmediate& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
 
 	void TrackResource(UObject* InResource);
 	void TrackResources(const FCompushadyResourceArray& ResourceArray);
+	void UntrackResources();
 
 	// this will avoid the resources to be GC'd
 	TArray<TStrongObjectPtr<UObject>> CurrentTrackedResources;
@@ -343,3 +352,19 @@ protected:
 	TArray<uint8> ReadbackCacheBytes;
 	TArray<float> ReadbackCacheFloats;
 };
+
+namespace Compushady
+{
+	namespace Utils
+	{
+		COMPUSHADY_API bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
+		COMPUSHADY_API bool ValidateResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
+		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
+
+		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs);
+		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
+	}
+}
