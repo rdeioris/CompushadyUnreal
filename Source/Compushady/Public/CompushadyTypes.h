@@ -10,7 +10,14 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
 #include "MediaTexture.h"
+#if COMPUSHADY_UE_VERSION >= 53
 #include "PostProcess/PostProcessMaterialInputs.h"
+#else
+struct FPostProcessMaterialInputs
+{
+
+};
+#endif
 #include "CompushadyTypes.generated.h"
 
 /**

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "CompushadyTypes.h"
 #include "UObject/NoExportTypes.h"
-#include "PostProcess/PostProcessMaterialInputs.h"
 #include "CompushadySRV.generated.h"
 
 UENUM(BlueprintType)

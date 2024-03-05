@@ -2,8 +2,9 @@
 
 
 #include "CompushadyBlendable.h"
+
+#if COMPUSHADY_UE_VERSION >= 53
 #include "PostProcess/DrawRectangle.h"
-#include "PostProcess/PostProcessMaterialInputs.h"
 #include "PixelShaderUtils.h"
 #include "SceneViewExtension.h"
 #include "ScreenPass.h"
@@ -112,6 +113,7 @@ public:
 	FCompushadyResourceBindings PSResourceBindings;
 	FCompushadyResourceArray PSResourceArray;
 };
+#endif
 
 bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
@@ -126,8 +128,10 @@ bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const F
 
 void UCompushadyBlendable::OverrideBlendableSettings(class FSceneView& View, float Weight) const
 {
+#if COMPUSHADY_UE_VERSION >= 53
 	TArray<FSceneViewExtensionRef>& ViewExtensions = ((FSceneViewFamily*)View.Family)->ViewExtensions;
 	ViewExtensions.Add(MakeShared<FCompushadyPostProcess>(PixelShaderRef, PSResourceBindings, PSResourceArray));
+#endif
 }
 
 bool UCompushadyBlendable::UpdateResources(const FCompushadyResourceArray& InPSResourceArray, FString& ErrorMessages)

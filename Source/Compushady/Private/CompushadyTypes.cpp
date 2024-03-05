@@ -783,7 +783,7 @@ namespace Compushady
 		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
 #if COMPUSHADY_UE_VERSION < 53
 		template<>
-		void SetupParameters(FRHICommandListImmediate& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+		void SetupParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
 		{
 			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
 			{
@@ -807,7 +807,7 @@ namespace Compushady
 		}
 
 		template<>
-		void SetupParameters(FRHICommandListImmediate& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+		void SetupParameters(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
 		{
 			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
 			{
