@@ -24,8 +24,6 @@ bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 		return false;
 	}
 
-	InitFence(this);
-
 	if (InTextureRHIRef->GetOwnerName() == NAME_None)
 	{
 		InTextureRHIRef->SetOwnerName(*GetPathName());
@@ -55,8 +53,6 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 	{
 		return false;
 	}
-
-	InitFence(this);
 
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{
@@ -92,8 +88,6 @@ bool UCompushadyUAV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 	{
 		return false;
 	}
-
-	InitFence(this);
 
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{

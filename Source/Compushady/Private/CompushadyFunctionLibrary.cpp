@@ -940,7 +940,7 @@ UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadySoundWave(cons
 	return CompushadySoundWave;
 }
 
-UCompushadySampler* UCompushadyFunctionLibrary::CreateCompushadySampler(TextureFilter Filter)
+UCompushadySampler* UCompushadyFunctionLibrary::CreateCompushadySampler(const TextureFilter Filter, const TextureAddress AddressU, const TextureAddress AddressV, const TextureAddress AddressW)
 {
 	UCompushadySampler* CompushadySampler = NewObject<UCompushadySampler>();
 
@@ -953,7 +953,24 @@ UCompushadySampler* UCompushadyFunctionLibrary::CreateCompushadySampler(TextureF
 	{
 		SamplerFilter = ESamplerFilter::SF_Trilinear;
 	}
-	FSamplerStateInitializerRHI SamplerStateInitializer(SamplerFilter);
+
+	auto GetAddressMode = [](const TextureAddress Address) -> ESamplerAddressMode
+		{
+			switch (Address)
+			{
+			case(TextureAddress::TA_Clamp):
+				return ESamplerAddressMode::AM_Clamp;
+				break;
+			case(TextureAddress::TA_Mirror):
+				return ESamplerAddressMode::AM_Mirror;
+				break;
+			default:
+				return ESamplerAddressMode::AM_Wrap;
+				break;
+			}
+		};
+
+	FSamplerStateInitializerRHI SamplerStateInitializer(SamplerFilter, GetAddressMode(AddressU), GetAddressMode(AddressV), GetAddressMode(AddressW));
 	FSamplerStateRHIRef SamplerState = RHICreateSamplerState(SamplerStateInitializer);
 	if (!SamplerState.IsValid() || !SamplerState->IsValid())
 	{
@@ -998,4 +1015,36 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(
 	}
 
 	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromWorldSceneAccelerationStructure(UObject* WorldContextObject)
+{
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromWorldSceneAccelerationStructure(WorldContextObject->GetWorld()))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadyRayTracer* UCompushadyFunctionLibrary::CreateCompushadyRayTracerFromHLSLString(const FString& RayGenShaderSource, const FString& RayHitShaderSource, const FString& RayMissShaderSource, FString& ErrorMessages, const FString& RayGenShaderEntryPoint, const FString& RayHitShaderEntryPoint, const FString& RayMissShaderEntryPoint)
+{
+	UCompushadyRayTracer* CompushadyRayTracer = NewObject<UCompushadyRayTracer>();
+
+	TArray<uint8> RayGenShaderCode;
+	Compushady::StringToShaderCode(RayGenShaderSource, RayGenShaderCode);
+
+	TArray<uint8> RayHitShaderCode;
+	Compushady::StringToShaderCode(RayHitShaderSource, RayHitShaderCode);
+
+	TArray<uint8> RayMissShaderCode;
+	Compushady::StringToShaderCode(RayMissShaderSource, RayMissShaderCode);
+
+	if (!CompushadyRayTracer->InitFromHLSL(RayGenShaderCode, RayGenShaderEntryPoint, RayHitShaderCode, RayHitShaderEntryPoint, RayMissShaderCode, RayMissShaderEntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyRayTracer;
 }

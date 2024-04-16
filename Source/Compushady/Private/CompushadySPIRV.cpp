@@ -127,8 +127,11 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 	TMap<uint32, uint32> SpirVStructs;
 	TMap<uint32, TPair<uint32, uint32>> SpirVImages;
 	TMap<uint32, uint32> SpirVSampledImages;
+	TSet<uint32> SpirVSamplers;
 	// track Block decorations (for recognizing CBVs)
 	TSet<uint32> SpirVBlocks;
+	// track RayTracing Acceleration Structures
+	TSet<uint32> SpirVAccelerationStructures;
 
 	while (Offset < SpirV.Num())
 	{
@@ -205,6 +208,10 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 		{
 			SpirVImages.Add(SpirV[Offset + 1], TPair<uint32, uint32>(SpirV[Offset + 3], SpirV[Offset + 7]));
 		}
+		else if (Opcode == 26 && (Offset + Size < SpirV.Num()) && Size > 1) // OpTypeSampler + id
+		{
+			SpirVSamplers.Add(SpirV[Offset + 1]);
+		}
 		else if (Opcode == 27 && (Offset + Size < SpirV.Num()) && Size > 2) // OpTypeSampledImage + id + id_type
 		{
 			SpirVSampledImages.Add(SpirV[Offset + 1], SpirV[Offset + 2]);
@@ -212,6 +219,10 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 		else if (Opcode == 30 && (Offset + Size < SpirV.Num()) && Size > 1) // OpTypeStruct + id + ...
 		{
 			SpirVStructs.Add(SpirV[Offset + 1], Opcode);
+		}
+		else if (Opcode == 5341 && (Offset + Size < SpirV.Num()) && Size > 1) // OpTypeAccelerationStructureKHR + id)
+		{
+			SpirVAccelerationStructures.Add(SpirV[Offset + 1]);
 		}
 		else if (Opcode == 16 && (Offset + Size < SpirV.Num()) && Size > 5 && SpirV[Offset + 2] == 17) // OpExecutionMode + id + LocalSize(17) + X + Y + Z ...
 		{
@@ -237,6 +248,8 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 	int32 StorageImageType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::StorageImage);
 	int32 StorageBufferType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::StorageTexelBuffer);
 	int32 StorageStructuredBufferType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::StorageBuffer);
+	int32 SamplerType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::Sampler);
+	int32 RayTracingAccelerationStructureType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::AccelerationStructure);
 
 	for (const TPair<uint32, FCompushadySpirVDecoration>& Pair : Bindings)
 	{
@@ -339,6 +352,34 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								continue;
 							}
 						}
+					}
+					else if (SpirVSamplers.Contains(TypeId))
+					{
+						FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+						GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+						GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+						GlobalInfo.TypeIndex = SamplerType;
+						ResourceBinding.Type = ECompushadySharedResourceType::Sampler;
+						ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+						ResourceBinding.BindingIndex = Pair.Value.Binding;
+						VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+						SamplerMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+						continue;
+					}
+					else if (SpirVAccelerationStructures.Contains(TypeId))
+					{
+						FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
+						GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
+						GlobalInfo.CombinedSamplerStateAliasIndex = UINT16_MAX;
+						GlobalInfo.TypeIndex = RayTracingAccelerationStructureType;
+						ResourceBinding.Type = ECompushadySharedResourceType::RayTracingAccelerationStructure;
+						ResourceBinding.SlotIndex = VulkanShaderHeader.Globals.Add(GlobalInfo);
+						ResourceBinding.BindingIndex = Pair.Value.Binding;
+						VulkanShaderHeader.GlobalSpirvInfos.Add(SpirvInfo);
+
+						SRVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
+						continue;
 					}
 				}
 			}
@@ -496,7 +537,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 		}
 
 		Offset += Size;
-	}
+}
 #endif
 
 	FArrayWriter Writer;
@@ -548,6 +589,15 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 	for (uint32 UAVIndex : UAVKeys)
 	{
 		ShaderResourceBindings.UAVs.Add(UAVMapping[UAVIndex]);
+	}
+
+	TArray<uint32> SamplerKeys;
+	SamplerMapping.GetKeys(SamplerKeys);
+	SamplerKeys.Sort();
+
+	for (uint32 SamplerIndex : SamplerKeys)
+	{
+		ShaderResourceBindings.Samplers.Add(SamplerMapping[SamplerIndex]);
 	}
 
 	return true;

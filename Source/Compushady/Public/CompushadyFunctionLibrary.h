@@ -11,6 +11,7 @@
 #include "CompushadySoundWave.h"
 #include "CompushadySRV.h"
 #include "CompushadyRasterizer.h"
+#include "CompushadyRaytracer.h"
 #include "CompushadyRTV.h"
 #include "CompushadySampler.h"
 #include "CompushadyUAV.h"
@@ -95,7 +96,7 @@ public:
 	static UCompushadyRTV* CreateCompushadyRTVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadySampler* CreateCompushadySampler(TextureFilter Filter);
+	static UCompushadySampler* CreateCompushadySampler(const TextureFilter Filter, const TextureAddress AddressU, const TextureAddress AddressV, const TextureAddress AddressW);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyRTV* CreateCompushadyRTVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format, const FLinearColor ClearColor);
@@ -163,6 +164,9 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "RasterizerConfig"), Category = "Compushady")
 	static UCompushadyRasterizer* CreateCompushadyMSPSRasterizerFromHLSLString(const FString& MeshShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& MeshShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main");
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "RasterizerConfig"), Category = "Compushady")
+	static UCompushadyRayTracer* CreateCompushadyRayTracerFromHLSLString(const FString& RayGenShaderSource, const FString& RayHitShaderSource, const FString& RayMissShaderSource, FString& ErrorMessages, const FString& RayGenShaderEntryPoint = "main", const FString& RayHitShaderEntryPoint = "main", const FString& RayMissShaderEntryPoint = "main");
+
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromHLSLShaderAsset(UCompushadyShader* ShaderAsset, FString& ErrorMessages, const FString& EntryPoint = "main");
 
@@ -175,4 +179,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture);
 
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromWorldSceneAccelerationStructure(UObject* WorldContextObject);
 };

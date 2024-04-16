@@ -747,7 +747,7 @@ namespace Compushady
 				else
 				{
 					FTextureRHIRef Texture = ResourceArray.SRVs[Index]->GetRHI(PPInputs);
-					RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+					RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::RTV, ERHIAccess::SRVMask));
 #if COMPUSHADY_UE_VERSION >= 53
 					BatchedParameters.SetShaderTexture(ResourceBindings.SRVs[Index].SlotIndex, Texture);
 #else
@@ -944,7 +944,7 @@ bool Compushady::Utils::ValidateResourceBindings(const FCompushadyResourceArray&
 	{
 		if (!SRVs[Index])
 		{
-			ErrorMessages = FString::Printf(TEXT("SRV %d cannot be null"), Index);
+			ErrorMessages = FString::Printf(TEXT("SRV %d (%s) cannot be null"), Index, *(ResourceBindings.SRVs[Index].Name));
 			return false;
 		}
 	}

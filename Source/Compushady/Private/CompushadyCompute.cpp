@@ -11,7 +11,7 @@ bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FSt
 
 	TArray<uint8> ByteCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "cs_6_5", ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
 		return false;
 	}
@@ -142,8 +142,6 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 		ErrorMessages = "Unable to create Compute Pipeline State";
 		return false;
 	}
-
-	InitFence(this);
 
 	return true;
 }

@@ -35,7 +35,8 @@ namespace Compushady
 		StructuredBuffer,
 		ByteAddressBuffer,
 		Texture,
-		Sampler
+		Sampler,
+		RayTracingAccelerationStructure
 	};
 
 	struct FCompushadyShaderResourceBinding

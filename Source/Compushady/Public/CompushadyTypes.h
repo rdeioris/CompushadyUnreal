@@ -179,11 +179,6 @@ class COMPUSHADY_API ICompushadySignalable
 public:
 	virtual ~ICompushadySignalable() = default;
 
-	void InitFence(UObject* InOwningObject)
-	{
-		OwningObject = InOwningObject;
-	}
-
 	bool IsRunning() const
 	{
 		return (RenderThreadCompletionEvent && !RenderThreadCompletionEvent->IsComplete()) || (GameThreadCompletionEvent && !GameThreadCompletionEvent->IsComplete());
@@ -248,7 +243,6 @@ public:
 protected:
 	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
 
-	TWeakObjectPtr<UObject> OwningObject = nullptr;
 	FGraphEventRef RenderThreadCompletionEvent = nullptr;
 	FGraphEventRef GameThreadCompletionEvent = nullptr;
 };

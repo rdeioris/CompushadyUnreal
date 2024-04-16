@@ -37,6 +37,7 @@ public:
 	bool InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EPixelFormat PixelFormat);
 	bool InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef);
 	bool InitializeFromSceneTexture(const ECompushadySceneTexture InSceneTexture);
+	bool InitializeFromWorldSceneAccelerationStructure(UWorld* World);
 	
 	FShaderResourceViewRHIRef GetRHI() const;
 	FTextureRHIRef GetRHI(const FPostProcessMaterialInputs& PPInputs) const;

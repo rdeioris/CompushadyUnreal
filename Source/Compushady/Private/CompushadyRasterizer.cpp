@@ -120,8 +120,6 @@ bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexSh
 	PipelineStateInitializer.BoundShaderState.VertexShaderRHI = VertexShaderRef;
 	PipelineStateInitializer.BoundShaderState.PixelShaderRHI = PixelShaderRef;
 
-	InitFence(this);
-
 	return true;
 }
 
@@ -230,8 +228,6 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 	PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = nullptr;
 	PipelineStateInitializer.BoundShaderState.SetMeshShader(MeshShaderRef);
 	PipelineStateInitializer.BoundShaderState.PixelShaderRHI = PixelShaderRef;
-
-	InitFence(this);
 
 	return true;
 }

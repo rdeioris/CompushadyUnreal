@@ -1,7 +1,7 @@
-// Copyright 2023 - Roberto De Ioris.
-
+// Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadySRV.h"
+#include "FXRenderingUtils.h"
 
 bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 {
@@ -15,18 +15,15 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-
 			SRVRHIRef = COMPUSHADY_CREATE_SRV(TextureRHIRef, 0);
-
 		});
 
 	FlushRenderingCommands();
+
 	if (!SRVRHIRef)
 	{
 		return false;
 	}
-
-	InitFence(this);
 
 	if (InTextureRHIRef->GetOwnerName() == NAME_None)
 	{
@@ -50,6 +47,35 @@ bool UCompushadySRV::InitializeFromSceneTexture(const ECompushadySceneTexture In
 	return true;
 }
 
+bool UCompushadySRV::InitializeFromWorldSceneAccelerationStructure(UWorld* World)
+{
+	FSceneInterface* Scene = World->Scene;
+
+	if (!UE::FXRenderingUtils::RayTracing::HasRayTracingScene(Scene))
+	{
+		return false;
+	}
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
+		[this, Scene](FRHICommandListImmediate& RHICmdList)
+		{
+			SRVRHIRef = UE::FXRenderingUtils::RayTracing::GetRayTracingSceneView(RHICmdList, Scene);
+		});
+
+	FlushRenderingCommands();
+
+	if (!SRVRHIRef)
+	{
+		return false;
+	}
+
+	//UE::FXRenderingUtils::RayTracing::GetVisibleRayTracingMeshCommands();
+
+	RHITransitionInfo = FRHITransitionInfo(UE::FXRenderingUtils::RayTracing::GetRayTracingScene(Scene), ERHIAccess::Unknown, ERHIAccess::BVHRead);
+
+	return true;
+}
+
 bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EPixelFormat PixelFormat)
 {
 	if (!InBufferRHIRef)
@@ -62,9 +88,7 @@ bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
 		[this, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-
 			SRVRHIRef = COMPUSHADY_CREATE_SRV(BufferRHIRef, GPixelFormats[PixelFormat].BlockBytes, PixelFormat);
-
 		});
 
 	FlushRenderingCommands();
@@ -73,8 +97,6 @@ bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 	{
 		return false;
 	}
-
-	InitFence(this);
 
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{
@@ -115,8 +137,6 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 		return false;
 	}
 
-	InitFence(this);
-
 	if (InBufferRHIRef->GetOwnerName() == NAME_None)
 	{
 		InBufferRHIRef->SetOwnerName(*GetPathName());
@@ -129,7 +149,6 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 
 FTextureRHIRef UCompushadySRV::GetRHI(const FPostProcessMaterialInputs& PPInputs) const
 {
-
 	switch (SceneTexture)
 	{
 	case(ECompushadySceneTexture::SceneColorInput):
@@ -164,6 +183,7 @@ FTextureRHIRef UCompushadySRV::GetRHI(const FPostProcessMaterialInputs& PPInputs
 		break;
 	default:
 		return nullptr;
+		break;
 	}
 }
 

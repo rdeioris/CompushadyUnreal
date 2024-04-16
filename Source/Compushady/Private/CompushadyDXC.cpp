@@ -28,6 +28,25 @@ THIRD_PARTY_INCLUDES_END
 
 #if PLATFORM_WINDOWS
 #include <d3d12shader.h>
+
+// this is a pretty annoying hack for avoiding conflict between unreal d3dcommon.h and the system one
+enum _COMPUSHADY_D3D_SHADER_INPUT_TYPE
+{
+	COMPUSHADY_D3D_SIT_CBUFFER = 0,
+	COMPUSHADY_D3D_SIT_TBUFFER = (COMPUSHADY_D3D_SIT_CBUFFER + 1),
+	COMPUSHADY_D3D_SIT_TEXTURE = (COMPUSHADY_D3D_SIT_TBUFFER + 1),
+	COMPUSHADY_D3D_SIT_SAMPLER = (COMPUSHADY_D3D_SIT_TEXTURE + 1),
+	COMPUSHADY_D3D_SIT_UAV_RWTYPED = (COMPUSHADY_D3D_SIT_SAMPLER + 1),
+	COMPUSHADY_D3D_SIT_STRUCTURED = (COMPUSHADY_D3D_SIT_UAV_RWTYPED + 1),
+	COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED = (COMPUSHADY_D3D_SIT_STRUCTURED + 1),
+	COMPUSHADY_D3D_SIT_BYTEADDRESS = (COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED + 1),
+	COMPUSHADY_D3D_SIT_UAV_RWBYTEADDRESS = (COMPUSHADY_D3D_SIT_BYTEADDRESS + 1),
+	COMPUSHADY_D3D_SIT_UAV_APPEND_STRUCTURED = (COMPUSHADY_D3D_SIT_UAV_RWBYTEADDRESS + 1),
+	COMPUSHADY_D3D_SIT_UAV_CONSUME_STRUCTURED = (COMPUSHADY_D3D_SIT_UAV_APPEND_STRUCTURED + 1),
+	COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER = (COMPUSHADY_D3D_SIT_UAV_CONSUME_STRUCTURED + 1),
+	COMPUSHADY_D3D_SIT_RTACCELERATIONSTRUCTURE = (COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER + 1),
+	COMPUSHADY_D3D_SIT_UAV_FEEDBACKTEXTURE = (COMPUSHADY_D3D_SIT_RTACCELERATIONSTRUCTURE + 1),
+};
 #endif
 
 #if PLATFORM_WINDOWS
@@ -314,6 +333,10 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		Arguments.Add(L"-fvk-use-scalar-layout");
 		Arguments.Add(L"-fspv-entrypoint-name=main_00000000_00000000");
 		Arguments.Add(L"-fspv-reflect");
+		if (TargetProfile.StartsWith("lib_"))
+		{
+			Arguments.Add(L"-fspv-target-env=vulkan1.2");
+		}
 	}
 
 	DxcBuffer SourceBuffer;
@@ -485,48 +508,50 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 
 		switch (BindDesc.Type)
 		{
-		case D3D_SIT_CBUFFER:
+		case COMPUSHADY_D3D_SIT_CBUFFER:
 			ResourceBinding.Type = ECompushadySharedResourceType::UniformBuffer;
 			CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-		case D3D_SIT_TEXTURE:
+		case COMPUSHADY_D3D_SIT_TEXTURE:
 			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-		case D3D_SIT_SAMPLER:
+		case COMPUSHADY_D3D_SIT_SAMPLER:
 			ResourceBinding.Type = ECompushadySharedResourceType::Sampler;
 			SamplerMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-		case D3D_SIT_BYTEADDRESS:
+		case COMPUSHADY_D3D_SIT_BYTEADDRESS:
 			ResourceBinding.Type = ECompushadySharedResourceType::ByteAddressBuffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-		case D3D_SIT_STRUCTURED:
+		case COMPUSHADY_D3D_SIT_STRUCTURED:
 			ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-		case D3D_SIT_TBUFFER:
+		case COMPUSHADY_D3D_SIT_TBUFFER:
 			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-		case D3D_SIT_UAV_RWTYPED:
+		case COMPUSHADY_D3D_SIT_RTACCELERATIONSTRUCTURE:
+			ResourceBinding.Type = ECompushadySharedResourceType::RayTracingAccelerationStructure;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_UAV_RWTYPED:
 			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-#ifndef __D3D12SHADER_H__
-		case D3D_SIT_UAV_FEEDBACKTEXTURE:
+		case COMPUSHADY_D3D_SIT_UAV_FEEDBACKTEXTURE:
 			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-#endif
-		case D3D_SIT_UAV_RWSTRUCTURED:
-		case D3D_SIT_UAV_APPEND_STRUCTURED:
-		case D3D_SIT_UAV_CONSUME_STRUCTURED:
-		case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+		case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED:
+		case COMPUSHADY_D3D_SIT_UAV_APPEND_STRUCTURED:
+		case COMPUSHADY_D3D_SIT_UAV_CONSUME_STRUCTURED:
+		case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
 			ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
-		case D3D_SIT_UAV_RWBYTEADDRESS:
+		case COMPUSHADY_D3D_SIT_UAV_RWBYTEADDRESS:
 			ResourceBinding.Type = ECompushadySharedResourceType::ByteAddressBuffer;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
@@ -535,7 +560,6 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 			ShaderReflection->Release();
 			return false;
 		}
-
 	}
 
 	UINT TGX, TGY, TGZ;

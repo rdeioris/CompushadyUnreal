@@ -1,10 +1,11 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 
 #include "CompushadyRayTracer.h"
 #include "CommonRenderResources.h"
 #include "Compushady.h"
 #include "Serialization/ArrayWriter.h"
+#include "FXRenderingUtils.h"
 
 bool UCompushadyRayTracer::InitFromHLSL(const TArray<uint8>& RayGenShaderCode, const FString& RayGenShaderEntryPoint, const TArray<uint8>& RayMissShaderCode, const FString& RayMissShaderEntryPoint, const TArray<uint8>& RayHitGroupShaderCode, const FString& RayHitGroupShaderEntryPoint, FString& ErrorMessages)
 {
@@ -110,7 +111,6 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 
 	RayHitGroupShaderRef->SetHash(RHGSHash);
 
-
 	FRHIRayTracingShader* RayGenShaderTable[] = { RayGenShaderRef };
 	PipelineStateInitializer.SetRayGenShaderTable(RayGenShaderTable);
 
@@ -133,8 +133,6 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 		ErrorMessages = "Unable to create RayTracer Pipeline State";
 		return false;
 	}
-
-	InitFence(this);
 
 	return true;
 }
@@ -160,10 +158,13 @@ void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& Resource
 
 	TrackResources(ResourceArray);
 
+	//FRHIRayTracingScene* RayTracingScene = UE::FXRenderingUtils::RayTracing::GetRayTracingScene(GetWorld()->Scene);
+
 	EnqueueToGPU(
 		[this, XYZ, ResourceArray](FRHICommandListImmediate& RHICmdList)
 		{
-			//RHICmdList.RayTraceDispatch(PipelineState);
+			FRayTracingShaderBindings Bindings;
+			RHICmdList.RayTraceDispatch(PipelineState, RayGenShaderRef, UE::FXRenderingUtils::RayTracing::GetRayTracingScene(GetWorld()->Scene), Bindings, XYZ.X, XYZ.Y);
 		}, OnSignaled);
 }
 
