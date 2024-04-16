@@ -218,3 +218,14 @@ bool UCompushadyCBV::SetPerspectiveFromSceneCaptureComponent2D(const int64 Offse
 	SceneCaptureComponent->GetCameraView(0, MinimalViewInfo);
 	return SetPerspectiveFromMinimalViewInfo(Offset, MinimalViewInfo, bTranspose);
 }
+
+bool UCompushadyCBV::SetBufferData(const uint8* Data, const int32 Size)
+{
+	if (IsValidOffset(0, Size))
+	{
+		FMemory::Memcpy(BufferData.GetData(), Data, Size);
+		bBufferDataDirty = true;
+		return true;
+	}
+	return false;
+}
