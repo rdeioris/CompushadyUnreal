@@ -1,4 +1,4 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 #pragma once
 
@@ -14,7 +14,8 @@ enum class ECompushadyVideoEncoderCodec : uint8
 {
 	H264Main UMETA(DisplayName = "H.264 / Main"),
 	H264Baseline UMETA(DisplayName = "H.264 / Baseline"),
-	H264High UMETA(DisplayName = "H.264 / High")
+	H264High UMETA(DisplayName = "H.264 / High"),
+	H265Main UMETA(DisplayName = "H.265 / Main"),
 };
 
 UENUM(BlueprintType)

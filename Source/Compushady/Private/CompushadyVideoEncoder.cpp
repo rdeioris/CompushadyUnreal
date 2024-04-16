@@ -5,6 +5,7 @@
 #ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
 #include "Video/VideoEncoder.h"
 #include "Video/Encoders/Configs/VideoEncoderConfigH264.h"
+#include "Video/Encoders/Configs/VideoEncoderConfigH265.h"
 #include "Video/Resources/VideoResourceRHI.h"
 struct FCompushadyVideoEncoder
 {
@@ -57,25 +58,6 @@ bool UCompushadyVideoEncoder::Initialize(const ECompushadyVideoEncoderCodec Code
 			}
 		};
 
-	TSharedPtr<FVideoEncoderConfigH264> Config = MakeShared<FVideoEncoderConfigH264>();
-
-	if (Codec == ECompushadyVideoEncoderCodec::H264Main)
-	{
-		Config->RepeatSPSPPS = true;
-		Config->Profile = EH264Profile::Main;
-	}
-	else if (Codec == ECompushadyVideoEncoderCodec::H264Baseline)
-	{
-		Config->RepeatSPSPPS = true;
-		Config->Profile = EH264Profile::Baseline;
-	}
-	else if (Codec == ECompushadyVideoEncoderCodec::H264High)
-	{
-		Config->RepeatSPSPPS = true;
-		Config->Profile = EH264Profile::High;
-	}
-
-	ApplyConfig(Config, Quality, Latency);
 
 	VideoEncoder = MakeShared<FCompushadyVideoEncoder>();
 	if (!VideoEncoder)
@@ -83,7 +65,38 @@ bool UCompushadyVideoEncoder::Initialize(const ECompushadyVideoEncoderCodec Code
 		return false;
 	}
 
-	VideoEncoder->Encoder = TVideoEncoder<FVideoResourceRHI>::Create<FVideoResourceRHI>(FAVDevice::GetHardwareDevice(), *Config.Get());
+	if (Codec == ECompushadyVideoEncoderCodec::H264Main)
+	{
+		TSharedPtr<FVideoEncoderConfigH264> Config = MakeShared<FVideoEncoderConfigH264>();
+		Config->RepeatSPSPPS = true;
+		Config->Profile = EH264Profile::Main;
+		ApplyConfig(Config, Quality, Latency);
+		VideoEncoder->Encoder = TVideoEncoder<FVideoResourceRHI>::Create<FVideoResourceRHI>(FAVDevice::GetHardwareDevice(), *Config.Get());
+	}
+	else if (Codec == ECompushadyVideoEncoderCodec::H264Baseline)
+	{
+		TSharedPtr<FVideoEncoderConfigH264> Config = MakeShared<FVideoEncoderConfigH264>();
+		Config->RepeatSPSPPS = true;
+		Config->Profile = EH264Profile::Baseline;
+		ApplyConfig(Config, Quality, Latency);
+		VideoEncoder->Encoder = TVideoEncoder<FVideoResourceRHI>::Create<FVideoResourceRHI>(FAVDevice::GetHardwareDevice(), *Config.Get());
+	}
+	else if (Codec == ECompushadyVideoEncoderCodec::H264High)
+	{
+		TSharedPtr<FVideoEncoderConfigH264> Config = MakeShared<FVideoEncoderConfigH264>();
+		Config->RepeatSPSPPS = true;
+		Config->Profile = EH264Profile::High;
+		ApplyConfig(Config, Quality, Latency);
+		VideoEncoder->Encoder = TVideoEncoder<FVideoResourceRHI>::Create<FVideoResourceRHI>(FAVDevice::GetHardwareDevice(), *Config.Get());
+	}
+	else if (Codec == ECompushadyVideoEncoderCodec::H265Main)
+	{
+		TSharedPtr<FVideoEncoderConfigH265> Config = MakeShared<FVideoEncoderConfigH265>();
+		Config->RepeatSPSPPS = true;
+		Config->Profile = EH265Profile::Main;
+		ApplyConfig(Config, Quality, Latency);
+		VideoEncoder->Encoder = TVideoEncoder<FVideoResourceRHI>::Create<FVideoResourceRHI>(FAVDevice::GetHardwareDevice(), *Config.Get());
+	}
 
 	if (!VideoEncoder->Encoder)
 	{
