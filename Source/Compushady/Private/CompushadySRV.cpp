@@ -149,6 +149,7 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 
 FTextureRHIRef UCompushadySRV::GetRHI(const FPostProcessMaterialInputs& PPInputs) const
 {
+#if COMPUSHADY_UE_VERSION >= 53
 	switch (SceneTexture)
 	{
 	case(ECompushadySceneTexture::SceneColorInput):
@@ -185,6 +186,9 @@ FTextureRHIRef UCompushadySRV::GetRHI(const FPostProcessMaterialInputs& PPInputs
 		return nullptr;
 		break;
 	}
+#else
+	return nullptr;
+#endif
 }
 
 FShaderResourceViewRHIRef UCompushadySRV::GetRHI() const
