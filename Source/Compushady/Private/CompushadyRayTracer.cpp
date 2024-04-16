@@ -139,6 +139,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 
 void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
 {
+#if COMPUSHADY_UE_VERSION >= 53
 	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The RayTracer is already running");
@@ -158,14 +159,13 @@ void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& Resource
 
 	TrackResources(ResourceArray);
 
-	//FRHIRayTracingScene* RayTracingScene = UE::FXRenderingUtils::RayTracing::GetRayTracingScene(GetWorld()->Scene);
-
 	EnqueueToGPU(
 		[this, XYZ, ResourceArray](FRHICommandListImmediate& RHICmdList)
 		{
 			FRayTracingShaderBindings Bindings;
 			RHICmdList.RayTraceDispatch(PipelineState, RayGenShaderRef, UE::FXRenderingUtils::RayTracing::GetRayTracingScene(GetWorld()->Scene), Bindings, XYZ.X, XYZ.Y);
 		}, OnSignaled);
+#endif
 }
 
 bool UCompushadyRayTracer::IsRunning() const
