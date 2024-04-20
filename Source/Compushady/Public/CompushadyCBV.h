@@ -124,6 +124,8 @@ public:
 		return false;
 	}
 
+	bool SetBufferData(const uint8* Data, const int32 Size);
+
 protected:
 	TArray<uint8> BufferData;
 	bool bBufferDataDirty;

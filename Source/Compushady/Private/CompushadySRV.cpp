@@ -49,6 +49,7 @@ bool UCompushadySRV::InitializeFromSceneTexture(const ECompushadySceneTexture In
 
 bool UCompushadySRV::InitializeFromWorldSceneAccelerationStructure(UWorld* World)
 {
+#if COMPUSHADY_UE_VERSION >= 53
 	FSceneInterface* Scene = World->Scene;
 
 	if (!UE::FXRenderingUtils::RayTracing::HasRayTracingScene(Scene))
@@ -69,11 +70,12 @@ bool UCompushadySRV::InitializeFromWorldSceneAccelerationStructure(UWorld* World
 		return false;
 	}
 
-	//UE::FXRenderingUtils::RayTracing::GetVisibleRayTracingMeshCommands();
-
 	RHITransitionInfo = FRHITransitionInfo(UE::FXRenderingUtils::RayTracing::GetRayTracingScene(Scene), ERHIAccess::Unknown, ERHIAccess::BVHRead);
 
 	return true;
+#else
+	return false;
+#endif
 }
 
 bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EPixelFormat PixelFormat)
