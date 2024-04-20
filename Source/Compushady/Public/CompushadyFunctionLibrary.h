@@ -11,7 +11,7 @@
 #include "CompushadySoundWave.h"
 #include "CompushadySRV.h"
 #include "CompushadyRasterizer.h"
-#include "CompushadyRaytracer.h"
+#include "CompushadyRayTracer.h"
 #include "CompushadyRTV.h"
 #include "CompushadySampler.h"
 #include "CompushadyUAV.h"
