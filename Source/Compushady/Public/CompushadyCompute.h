@@ -35,7 +35,7 @@ public:
 	void DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled, const TMap<FString, UCompushadySampler*>& SamplerMap);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
-	void DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* Buffer, const int32 Offset, const FCompushadySignaled& OnSignaled);
+	void DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	bool IsRunning() const;

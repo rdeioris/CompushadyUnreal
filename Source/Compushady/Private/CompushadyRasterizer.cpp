@@ -310,6 +310,81 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 		}, OnSignaled);
 }
 
+void UCompushadyRasterizer::DrawIndirect(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadySignaled& OnSignaled)
+{
+	if (IsRunning())
+	{
+		OnSignaled.ExecuteIfBound(false, "The Rasterizer is already running");
+		return;
+	}
+
+	if (!CommandBuffer)
+	{
+		OnSignaled.ExecuteIfBound(false, TEXT("CommandBuffer is NULL"));
+		return;
+	}
+
+	if (RTVs.Num() < 1 || RTVs.Num() > 8)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid number of RTVs %d"), RTVs.Num()));
+		return;
+	}
+
+	if (!CheckResourceBindings(VSResourceArray, VSResourceBindings, OnSignaled))
+	{
+		return;
+	}
+
+	if (!CheckResourceBindings(PSResourceArray, PSResourceBindings, OnSignaled))
+	{
+		return;
+	}
+
+	TStaticArray<FRHITexture*, 8> RenderTargets = {};
+	int32 RenderTargetsEnabled = 0;
+	for (int32 Index = 0; Index < RTVs.Num(); Index++)
+	{
+		RenderTargets[Index] = RTVs[Index]->GetTextureRHI();
+		RenderTargetsEnabled++;
+		TrackResource(RTVs[Index]);
+	}
+
+	TrackResources(VSResourceArray);
+	TrackResources(PSResourceArray);
+
+	FRHIBuffer* RHICommandBuffer = CommandBuffer->GetBufferRHI();
+	TrackResource(CommandBuffer);
+
+	EnqueueToGPU(
+		[this, VSResourceArray, PSResourceArray, RenderTargets, RenderTargetsEnabled, RHICommandBuffer, Offset](FRHICommandListImmediate& RHICmdList)
+		{
+			for (int32 RenderTargetIndex = 0; RenderTargetIndex < RenderTargetsEnabled; RenderTargetIndex++)
+			{
+				RHICmdList.Transition(FRHITransitionInfo(RenderTargets[RenderTargetIndex], ERHIAccess::Unknown, ERHIAccess::RTV));
+			}
+
+			FRHIRenderPassInfo PassInfo(RenderTargetsEnabled, const_cast<FRHITexture**>(RenderTargets.GetData()), ERenderTargetActions::Load_Store);
+			RHICmdList.BeginRenderPass(PassInfo, TEXT("UCompushadyRasterizer::Draw"));
+
+			//RHICmdList.SetViewport(0, 0, 0.0f, RenderTargets[0]->GetDesc().Extent.X, RenderTargets[0]->GetDesc().Extent.Y, 1.0f);
+			RHICmdList.SetViewport(0, 0, 0.0f, 1024, 1024, 1.0f);
+			RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
+			RHICmdList.SetStencilRef(0);
+
+			RHICmdList.ApplyCachedRenderTargets(PipelineStateInitializer);
+
+			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);// , EApplyRendertargetOption::DoNothing, false, EPSOPrecacheResult::Untracked);
+
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
+			Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+
+			RHICmdList.DrawPrimitiveIndirect(RHICommandBuffer, Offset);
+
+			RHICmdList.EndRenderPass();
+
+		}, OnSignaled);
+}
+
 void UCompushadyRasterizer::Clear(const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const FCompushadySignaled& OnSignaled)
 {
 	if (IsRunning())
@@ -346,10 +421,10 @@ void UCompushadyRasterizer::Clear(const TArray<UCompushadyRTV*> RTVs, UCompushad
 			{
 				RHICmdList.Transition(FRHITransitionInfo(RenderTargets[RenderTargetIndex], ERHIAccess::Unknown, ERHIAccess::RTV));
 			}
-			FRHIRenderPassInfo Info(RenderTargetsEnabled, 
-				RenderTargets.GetData(), 
-				ERenderTargetActions::Clear_Store, 
-				DepthStencilTexture, 
+			FRHIRenderPassInfo Info(RenderTargetsEnabled,
+				RenderTargets.GetData(),
+				ERenderTargetActions::Clear_Store,
+				DepthStencilTexture,
 				DepthStencilTexture ? EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil : EDepthStencilTargetActions::DontLoad_DontStore,
 				DepthStencilTexture ? FExclusiveDepthStencil::DepthWrite_StencilWrite : FExclusiveDepthStencil::DepthNop_StencilNop);
 			RHICmdList.BeginRenderPass(Info, TEXT("UCompushadyRasterizer::Clear"));

@@ -246,15 +246,15 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, TScriptInterface<ICom
 	Dispatch(ResourceArray, XYZ, OnSignaled);
 }
 
-void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* Buffer, const int32 Offset, const FCompushadySignaled& OnSignaled)
+void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadySignaled& OnSignaled)
 {
-	if (!Buffer)
+	if (!CommandBuffer)
 	{
-		OnSignaled.ExecuteIfBound(false, "Buffer is NULL");
+		OnSignaled.ExecuteIfBound(false, "CommandBuffer is NULL");
 		return;
 	}
 
-	FBufferRHIRef BufferRHIRef = Buffer->GetBufferRHI();
+	FBufferRHIRef BufferRHIRef = CommandBuffer->GetBufferRHI();
 	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
 	{
 		OnSignaled.ExecuteIfBound(false, "Invalid Indirect Buffer");
