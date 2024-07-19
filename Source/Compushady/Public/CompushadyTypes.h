@@ -209,7 +209,7 @@ public:
 		RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
 		FGraphEventArray Prerequisites;
 		Prerequisites.Add(RenderThreadCompletionEvent);
-		GameThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, ReadbackCacheFloats]
+		GameThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, &ReadbackCacheFloats]
 			{
 				OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
 				OnSignalReceived();
@@ -223,13 +223,12 @@ public:
 	}
 
 	template<typename DELEGATE, typename... TArgs>
-	void EnqueueToGPU(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const DELEGATE& OnSignaled, TArgs... Args)
+	void EnqueueToGPU(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const DELEGATE& OnSignaled, TArgs & ... Args)
 	{
 		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
 			[this, InFunction](FRHICommandListImmediate& RHICmdList)
 			{
 				InFunction(RHICmdList);
-				WaitForGPU(RHICmdList);
 			});
 
 		BeginFence(OnSignaled, Args...);

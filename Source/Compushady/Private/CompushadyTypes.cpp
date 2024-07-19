@@ -49,6 +49,7 @@ FTextureRHIRef UCompushadyResource::GetReadbackTexture()
 {
 	if (!ReadbackTextureRHIRef.IsValid() || !ReadbackTextureRHIRef->IsValid())
 	{
+		UE_LOG(LogTemp, Error, TEXT("Readback %d %d"), TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY());
 		FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(nullptr, TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat());
 		TextureCreateDesc.SetFlags(ETextureCreateFlags::CPUReadback);
 		ReadbackTextureRHIRef = RHICreateTexture(TextureCreateDesc);
@@ -701,6 +702,7 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 			RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
 			if (Data)
 			{
+				UE_LOG(LogTemp, Error, TEXT("Data: %p %d %d"), Data, Width, Height);
 				InFunction(Data, Width * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes);
 				RHICmdList.UnmapStagingSurface(ReadbackTexture);
 			}

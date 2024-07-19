@@ -419,14 +419,36 @@ void UCompushadyRasterizer::Clear(const TArray<UCompushadyRTV*> RTVs, UCompushad
 			{
 				RHICmdList.Transition(FRHITransitionInfo(RenderTargets[RenderTargetIndex], ERHIAccess::Unknown, ERHIAccess::RTV));
 			}
-			FRHIRenderPassInfo Info(RenderTargetsEnabled,
-				RenderTargets.GetData(),
-				ERenderTargetActions::Clear_Store,
-				DepthStencilTexture,
-				DepthStencilTexture ? EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil : EDepthStencilTargetActions::DontLoad_DontStore,
-				DepthStencilTexture ? FExclusiveDepthStencil::DepthWrite_StencilWrite : FExclusiveDepthStencil::DepthNop_StencilNop);
-			RHICmdList.BeginRenderPass(Info, TEXT("UCompushadyRasterizer::Clear"));
-			RHICmdList.EndRenderPass();
+
+			if (RenderTargetsEnabled > 0 && DepthStencilTexture)
+			{
+				FRHIRenderPassInfo Info(RenderTargetsEnabled,
+					RenderTargets.GetData(),
+					ERenderTargetActions::Clear_Store,
+					DepthStencilTexture,
+					EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil,
+					FExclusiveDepthStencil::DepthWrite_StencilWrite);
+				RHICmdList.BeginRenderPass(Info, TEXT("UCompushadyRasterizer::Clear"));
+				RHICmdList.EndRenderPass();
+			}
+			else if (RenderTargetsEnabled > 0)
+			{
+				FRHIRenderPassInfo Info(RenderTargetsEnabled,
+					RenderTargets.GetData(),
+					ERenderTargetActions::Clear_Store);
+				RHICmdList.BeginRenderPass(Info, TEXT("UCompushadyRasterizer::Clear"));
+				RHICmdList.EndRenderPass();
+			}
+			else if (DepthStencilTexture)
+			{
+				FRHIRenderPassInfo Info(DepthStencilTexture,
+					EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil,
+					nullptr,
+					FExclusiveDepthStencil::DepthWrite_StencilWrite);
+				RHICmdList.BeginRenderPass(Info, TEXT("UCompushadyRasterizer::Clear"));
+				RHICmdList.EndRenderPass();
+			}
+
 		}, OnSignaled);
 }
 
