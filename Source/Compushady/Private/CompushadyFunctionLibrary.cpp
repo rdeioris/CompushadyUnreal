@@ -279,7 +279,16 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
 
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
+
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
 		return nullptr;
@@ -299,7 +308,16 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVSharedTexture2D(c
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV | ETextureCreateFlags::Shared);
 
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
+
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
 		return nullptr;
@@ -319,7 +337,15 @@ UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const F
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.ClearValue = FClearValueBinding(ClearColor);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::RenderTargetable);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
 
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
@@ -350,7 +376,15 @@ UCompushadyDSV* UCompushadyFunctionLibrary::CreateCompushadyDSVTexture2D(const F
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.ClearValue = FClearValueBinding(DepthClearValue, static_cast<uint32>(StencilClearValue));
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::DepthStencilTargetable);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
 
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
@@ -370,7 +404,15 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(const F
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create3D(*Name, Width, Height, Depth, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
 
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
@@ -390,7 +432,15 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2DArray(co
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2DArray(*Name, Width, Height, Slices, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
 
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
@@ -410,7 +460,15 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3D(const F
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create3D(*Name, Width, Height, Depth, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
 
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{
@@ -537,7 +595,15 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImag
 
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, ImageWrapper->GetWidth(), ImageWrapper->GetHeight(), EPixelFormat::PF_B8G8R8A8);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
-	FTextureRHIRef TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
 
 	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
 	{

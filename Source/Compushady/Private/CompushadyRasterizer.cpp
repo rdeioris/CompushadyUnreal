@@ -291,14 +291,13 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 			FRHIRenderPassInfo PassInfo(RenderTargetsEnabled, const_cast<FRHITexture**>(RenderTargets.GetData()), ERenderTargetActions::Load_Store);
 			RHICmdList.BeginRenderPass(PassInfo, TEXT("UCompushadyRasterizer::Draw"));
 
-			//RHICmdList.SetViewport(0, 0, 0.0f, RenderTargets[0]->GetDesc().Extent.X, RenderTargets[0]->GetDesc().Extent.Y, 1.0f);
 			RHICmdList.SetViewport(0, 0, 0.0f, 1024, 1024, 1.0f);
 			RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
 			RHICmdList.SetStencilRef(0);
 
 			RHICmdList.ApplyCachedRenderTargets(PipelineStateInitializer);
 
-			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);// , EApplyRendertargetOption::DoNothing, false, EPSOPrecacheResult::Untracked);
+			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);
 
 			Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
 			Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
@@ -364,16 +363,15 @@ void UCompushadyRasterizer::DrawIndirect(const FCompushadyResourceArray& VSResou
 			}
 
 			FRHIRenderPassInfo PassInfo(RenderTargetsEnabled, const_cast<FRHITexture**>(RenderTargets.GetData()), ERenderTargetActions::Load_Store);
-			RHICmdList.BeginRenderPass(PassInfo, TEXT("UCompushadyRasterizer::Draw"));
+			RHICmdList.BeginRenderPass(PassInfo, TEXT("UCompushadyRasterizer::DrawIndirect"));
 
-			//RHICmdList.SetViewport(0, 0, 0.0f, RenderTargets[0]->GetDesc().Extent.X, RenderTargets[0]->GetDesc().Extent.Y, 1.0f);
 			RHICmdList.SetViewport(0, 0, 0.0f, 1024, 1024, 1.0f);
 			RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
 			RHICmdList.SetStencilRef(0);
 
 			RHICmdList.ApplyCachedRenderTargets(PipelineStateInitializer);
 
-			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);// , EApplyRendertargetOption::DoNothing, false, EPSOPrecacheResult::Untracked);
+			SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);
 
 			Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
 			Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
