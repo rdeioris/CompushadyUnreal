@@ -232,7 +232,7 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 	return true;
 }
 
-void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const bool bClearColor, const bool bClearDepthStencil, const FCompushadySignaled& OnSignaled)
+void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadySignaled& OnSignaled)
 {
 	if (IsRunning())
 	{
@@ -269,14 +269,11 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 	}
 
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
-	uint32 RenderTargetsEnabled = 0;
-	//PipelineStateInitializer.RenderTargetsEnabled = 0;
+	int32 RenderTargetsEnabled = 0;
 	for (int32 Index = 0; Index < RTVs.Num(); Index++)
 	{
 		RenderTargets[Index] = RTVs[Index]->GetTextureRHI();
 		RenderTargetsEnabled++;
-		//PipelineStateInitializer.RenderTargetsEnabled++;
-		//PipelineStateInitializer.RenderTargetFormats[Index] = RTVs[Index]->GetTexturePixelFormat();
 		TrackResource(RTVs[Index]);
 	}
 
@@ -284,15 +281,11 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 	TrackResources(PSResourceArray);
 
 	EnqueueToGPU(
-		[this, NumVertices, NumInstances, VSResourceArray, PSResourceArray, RenderTargets, RenderTargetsEnabled, bClearColor, bClearDepthStencil](FRHICommandListImmediate& RHICmdList)
+		[this, NumVertices, NumInstances, VSResourceArray, PSResourceArray, RenderTargets, RenderTargetsEnabled](FRHICommandListImmediate& RHICmdList)
 		{
-			for (uint32 RenderTargetIndex = 0; RenderTargetIndex < RenderTargetsEnabled; RenderTargetIndex++)
+			for (int32 RenderTargetIndex = 0; RenderTargetIndex < RenderTargetsEnabled; RenderTargetIndex++)
 			{
 				RHICmdList.Transition(FRHITransitionInfo(RenderTargets[RenderTargetIndex], ERHIAccess::Unknown, ERHIAccess::RTV));
-				if (bClearColor)
-				{
-					ClearRenderTarget(RHICmdList, RenderTargets[RenderTargetIndex]);
-				}
 			}
 
 			FRHIRenderPassInfo PassInfo(RenderTargetsEnabled, const_cast<FRHITexture**>(RenderTargets.GetData()), ERenderTargetActions::Load_Store);
@@ -314,6 +307,53 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 
 			RHICmdList.EndRenderPass();
 
+		}, OnSignaled);
+}
+
+void UCompushadyRasterizer::Clear(const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const FCompushadySignaled& OnSignaled)
+{
+	if (IsRunning())
+	{
+		OnSignaled.ExecuteIfBound(false, "The Rasterizer is already running");
+		return;
+	}
+
+	if (RTVs.Num() < 1 || RTVs.Num() > 8)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid number of RTVs %d"), RTVs.Num()));
+		return;
+	}
+
+	TStaticArray<FRHITexture*, 8> RenderTargets = {};
+	int32 RenderTargetsEnabled = 0;
+	for (int32 Index = 0; Index < RTVs.Num(); Index++)
+	{
+		RenderTargets[Index] = RTVs[Index]->GetTextureRHI();
+		RenderTargetsEnabled++;
+		TrackResource(RTVs[Index]);
+	}
+
+	FRHITexture* DepthStencilTexture = nullptr;
+	if (DSV)
+	{
+		DepthStencilTexture = DSV->GetTextureRHI();
+	}
+
+	EnqueueToGPU(
+		[&RenderTargets, RenderTargetsEnabled, DepthStencilTexture](FRHICommandListImmediate& RHICmdList)
+		{
+			for (int32 RenderTargetIndex = 0; RenderTargetIndex < RenderTargetsEnabled; RenderTargetIndex++)
+			{
+				RHICmdList.Transition(FRHITransitionInfo(RenderTargets[RenderTargetIndex], ERHIAccess::Unknown, ERHIAccess::RTV));
+			}
+			FRHIRenderPassInfo Info(RenderTargetsEnabled, 
+				RenderTargets.GetData(), 
+				ERenderTargetActions::Clear_Store, 
+				DepthStencilTexture, 
+				DepthStencilTexture ? EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil : EDepthStencilTargetActions::DontLoad_DontStore,
+				DepthStencilTexture ? FExclusiveDepthStencil::DepthWrite_StencilWrite : FExclusiveDepthStencil::DepthNop_StencilNop);
+			RHICmdList.BeginRenderPass(Info, TEXT("UCompushadyRasterizer::Clear"));
+			RHICmdList.EndRenderPass();
 		}, OnSignaled);
 }
 

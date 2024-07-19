@@ -41,7 +41,8 @@ bool FCompushadyRasterizerTest_Simple::RunTest(const FString& Parameters)
 
 	FCompushadySignaled Signal;
 	Signal.BindUFunction(Rasterizer, TEXT("StoreLastSignal"));
-	Rasterizer->Draw({}, {}, { RTV }, nullptr, 3, 1, true, false, Signal);
+
+	Rasterizer->Draw({}, {}, { RTV }, nullptr, 3, 1, Signal);
 
 	ADD_LATENT_AUTOMATION_COMMAND(FCompushadyWaitRasterizer(this, Rasterizer, [this, Rasterizer, RTV]()
 		{

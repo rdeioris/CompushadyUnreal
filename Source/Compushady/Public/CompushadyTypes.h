@@ -273,7 +273,7 @@ protected:
 	TArray<TStrongObjectPtr<UObject>> CurrentTrackedResources;
 };
 
-UCLASS(Abstract)
+UCLASS(Abstract, BlueprintType)
 class COMPUSHADY_API UCompushadyResource : public UObject, public ICompushadyBindable, public ICompushadySignalable
 {
 	GENERATED_BODY()
