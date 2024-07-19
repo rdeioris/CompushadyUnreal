@@ -6,13 +6,14 @@
 #include "UObject/NoExportTypes.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
+#include "CompushadyBindable.h"
 #include "CompushadyCBV.generated.h"
 
 /**
  *
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadyCBV : public UObject
+class COMPUSHADY_API UCompushadyCBV : public UObject, public ICompushadyBindable
 {
 	GENERATED_BODY()
 

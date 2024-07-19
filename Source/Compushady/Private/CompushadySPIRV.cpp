@@ -5,6 +5,9 @@
 #include "Serialization/ArrayWriter.h"
 
 #if PLATFORM_WINDOWS || PLATFORM_LINUX || PLATFORM_ANDROID
+#if COMPUSHADY_UE_VERSION >= 54 &&  PLATFORM_WINDOWS
+#include "Windows/WindowsHWrapper.h"
+#endif
 #include "vulkan.h"
 #include "VulkanCommon.h"
 #include "VulkanShaderResources.h"

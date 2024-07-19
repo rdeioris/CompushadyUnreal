@@ -171,7 +171,7 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		}, OnSignaled);
 }
 
-void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled, const TMap<FString, UCompushadySampler*>& SamplerMap)
+void UCompushadyCompute::DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled, const TMap<FString, UCompushadySampler*>& SamplerMap)
 {
 	FCompushadyResourceArray ResourceArray;
 
@@ -183,7 +183,7 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
 			return;
 		}
-		UCompushadyCBV* CBV = Cast<UCompushadyCBV>(ResourceMap[Name]);
+		UCompushadyCBV* CBV = Cast<UCompushadyCBV>(ResourceMap[Name].GetObject());
 		if (!CBV)
 		{
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a CBV"), *Name));
@@ -200,7 +200,7 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
 			return;
 		}
-		UCompushadySRV* SRV = Cast<UCompushadySRV>(ResourceMap[Name]);
+		UCompushadySRV* SRV = Cast<UCompushadySRV>(ResourceMap[Name].GetObject());
 		if (!SRV)
 		{
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a SRV"), *Name));
@@ -217,7 +217,7 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
 			return;
 		}
-		UCompushadyUAV* UAV = Cast<UCompushadyUAV>(ResourceMap[Name]);
+		UCompushadyUAV* UAV = Cast<UCompushadyUAV>(ResourceMap[Name].GetObject());
 		if (!UAV)
 		{
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be an UAV"), *Name));
@@ -234,7 +234,7 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, UCompushadyResource*>
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Sampler \"%s\" not found in supplied map"), *Name));
 			return;
 		}
-		UCompushadySampler* Sampler = Cast<UCompushadySampler>(ResourceMap[Name]);
+		UCompushadySampler* Sampler = Cast<UCompushadySampler>(ResourceMap[Name].GetObject());
 		if (!Sampler)
 		{
 			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a Sampler"), *Name));

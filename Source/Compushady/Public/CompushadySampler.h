@@ -11,7 +11,7 @@
  *
  */
 UCLASS(BlueprintType)
-class COMPUSHADY_API UCompushadySampler : public UObject
+class COMPUSHADY_API UCompushadySampler : public UObject, public ICompushadyBindable
 {
 	GENERATED_BODY()
 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Compushady.h"
+#include "CompushadyBindable.h"
 #include "UObject/NoExportTypes.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
@@ -273,7 +274,7 @@ protected:
 };
 
 UCLASS(Abstract)
-class COMPUSHADY_API UCompushadyResource : public UObject, public ICompushadySignalable
+class COMPUSHADY_API UCompushadyResource : public UObject, public ICompushadyBindable, public ICompushadySignalable
 {
 	GENERATED_BODY()
 public:

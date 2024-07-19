@@ -155,7 +155,8 @@ FTextureRHIRef UCompushadySRV::GetRHI(const FPostProcessMaterialInputs& PPInputs
 	switch (SceneTexture)
 	{
 	case(ECompushadySceneTexture::SceneColorInput):
-		return PPInputs.GetInput(EPostProcessMaterialInput::SceneColor).Texture->GetRHI();
+		//return PPInputs.GetInput(EPostProcessMaterialInput::SceneColor).Texture->GetRHI();
+		return nullptr;
 		break;
 	case(ECompushadySceneTexture::GBufferA):
 		return PPInputs.SceneTextures.SceneTextures->GetContents()->GBufferATexture->GetRHI();

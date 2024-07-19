@@ -6,7 +6,9 @@
 #include "Windows/WindowsHWrapper.h"
 
 #include "Windows/AllowWindowsPlatformTypes.h"
+#if COMPUSHADY_UE_VERSION <= 53
 #include "Windows/PreWindowsApi.h"
+#endif
 #include "Microsoft/COMPointer.h"
 #endif
 
@@ -50,7 +52,9 @@ enum _COMPUSHADY_D3D_SHADER_INPUT_TYPE
 #endif
 
 #if PLATFORM_WINDOWS
+#if COMPUSHADY_UE_VERSION <= 53
 #include "Windows/PostWindowsApi.h"
+#endif
 #include "Windows/HideWindowsPlatformTypes.h"
 #endif
 

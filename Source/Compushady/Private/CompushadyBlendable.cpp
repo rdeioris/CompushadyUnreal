@@ -48,8 +48,6 @@ public:
 		UE_LOG(LogTemp, Error, TEXT("PrePostProcessPass_RenderThread() GBufferATexture %s"), *(SceneTextures->GetContents()->GBufferATexture->Desc.GetSize().ToString()));
 		UE_LOG(LogTemp, Error, TEXT("PrePostProcessPass_RenderThread() GBufferBTexture %s"), *(SceneTextures->GetContents()->GBufferBTexture->Desc.GetSize().ToString()));
 
-		return;
-
 		FCompushadyPixelShaderParameters* Parameters = GraphBuilder.AllocParameters<FCompushadyPixelShaderParameters>();
 		//const FRDGSystemTextures& SystemTextures = FRDGSystemTextures::Get(GraphBuilder);
 		//CreateSceneTextureUniformBuffer();
@@ -175,7 +173,11 @@ public:
 
 	FScreenPassTexture PostProcessCallback_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
 	{
+#if COMPUSHADY_UE_VERSION >= 54
+		const FScreenPassTexture& SceneColor = FScreenPassTexture::CopyFromSlice(GraphBuilder, InOutInputs.GetInput(EPostProcessMaterialInput::SceneColor));
+#else
 		FScreenPassTexture SceneColor = InOutInputs.GetInput(EPostProcessMaterialInput::SceneColor);
+#endif
 
 		FScreenPassRenderTarget Output = InOutInputs.OverrideOutput;
 
