@@ -49,7 +49,6 @@ FTextureRHIRef UCompushadyResource::GetReadbackTexture()
 {
 	if (!ReadbackTextureRHIRef.IsValid() || !ReadbackTextureRHIRef->IsValid())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Readback %d %d"), TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY());
 		FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(nullptr, TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat());
 		TextureCreateDesc.SetFlags(ETextureCreateFlags::CPUReadback);
 		ReadbackTextureRHIRef = RHICreateTexture(TextureCreateDesc);
@@ -702,7 +701,6 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 			RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
 			if (Data)
 			{
-				UE_LOG(LogTemp, Error, TEXT("Data: %p %d %d"), Data, Width, Height);
 				InFunction(Data, Width * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes);
 				RHICmdList.UnmapStagingSurface(ReadbackTexture);
 			}
@@ -756,7 +754,7 @@ namespace Compushady
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, Texture);
 #endif
 				}
-			}
+				}
 
 			for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
 			{
@@ -780,7 +778,7 @@ namespace Compushady
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
 #endif
-		}
+			}
 
 		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
 #if COMPUSHADY_UE_VERSION < 53
@@ -833,7 +831,7 @@ namespace Compushady
 		}
 #endif
 	}
-}
+			}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
