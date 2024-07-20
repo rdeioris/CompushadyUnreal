@@ -156,7 +156,7 @@ void UCompushadyRasterizer::FillPipelineStateInitializer(const FCompushadyRaster
 		}
 	}
 
-	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_LessEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
 	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
 	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
 }
@@ -301,7 +301,6 @@ void UCompushadyRasterizer::SetupRasterization(FRHICommandListImmediate& RHICmdL
 
 	RHICmdList.SetViewport(ViewportMinX, ViewportMinY, ViewportMinZ, ViewportMaxX, ViewportMaxY, ViewportMaxZ);
 	RHICmdList.SetScissorRect(RasterizeConfig.Scissor.GetArea() > 0, RasterizeConfig.Scissor.Min.X, RasterizeConfig.Scissor.Min.Y, RasterizeConfig.Scissor.Max.X, RasterizeConfig.Scissor.Max.Y);
-	RHICmdList.SetStencilRef(RasterizeConfig.StencilValue);
 
 	RHICmdList.ApplyCachedRenderTargets(PipelineStateInitializer);
 
@@ -386,6 +385,11 @@ bool UCompushadyRasterizer::BeginRenderPass_RenderThread(const TCHAR* Name, FRHI
 		RHICmdList.Transition(FRHITransitionInfo(RenderTargets[RenderTargetIndex], ERHIAccess::Unknown, ERHIAccess::RTV));
 	}
 
+	if (DepthStencilTexture)
+	{
+		RHICmdList.Transition(FRHITransitionInfo(DepthStencilTexture, ERHIAccess::Unknown, ERHIAccess::DSVRead | ERHIAccess::DSVWrite));
+	}
+
 	if (RenderTargetsEnabled > 0 && DepthStencilTexture)
 	{
 		FRHIRenderPassInfo Info(RenderTargetsEnabled,
@@ -442,7 +446,7 @@ void UCompushadyRasterizer::Clear(const TArray<UCompushadyRTV*>& RTVs, UCompusha
 		{
 			uint32 Width = 0;
 			uint32 Height = 0;
-			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::Clear"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Clear_DontStore, EDepthStencilTargetActions::ClearDepthStencil_DontStoreDepthStencil, Width, Height))
+			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::Clear"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Clear_Store, EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil, Width, Height))
 			{
 				RHICmdList.EndRenderPass();
 			}

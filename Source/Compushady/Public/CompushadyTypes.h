@@ -189,7 +189,7 @@ public:
 
 	bool IsRunning() const
 	{
-		return (RenderThreadCompletionEvent && !RenderThreadCompletionEvent->IsComplete()) || (GameThreadCompletionEvent && !GameThreadCompletionEvent->IsComplete());
+		return (RenderThreadCompletionEvent && !RenderThreadCompletionEvent->IsComplete());
 	}
 
 	void BeginFence(const FCompushadySignaled& OnSignaled)
@@ -197,7 +197,7 @@ public:
 		RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
 		FGraphEventArray Prerequisites;
 		Prerequisites.Add(RenderThreadCompletionEvent);
-		GameThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
+		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
 			{
 				OnSignaled.ExecuteIfBound(true, "");
 				OnSignalReceived();
@@ -209,7 +209,7 @@ public:
 		RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
 		FGraphEventArray Prerequisites;
 		Prerequisites.Add(RenderThreadCompletionEvent);
-		GameThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, &ReadbackCacheFloats]
+		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, &ReadbackCacheFloats]
 			{
 				OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
 				OnSignalReceived();
@@ -251,7 +251,6 @@ protected:
 	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
 
 	FGraphEventRef RenderThreadCompletionEvent = nullptr;
-	FGraphEventRef GameThreadCompletionEvent = nullptr;
 };
 
 class COMPUSHADY_API ICompushadyPipeline : public ICompushadySignalable
