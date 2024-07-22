@@ -87,11 +87,11 @@ public class Compushady : ModuleRules
 
         PrivateIncludePaths.Add(ThirdPartyDirectoryIncludePath);
 
-        // libcompushady_khr
+        // compushady_khr
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "compushady_khr");
-            RuntimeDependencies.Add("$(BinaryOutputDir)/libcompushady_khr.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64, "libcompushady_khr.dll"));
+            RuntimeDependencies.Add("$(BinaryOutputDir)/compushady_khr.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64, "compushady_khr.dll"));
         }
     }
 }

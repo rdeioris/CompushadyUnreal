@@ -2,16 +2,25 @@
 
 #include "Compushady.h"
 
+#if WITH_EDITOR
+#include "Interfaces/IPluginManager.h"
+#endif
+
 namespace Compushady
 {
 	namespace KHR
 	{
 		static void* LibHandle = nullptr;
-		static void* (*GLSLToSpirV)(const char* Source, const int SourceLen, void* (*Allocator)(SIZE_T), SIZE_T* SpirVSize, char** Errors) = nullptr;
+		static const uint8* (*GLSLToSpirV)(const char* Glsl, const SIZE_T GlslSize, const char* ShaderModel, const uint32 Flags, SIZE_T* SpirVSize, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
 		static void* (*SpirVDisassemble)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* DisassembledSize, char** Errors) = nullptr;
 		static void* (*SpirVToHLSL)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* OutputSize, char** Errors) = nullptr;
 		static void* (*SpirVToGLSL)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* OutputSize, char** Errors) = nullptr;
 		static void* (*SpirVToMSL)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* OutputSize, char** Errors) = nullptr;
+
+		static void* Malloc(const SIZE_T Size)
+		{
+			return FMemory::Malloc(Size);
+		}
 
 		static bool Setup()
 		{
@@ -19,32 +28,32 @@ namespace Compushady
 			{
 #if PLATFORM_WINDOWS
 #if WITH_EDITOR
-				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectPluginsDir() / TEXT("Compushady/Binaries/Win64/libcompushady_khr.dll")));
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("Compushady"))->GetBaseDir(), TEXT("Binaries/Win64/compushady_khr.dll"))));
 #else
-				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/libcompushady_khr.dll")));
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/compushady_khr.dll")));
 #endif
 #elif PLATFORM_LINUX || PLATFORM_ANDROID
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libcompushady_khr.so"));
 #endif
 				if (!LibHandle)
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Unable to load libcompushady_khr shared library"));
+					UE_LOG(LogCompushady, Error, TEXT("Unable to load compushady_khr shared library"));
 					return false;
 				}
 			}
 
 			if (!GLSLToSpirV)
 			{
-				GLSLToSpirV = reinterpret_cast<void* (*)(const char*, const int, void* (*)(SIZE_T), SIZE_T*, char**)>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_glslang_compile")));
+				GLSLToSpirV = reinterpret_cast<const uint8 * (*)(const char*, const SIZE_T, const char*, const uint32, SIZE_T*, char**, SIZE_T*, void* (*)(const SIZE_T))>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_glsl_to_spv")));
 
 				if (!GLSLToSpirV)
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_glslang_compile symbol in libcompushady_khr"));
+					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_glsl_to_spv symbol in compushady_khr"));
 					return false;
 				}
 			}
 
-			if (!SpirVDisassemble)
+			/*if (!SpirVDisassemble)
 			{
 				SpirVDisassemble = reinterpret_cast<void* (*)(const uint32*, const SIZE_T, void* (*)(SIZE_T), SIZE_T*, char**)>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_spirv_disassemble")));
 
@@ -86,14 +95,9 @@ namespace Compushady
 					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_spirv_to_msl symbol in libcompushady_khr"));
 					return false;
 				}
-			}
+			}*/
 
 			return true;
-		}
-
-		static void* Malloc(SIZE_T Size)
-		{
-			return FMemory::Malloc(Size);
 		}
 	}
 }
@@ -105,9 +109,10 @@ bool Compushady::CompileGLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		return false;
 	}
 
-	SIZE_T SpvSize;
+	SIZE_T SpvSize = 0;
 	char* Errors = nullptr;
-	void* Data = KHR::GLSLToSpirV(reinterpret_cast<const char*>(ShaderCode.GetData()), ShaderCode.Num(), KHR::Malloc, &SpvSize, &Errors);
+	SIZE_T ErrorsLen = 0;
+	const uint8* Data = KHR::GLSLToSpirV(reinterpret_cast<const char*>(ShaderCode.GetData()), ShaderCode.Num(), TCHAR_TO_UTF8(*TargetProfile), 0, &SpvSize, &Errors, &ErrorsLen, KHR::Malloc);
 	if (!Data)
 	{
 		if (Errors)
@@ -122,8 +127,8 @@ bool Compushady::CompileGLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 		return false;
 	}
 
-	ByteCode.Append(reinterpret_cast<uint8*>(Data), SpvSize);
-	FMemory::Free(Data);
+	ByteCode.Append(reinterpret_cast<const uint8*>(Data), SpvSize);
+	FMemory::Free(const_cast<uint8*>(Data));
 
 	return true;
 }

@@ -52,6 +52,70 @@ bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode
 	return CreateMSPSRasterizerPipeline(MeshShaderByteCode, PixelShaderByteCode, MeshShaderResourceBindings, PixelShaderResourceBindings, RasterizerConfig, ErrorMessages);
 }
 
+bool UCompushadyRasterizer::InitVSPSFromGLSL(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
+{
+	RHIInterfaceType = RHIGetInterfaceType();
+
+	TArray<uint8> VertexShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
+	if (!Compushady::CompileGLSL(VertexShaderCode, VertexShaderEntryPoint, "vs_6_0", VertexShaderByteCode, ErrorMessages))
+	{
+		return false;
+	}
+
+	TArray<uint8> PixelShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
+	if (!Compushady::CompileGLSL(PixelShaderCode, PixelShaderEntryPoint, "ps_6_0", PixelShaderByteCode, ErrorMessages))
+	{
+		return false;
+	}
+
+	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
+	{
+		FString VertexShaderHLSL;
+		if (!Compushady::SPIRVToHLSL(VertexShaderByteCode, VertexShaderHLSL, ErrorMessages))
+		{
+			return false;
+		}
+
+		FString PixelShaderHLSL;
+		if (!Compushady::SPIRVToHLSL(PixelShaderByteCode, PixelShaderHLSL, ErrorMessages))
+		{
+			return false;
+		}
+
+		TStringBuilderBase<UTF8CHAR> VertexSourceUTF8;
+		VertexSourceUTF8 = TCHAR_TO_UTF8(*VertexShaderHLSL);
+
+		TArray<uint8> HLSLVertexShaderCode;
+		HLSLVertexShaderCode.Append(reinterpret_cast<const uint8*>(*VertexSourceUTF8), VertexSourceUTF8.Len());
+
+		TStringBuilderBase<UTF8CHAR> PixelSourceUTF8;
+		PixelSourceUTF8 = TCHAR_TO_UTF8(*PixelShaderHLSL);
+
+		TArray<uint8> HLSLPixelShaderCode;
+		HLSLPixelShaderCode.Append(reinterpret_cast<const uint8*>(*PixelSourceUTF8), PixelSourceUTF8.Len());
+
+
+		return InitVSPSFromHLSL(HLSLVertexShaderCode, VertexShaderEntryPoint, HLSLPixelShaderCode, PixelShaderEntryPoint, RasterizerConfig, ErrorMessages);
+	}
+	else
+	{
+		FIntVector ThreadGroupSize;
+		if (!Compushady::FixupSPIRV(VertexShaderByteCode, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return false;
+		}
+
+		if (!Compushady::FixupSPIRV(PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return false;
+		}
+	}
+
+	return CreateVSPSRasterizerPipeline(VertexShaderByteCode, PixelShaderByteCode, VertexShaderResourceBindings, PixelShaderResourceBindings, RasterizerConfig, ErrorMessages);
+}
+
 bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
 	// check for semantics

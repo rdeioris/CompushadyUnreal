@@ -48,6 +48,9 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Values"), Category = "Compushady")
 	bool SetDoubleArray(const int64 Offset, const TArray<double>& Values);
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Values"), Category = "Compushady")
+	bool SetIntArray(const int64 Offset, const TArray<int32>& Values);
+
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
 	bool SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose = true);
 
@@ -89,6 +92,8 @@ public:
 
 	bool IsValidOffset(const int64 Offset, const int64 Size) const;
 
+	bool SetScriptStruct(const int64 Offset, UScriptStruct* ScriptStruct, const uint8* Data);
+
 	template<typename T>
 	bool SetValue(const int64 Offset, const T Value)
 	{
@@ -126,6 +131,12 @@ public:
 	}
 
 	bool SetBufferData(const uint8* Data, const int32 Size);
+
+	UFUNCTION(BlueprintCallable, CustomThunk, Category = "Compushady", meta = (CustomStructureParam = "Value"))
+	bool SetStruct(const int64 Offset, const int32& Value);
+
+private:
+	DECLARE_FUNCTION(execSetStruct);
 
 protected:
 	TArray<uint8> BufferData;

@@ -1,6 +1,7 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyCBV.h"
+#include "Blueprint/BlueprintExceptionInfo.h"
 
 bool UCompushadyCBV::Initialize(const FString& Name, const uint8* Data, const int64 Size)
 {
@@ -89,6 +90,11 @@ bool UCompushadyCBV::SetDouble(const int64 Offset, const double Value)
 }
 
 bool UCompushadyCBV::SetDoubleArray(const int64 Offset, const TArray<double>& Values)
+{
+	return SetArrayValue(Offset, Values);
+}
+
+bool UCompushadyCBV::SetIntArray(const int64 Offset, const TArray<int32>& Values)
 {
 	return SetArrayValue(Offset, Values);
 }
@@ -228,4 +234,61 @@ bool UCompushadyCBV::SetBufferData(const uint8* Data, const int32 Size)
 		return true;
 	}
 	return false;
+}
+
+bool UCompushadyCBV::SetScriptStruct(const int64 Offset, UScriptStruct* ScriptStruct, const uint8* Data)
+{
+	if (!ScriptStruct)
+	{
+		return false;
+	}
+	if (IsValidOffset(Offset, ScriptStruct->GetStructureSize()))
+	{
+		FMemory::Memcpy(BufferData.GetData() + Offset, Data, ScriptStruct->GetStructureSize());
+		bBufferDataDirty = true;
+		return true;
+	}
+	return false;
+}
+
+
+bool UCompushadyCBV::SetStruct(const int64 Offset, const int32& Value)
+{
+	checkNoEntry();
+	return false;
+}
+
+DEFINE_FUNCTION(UCompushadyCBV::execSetStruct)
+{
+	P_GET_PROPERTY(FInt64Property, Offset);
+
+	// Read wildcard Value input.
+	Stack.MostRecentPropertyAddress = nullptr;
+	Stack.MostRecentPropertyContainer = nullptr;
+	Stack.StepCompiledIn<FStructProperty>(nullptr);
+
+	const FStructProperty* ValueProp = CastField<FStructProperty>(Stack.MostRecentProperty);
+	const uint8* ValuePtr = Stack.MostRecentPropertyAddress;
+
+	P_FINISH;
+
+	if (!ValueProp || !ValuePtr)
+	{
+		FBlueprintExceptionInfo ExceptionInfo(
+			EBlueprintExceptionType::AbortExecution,
+			FText::FromString("Failed to resolve the Value for Set Struct")
+		);
+
+		FBlueprintCoreDelegates::ThrowScriptException(P_THIS, Stack, ExceptionInfo);
+
+		P_NATIVE_BEGIN;
+		*(bool*)RESULT_PARAM = false;
+		P_NATIVE_END;
+	}
+	else
+	{
+		P_NATIVE_BEGIN;
+		*(bool*)RESULT_PARAM = P_THIS->SetScriptStruct(Offset, ValueProp->Struct, ValuePtr);
+		P_NATIVE_END;
+	}
 }

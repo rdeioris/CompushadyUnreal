@@ -177,4 +177,5 @@ void UCompushadyRayTracer::StoreLastSignal(bool bSuccess, const FString& ErrorMe
 {
 	bLastSuccess = bSuccess;
 	LastErrorMessages = ErrorMessage;
+
 }

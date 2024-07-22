@@ -169,6 +169,21 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 	return CompushadyCompute;
 }
 
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromGLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint)
+{
+	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
+
+	TArray<uint8> ShaderCode;
+	Compushady::StringToShaderCode(Source, ShaderCode);
+
+	if (!CompushadyCompute->InitFromGLSL(ShaderCode, EntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyCompute;
+}
+
 UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterizerFromHLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint)
 {
 	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
@@ -1113,4 +1128,29 @@ UCompushadyRayTracer* UCompushadyFunctionLibrary::CreateCompushadyRayTracerFromH
 	}
 
 	return CompushadyRayTracer;
+}
+
+UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterizerFromGLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint)
+{
+	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
+
+	TArray<uint8> VertexShaderCode;
+	Compushady::StringToShaderCode(VertexShaderSource, VertexShaderCode);
+
+	TArray<uint8> PixelShaderCode;
+	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
+
+	if (!CompushadyRasterizer->InitVSPSFromGLSL(VertexShaderCode, VertexShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, RasterizerConfig, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyRasterizer;
+}
+
+FCompushadyFloat UCompushadyFunctionLibrary::Conv_DoubleToCompushadyFloat(double Value)
+{
+	FCompushadyFloat CompushadyFloat;
+	CompushadyFloat.Value = Value;
+	return CompushadyFloat;
 }

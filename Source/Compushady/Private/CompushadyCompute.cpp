@@ -61,7 +61,7 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 	}
 	else
 	{
-		if (!FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 		{
 			return false;
 		}

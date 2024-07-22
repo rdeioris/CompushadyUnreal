@@ -18,7 +18,4 @@ class COMPUSHADY_API UCompushadyRTV : public UCompushadyResource
 public:
 	bool InitializeFromTexture(FTextureRHIRef InTextureRHIRef);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category="Compushady")
-	void Clear(FLinearColor Color, const FCompushadySignaled& OnSignaled);
-
 };

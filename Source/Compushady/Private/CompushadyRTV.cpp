@@ -21,17 +21,3 @@ bool UCompushadyRTV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 
 	return true;
 }
-
-void UCompushadyRTV::Clear(FLinearColor Color, const FCompushadySignaled& OnSignaled)
-{
-	if (IsRunning())
-	{
-		OnSignaled.ExecuteIfBound(false, "The RTV is already being processed by another task");
-		return;
-	}
-
-	EnqueueToGPU([this](FRHICommandListImmediate& RHICmdList)
-		{
-			ClearRenderTarget(RHICmdList, GetTextureRHI(), 0, 0);
-		}, OnSignaled);
-}

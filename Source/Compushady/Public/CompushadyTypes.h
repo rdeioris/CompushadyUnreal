@@ -6,7 +6,6 @@
 #include "Compushady.h"
 #include "CompushadyBindable.h"
 #include "UObject/NoExportTypes.h"
-#include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
@@ -24,8 +23,18 @@ struct FPostProcessMaterialInputs
 /**
  *
  */
+
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyFloat2 : public FTableRowBase
+struct COMPUSHADY_API FCompushadyFloat
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	float Value = 0;
+};
+
+USTRUCT(BlueprintType)
+struct COMPUSHADY_API FCompushadyFloat2
 {
 	GENERATED_BODY()
 
@@ -38,7 +47,7 @@ struct COMPUSHADY_API FCompushadyFloat2 : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyFloat3 : public FTableRowBase
+struct COMPUSHADY_API FCompushadyFloat3
 {
 	GENERATED_BODY()
 
@@ -53,7 +62,7 @@ struct COMPUSHADY_API FCompushadyFloat3 : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyFloat4 : public FTableRowBase
+struct COMPUSHADY_API FCompushadyFloat4
 {
 	GENERATED_BODY()
 
@@ -189,16 +198,16 @@ public:
 
 	bool IsRunning() const
 	{
-		return (RenderThreadCompletionEvent && !RenderThreadCompletionEvent->IsComplete());
+		return bRunning;
 	}
 
 	void BeginFence(const FCompushadySignaled& OnSignaled)
 	{
-		RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
-		FGraphEventArray Prerequisites;
-		Prerequisites.Add(RenderThreadCompletionEvent);
+		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
 		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
 			{
+				bRunning = false;
 				OnSignaled.ExecuteIfBound(true, "");
 				OnSignalReceived();
 			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
@@ -206,11 +215,11 @@ public:
 
 	void BeginFence(const FCompushadySignaledWithFloatArrayPayload& OnSignaled, const TArray<float>& ReadbackCacheFloats)
 	{
-		RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
-		FGraphEventArray Prerequisites;
-		Prerequisites.Add(RenderThreadCompletionEvent);
+		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
 		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, &ReadbackCacheFloats]
 			{
+				bRunning = false;
 				OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
 				OnSignalReceived();
 			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
@@ -225,6 +234,7 @@ public:
 	template<typename DELEGATE, typename... TArgs>
 	void EnqueueToGPU(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const DELEGATE& OnSignaled, TArgs & ... Args)
 	{
+		bRunning = true;
 		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
 			[this, InFunction](FRHICommandListImmediate& RHICmdList)
 			{
@@ -250,7 +260,7 @@ public:
 protected:
 	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
 
-	FGraphEventRef RenderThreadCompletionEvent = nullptr;
+	bool bRunning = false;
 };
 
 class COMPUSHADY_API ICompushadyPipeline : public ICompushadySignalable

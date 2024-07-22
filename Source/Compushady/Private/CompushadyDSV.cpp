@@ -21,19 +21,3 @@ bool UCompushadyDSV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 
 	return true;
 }
-
-void UCompushadyDSV::Clear(FLinearColor Color, const FCompushadySignaled& OnSignaled)
-{
-	if (IsRunning())
-	{
-		OnSignaled.ExecuteIfBound(false, "The DSV is already being processed by another task");
-		return;
-	}
-
-	EnqueueToGPU([this](FRHICommandListImmediate& RHICmdList)
-		{
-			FRHIRenderPassInfo Info(TextureRHIRef, EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil);
-			RHICmdList.BeginRenderPass(Info, TEXT("UCompushadyDSV::Clear"));
-			RHICmdList.EndRenderPass();
-		}, OnSignaled);
-}
