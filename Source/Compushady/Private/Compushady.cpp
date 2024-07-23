@@ -8,7 +8,7 @@ DEFINE_LOG_CATEGORY(LogCompushady);
 
 #if WITH_EDITOR
 #include "CompushadyShader.h"
-#include "CompushadyHLSLSyntaxHighlighter.h"
+#include "CompushadySyntaxHighlighter.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -94,7 +94,7 @@ public:
 					SNew(SMultiLineEditableTextBox)
 						.AutoWrapText(false)
 						.Margin(0.0f)
-						.Marshaller(FCompushadyHLSLSyntaxHighlighter::Create())
+						.Marshaller(FCompushadySyntaxHighlighter::Create())
 						.Text(FText::FromString(CompushadyShader->Code))
 						.OnTextChanged_Lambda([CompushadyShader](const FText& InCode)
 							{

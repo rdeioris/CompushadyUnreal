@@ -1,183 +1,416 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 
-#include "CompushadyHLSLSyntaxHighlighter.h"
+#include "CompushadySyntaxHighlighter.h"
 #include "Runtime/Slate/Public/Framework/Text/IRun.h"
 #include "Runtime/Slate/Public/Framework/Text/TextLayout.h"
 #include "Runtime/Slate/Public/Framework/Text/SlateTextRun.h"
-#include "Widgets/Input/SEditableTextBox.h"
 
-#define ADD_RULE(rule) TokenizerRules.Add(FSyntaxTokenizer::FRule(TEXT(rule)))
 
-FCompushadyHLSLSyntaxHighlighter::FCompushadyHLSLSyntaxHighlighter(TSharedPtr<FSyntaxTokenizer> InTokenizer) : FSyntaxHighlighterTextLayoutMarshaller(InTokenizer)
+
+TSharedRef<FCompushadySyntaxHighlighter> FCompushadySyntaxHighlighter::CreateHLSL()
 {
-}
-
-FCompushadyHLSLSyntaxHighlighter::~FCompushadyHLSLSyntaxHighlighter()
-{
-}
-
-TSharedRef<FCompushadyHLSLSyntaxHighlighter> FCompushadyHLSLSyntaxHighlighter::Create()
-{
-	TArray<FSyntaxTokenizer::FRule> TokenizerRules;
-
 	// https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-appendix-keywords
+	// https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-intrinsic-functions
+	// https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics
+
+	COMPUSHADY_SH_BEGIN;
 
 	// basic types
-	ADD_RULE("float");
-	ADD_RULE("float1");
-	ADD_RULE("float2");
-	ADD_RULE("float3");
-	ADD_RULE("float4");
-	ADD_RULE("float1x1");
-	ADD_RULE("float1x2");
-	ADD_RULE("float1x3");
-	ADD_RULE("float1x4");
-	ADD_RULE("float2x1");
-	ADD_RULE("float2x2");
-	ADD_RULE("float2x3");
-	ADD_RULE("float2x4");
-	ADD_RULE("float3x1");
-	ADD_RULE("float3x2");
-	ADD_RULE("float3x3");
-	ADD_RULE("float3x4");
-	ADD_RULE("float4x1");
-	ADD_RULE("float4x2");
-	ADD_RULE("float4x3");
-	ADD_RULE("float4x4");
-	ADD_RULE("half");
-	ADD_RULE("int");
-	ADD_RULE("int2");
-	ADD_RULE("int3");
-	ADD_RULE("int4");
-	ADD_RULE("matrix");
-	ADD_RULE("min16float");
-	ADD_RULE("min10float");
-	ADD_RULE("min16int");
-	ADD_RULE("min12int");
-	ADD_RULE("min16uint");
-	ADD_RULE("uint");
-	ADD_RULE("uint2");
-	ADD_RULE("uint3");
-	ADD_RULE("uint4");
-	ADD_RULE("void");
+	COMPUSHADY_SH_ADD_TYPE_RULE("bool");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float1");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float1x1");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float1x2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float1x3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float1x4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float2x1");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float2x2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float2x3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float2x4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float3x1");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float3x2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float3x3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float3x4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float4x1");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float4x2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float4x3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("float4x4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("half");
+	COMPUSHADY_SH_ADD_TYPE_RULE("half2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("half3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("half4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("int");
+	COMPUSHADY_SH_ADD_TYPE_RULE("int2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("int3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("int4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("matrix");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16float");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16float2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16float3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16float4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min10float");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min10float2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min10float3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min10float4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16int");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16int2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16int3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16int4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min12int");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min12int2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min12int3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min12int4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16uint");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16uint2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16uint3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("min16uint4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("uint");
+	COMPUSHADY_SH_ADD_TYPE_RULE("uint2");
+	COMPUSHADY_SH_ADD_TYPE_RULE("uint3");
+	COMPUSHADY_SH_ADD_TYPE_RULE("uint4");
+	COMPUSHADY_SH_ADD_TYPE_RULE("void");
 
 	// templated types
-	ADD_RULE("AppendStructuredBuffer");
-	ADD_RULE("Buffer");
-	ADD_RULE("ByteAddressBuffer");
-	ADD_RULE("AppendStructuredBuffer");
-	ADD_RULE("ConsumeStructuredBuffer");
-	ADD_RULE("RWBuffer");
-	ADD_RULE("RWByteAddressBuffer");
-	ADD_RULE("RWStructuredBuffer");
-	ADD_RULE("RWTexture1D");
-	ADD_RULE("RWTexture1DArray");
-	ADD_RULE("RWTexture2D");
-	ADD_RULE("RWTexture2DArray");
-	ADD_RULE("RWTexture3D");
-	ADD_RULE("SamplerState");
-	ADD_RULE("SamplerComparisonState");
-	ADD_RULE("StructuredBuffer");
-	ADD_RULE("Texture1D");
-	ADD_RULE("Texture1DArray");
-	ADD_RULE("Texture2D");
-	ADD_RULE("Texture2DArray");
-	ADD_RULE("Texture2DMS");
-	ADD_RULE("Texture2DMSArray");
-	ADD_RULE("Texture3D");
-	ADD_RULE("TextureCube");
-	ADD_RULE("TextureCubeArray");
+	COMPUSHADY_SH_ADD_TYPE_RULE("AppendStructuredBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Buffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("ByteAddressBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("ConsumeStructuredBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("SamplerComparisonState");
+	COMPUSHADY_SH_ADD_TYPE_RULE("SamplerState");
+	COMPUSHADY_SH_ADD_TYPE_RULE("StructuredBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Texture1D");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Texture1DArray");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Texture2D");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Texture2DArray");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Texture2DMS");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Texture2DMSArray");
+	COMPUSHADY_SH_ADD_TYPE_RULE("Texture3D");
+	COMPUSHADY_SH_ADD_TYPE_RULE("TextureCube");
+	COMPUSHADY_SH_ADD_TYPE_RULE("TextureCubeArray");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWByteAddressBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWStructuredBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWTexture1D");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWTexture1DArray");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWTexture2D");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWTexture2DArray");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RWTexture3D");
+	COMPUSHADY_SH_ADD_TYPE_RULE("vector");
 
-	TokenizerRules.Sort([](const FSyntaxTokenizer::FRule& A, const FSyntaxTokenizer::FRule& B) {
-		return A.MatchText.Len() > B.MatchText.Len();
-		});
+	COMPUSHADY_SH_ADD_TYPE_RULE("BlendState");
+	COMPUSHADY_SH_ADD_TYPE_RULE("DepthStencilState");
+	COMPUSHADY_SH_ADD_TYPE_RULE("RasterizerState");
+	COMPUSHADY_SH_ADD_TYPE_RULE("PointStream");
+	COMPUSHADY_SH_ADD_TYPE_RULE("InputPatch");
+	COMPUSHADY_SH_ADD_TYPE_RULE("LineStream");
+	COMPUSHADY_SH_ADD_TYPE_RULE("OutputPatch");
+	COMPUSHADY_SH_ADD_TYPE_RULE("TriangleStream");
+
+	//keywords
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("asm");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("asm_fragment");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("break");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("case");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("cbuffer");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("centroid");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("class");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("column_major");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("compile");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("compile_fragment");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("const");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("continue");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("default");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("discard");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("do");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("else");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("export");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("extern");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("false");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("for");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("fxgroup");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("groupshared");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("if");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("in");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("inline");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("inout");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("interface");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("line");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("lineadj");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("linear");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("namespace");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("nointerpolation");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("noperspective");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("out");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("packoffset");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("pass");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("pixelfragment");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("point");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("precise");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("register");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("return");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("row_major");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("sample");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("sampler");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("shared");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("snorm");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("stateblock");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("stateblock_state");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("static");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("string");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("struct");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("switch");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("tbuffer");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("technique");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("technique10");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("technique11");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("texture");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("triangle");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("triangleadj");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("true");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("typedef");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("uniform");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("unorm");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("unsigned");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("vertexfragment");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("volatile");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("while");
+
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("NULL");
+
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("CompileShader");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("ComputeShader");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("DomainShader");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("GeometryShader");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("Hullshader");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("PixelShader");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("VertexShader");
+
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("DepthStencilView");
+	COMPUSHADY_SH_ADD_KEYWORD_RULE("RenderTargetView");
 
 
-	return MakeShared<FCompushadyHLSLSyntaxHighlighter>(FSyntaxTokenizer::Create(TokenizerRules));
-}
+	// preprocessor
+	COMPUSHADY_SH_ADD_PREPROCESSOR_RULE("#define");
 
-void FCompushadyHLSLSyntaxHighlighter::ParseTokens(const FString& SourceString, FTextLayout& TargetTextLayout, TArray<FSyntaxTokenizer::FTokenizedLine> TokenizedLines)
-{
-	TArray<FTextLayout::FNewLineData> LinesToAdd;
-	LinesToAdd.Reserve(TokenizedLines.Num());
+	// intrinsics
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("abort");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("abs");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("acos");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("all");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("AllMemoryBarrier");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("AllMemoryBarrierWithGroupSync");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("any");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("asdouble");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("asfloat");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("asin");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("asint");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("asuint");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("asuint");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("atan");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("atan2");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ceil");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("CheckAccessFullyMapped");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("clamp");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("clip");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("cos");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("cosh");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("countbits");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("cross");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("D3DCOLORtoUBYTE4");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ddx");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ddx_coarse");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ddx_fine");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ddy");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ddy_coarse");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ddy_fine");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("degrees");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("determinant");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("DeviceMemoryBarrier");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("DeviceMemoryBarrierWithGroupSync");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("distance");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("dot");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("dst");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("errorf");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("EvaluateAttributeCentroid");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("EvaluateAttributeAtSample");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("EvaluateAttributeSnapped");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("exp");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("exp2");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("f16tof32");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("f32tof16");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("faceforward");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("firstbithigh");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("firstbitlow");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("floor");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("fma");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("fmod");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("frac");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("frexp");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("fwidth");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("GetRenderTargetSampleCount");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("GetRenderTargetSamplePosition");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("GroupMemoryBarrier");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("GroupMemoryBarrierWithGroupSync");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedAdd");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedAnd");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedCompareExchange");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedCompareStore");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedExchange");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedMax");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedMin");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedOr");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("InterlockedXor");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("isfinite");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("isinf");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("isnan");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ldexp");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("length");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("lerp");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("lit");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("log");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("log10");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("log2");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("mad");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("max");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("min");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("modf");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("msad4");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("mul");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("noise");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("normalize");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("pow");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("printf");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("Process2DQuadTessFactorsAvg");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("Process2DQuadTessFactorsMax");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("Process2DQuadTessFactorsMin");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ProcessIsolineTessFactors");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ProcessQuadTessFactorsAvg");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ProcessQuadTessFactorsMax");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ProcessQuadTessFactorsMin");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ProcessTriTessFactorsAvg");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ProcessTriTessFactorsMax");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("ProcessTriTessFactorsMin");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("radians");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("rcp");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("reflect");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("refract");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("reversebits");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("round");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("rsqrt");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("saturate");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("sign");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("sin");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("sincos");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("sinh");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("smoothstep");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("sqrt");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("step");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tan");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tanh");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex1D");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex1D");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex1Dbias");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex1Dgrad");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex1Dlod");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex1Dproj");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex2D");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex2D");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex2Dbias");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex2Dgrad");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex2Dlod");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex2Dproj");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex3D");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex3D");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex3Dbias");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex3Dgrad");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex3Dlod");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("tex3Dproj");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("texCUBE");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("texCUBE");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("texCUBEbias");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("texCUBEgrad");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("texCUBElod");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("texCUBEproj");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("transpose");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("trunc");
 
-	SEditableTextBox::FArguments Defaults;
-	FEditableTextBoxStyle WidgetStyle = *Defaults._Style;
-	WidgetStyle.BackgroundColor = FSlateColor(FLinearColor::Black);
-	WidgetStyle.ForegroundColor = FSlateColor(FLinearColor::White);
+	// shader model 6 intrinsics
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("QuadReadAcrossDiagonal");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("QuadReadLaneAt");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("QuadReadAcrossX");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("QuadReadAcrossY");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveAllEqual");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveBitAnd");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveBitOr");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveBitXor");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveCountBits");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveMax");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveMin");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveProduct");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveSum");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveAllTrue");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveAnyTrue");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveActiveBallot");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveGetLaneCount");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveGetLaneIndex");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveIsFirstLane");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WavePrefixCountBits");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WavePrefixProduct");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WavePrefixSum");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveReadLaneFirst");
+	COMPUSHADY_SH_ADD_INTRINSIC_RULE("WaveReadLaneAt");
 
-	FTextBlockStyle BaseStyle;
-	BaseStyle.SetFont(WidgetStyle.TextStyle.Font)
-		.SetColorAndOpacity(FLinearColor::White)
-		.SetShadowOffset(FVector2D::ZeroVector)
-		.SetSelectedBackgroundColor(FSlateColor(FLinearColor::Blue))
-		.SetShadowColorAndOpacity(FLinearColor::Black);
+	// semantics
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_ClipDistance");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_CullDistance");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_Coverage");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_Depth");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_DepthGreaterEqual");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_DepthLessEqual");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_DispatchThreadID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_DomainLocation");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_GroupID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_GroupIndex");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_GroupThreadID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_GSInstanceID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_InnerCoverage");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_InsideTessFactor");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_InstanceID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_IsFrontFace");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_OutputControlPointID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_Position");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_PrimitiveID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_RenderTargetArrayIndex");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_SampleIndex");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_StencilRef");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_Target");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_TessFactor");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_VertexID");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_ViewportArrayIndex");
+	COMPUSHADY_SH_ADD_SEMANTIC_RULE("SV_ShadingRate");
 
-	FTextBlockStyle TokenStyle = FTextBlockStyle(BaseStyle).SetColorAndOpacity(FLinearColor::Red);
+	// attributes
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("domain");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("earlydepthstencil");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("instance");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("maxtessfactor");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("numthreads");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("outputcontrolpoints");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("outputtopology");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("partitioning");
+	COMPUSHADY_SH_ADD_ATTRIBUTE_RULE("patchconstantfunc");
 
-	for (const FSyntaxTokenizer::FTokenizedLine& TokenizedLine : TokenizedLines)
-	{
-		TSharedRef<FString> ModelString = MakeShared<FString>();
-		TArray<TSharedRef<IRun>> Runs;
+	// comments
+	COMPUSHADY_SH_ADD_OPEN_COMMENT_RULE("/*");
+	COMPUSHADY_SH_ADD_CLOSE_COMMENT_RULE("*/");
+	COMPUSHADY_SH_ADD_LINE_COMMENT_RULE("//");
 
-		for (const FSyntaxTokenizer::FToken& Token : TokenizedLine.Tokens)
-		{
+	// strings
+	COMPUSHADY_SH_ADD_STRING_RULE("\"");
 
-			FTextBlockStyle CurrentBlockStyle = BaseStyle;
-
-			const FString TokenString = SourceString.Mid(Token.Range.BeginIndex, Token.Range.Len());
-			const FTextRange ModelRange(ModelString->Len(), ModelString->Len() + TokenString.Len());
-
-			ModelString->Append(TokenString);
-
-			FRunInfo RunInfo(TEXT("SyntaxHighlight.CompushadyHLSL.Normal"));
-			bool bIsWhitespace = FString(TokenString).TrimEnd().IsEmpty();
-			if (!bIsWhitespace)
-			{
-				bool bHasMatchedSyntax = false;
-				if (Token.Type == FSyntaxTokenizer::ETokenType::Syntax)
-				{
-
-					TCHAR NextChar = TEXT(" ")[0];
-					TCHAR PrevChar = TEXT(" ")[0];
-					if (Token.Range.EndIndex < SourceString.Len())
-					{
-						NextChar = SourceString[Token.Range.EndIndex];
-					}
-					if (Token.Range.BeginIndex > 0)
-					{
-						PrevChar = SourceString[Token.Range.BeginIndex - 1];
-					}
-
-					if (!TChar<WIDECHAR>::IsAlpha(NextChar) && !TChar<WIDECHAR>::IsDigit(NextChar) && !TChar<WIDECHAR>::IsAlpha(PrevChar) && !TChar<WIDECHAR>::IsDigit(PrevChar) && NextChar != TCHAR('_') && PrevChar != TCHAR('_'))
-					{
-						// do something here
-						CurrentBlockStyle = TokenStyle;
-					}
-
-				}
-
-				if (Token.Type == FSyntaxTokenizer::ETokenType::Literal || !bHasMatchedSyntax)
-				{
-					// check for comment or string based on state
-				}
-				TSharedRef<ISlateRun> Run = FSlateTextRun::Create(RunInfo, ModelString, CurrentBlockStyle, ModelRange);
-				Runs.Add(Run);
-			}
-			else
-			{
-				RunInfo.Name = TEXT("SyntaxHighlight.CompushadyHLSL.WhiteSpace");
-				TSharedRef<ISlateRun> Run = FSlateTextRun::Create(RunInfo, ModelString, BaseStyle /* use normal style here*/, ModelRange);
-				Runs.Add(Run);
-			}
-
-		}
-
-		LinesToAdd.Emplace(MoveTemp(ModelString), MoveTemp(Runs));
-
-	}
-
-
-	TargetTextLayout.AddLines(LinesToAdd);
+	COMPUSHADY_SH_END;
 }

@@ -354,6 +354,64 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 		}, OnSignaled);
 }
 
+void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled)
+{
+	if (IsRunning())
+	{
+		OnSignaled.ExecuteIfBound(false, "The Rasterizer is already running");
+		return;
+	}
+
+	if (NumVertices <= 0)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid number of vertices %d"), NumVertices));
+		return;
+	}
+
+	if (NumInstances <= 0)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid number of instances %d"), NumInstances));
+		return;
+	}
+
+	if (!CheckResourceBindings(VSResourceArray, VSResourceBindings, OnSignaled))
+	{
+		return;
+	}
+
+	if (!CheckResourceBindings(PSResourceArray, PSResourceBindings, OnSignaled))
+	{
+		return;
+	}
+
+	TStaticArray<FRHITexture*, 8> RenderTargets = {};
+	int32 RenderTargetsEnabled = 0;
+	FRHITexture* DepthStencilTexture = nullptr;
+	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+
+	TrackResources(VSResourceArray);
+	TrackResources(PSResourceArray);
+
+	EnqueueToGPU(
+		[this, NumVertices, NumInstances, VSResourceArray, PSResourceArray, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, RasterizeConfig](FRHICommandListImmediate& RHICmdList)
+		{
+			uint32 Width = 0;
+			uint32 Height = 0;
+
+			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::ClearAndDraw"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Clear_Store, EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil, Width, Height))
+			{
+				SetupRasterization(RHICmdList, RasterizeConfig, Width, Height);
+
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+
+				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+
+				RHICmdList.EndRenderPass();
+			}
+		}, OnSignaled);
+}
+
 void UCompushadyRasterizer::SetupRasterization(FRHICommandListImmediate& RHICmdList, const FCompushadyRasterizeConfig& RasterizeConfig, const int32 Width, const int32 Height)
 {
 	float ViewportMinX = RasterizeConfig.Viewport.Min.X > 0 ? RasterizeConfig.Viewport.Min.X : 0;

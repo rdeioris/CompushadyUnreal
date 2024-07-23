@@ -29,6 +29,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void SetSource(const FString& Source);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FTextBlockStyle SyntaxTypeStyle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FTextBlockStyle SyntaxKeywordStyle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FTextBlockStyle SyntaxCommentStyle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FTextBlockStyle SyntaxStringStyle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FTextBlockStyle SyntaxPreprocessorStyle;
+
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	TSharedPtr<SMultiLineEditableTextBox> SourceWidget;
