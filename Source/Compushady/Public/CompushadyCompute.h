@@ -57,6 +57,9 @@ public:
 		return ComputeShaderRef;
 	}
 
+	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled);
+	void Dispatch_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, const FIntVector& XYZ);
+
 	/* The following block is mainly used for unit testing */
 	UFUNCTION()
 	void StoreLastSignal(bool bSuccess, const FString& ErrorMessage);
@@ -72,7 +75,6 @@ protected:
 
 	ERHIInterfaceType RHIInterfaceType;
 	FComputeShaderRHIRef ComputeShaderRef;
-	FComputePipelineStateRHIRef ComputePipelineStateRef;
 
 	FIntVector ThreadGroupSize;
 

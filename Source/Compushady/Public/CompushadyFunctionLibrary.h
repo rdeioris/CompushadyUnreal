@@ -29,6 +29,21 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "CompushadyFunctionLibrary.generated.h"
 
+USTRUCT(BlueprintType)
+struct FCompushadyComputePass
+{
+	GENERATED_BODY();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Compushady")
+	UCompushadyCompute* Compute = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FCompushadyResourceArray ResourceArray;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FIntVector XYZ = FIntVector::ZeroValue;
+};
+
 /**
  *
  */
@@ -188,7 +203,11 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "RasterizerConfig"), Category = "Compushady")
 	static UCompushadyRasterizer* CreateCompushadyVSPSRasterizerFromGLSLString(const FString& VertexShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& VertexShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main");
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Computes,OnSignaled"), Category = "Compushady")
+	static void DispatchMultiPass(const TArray<FCompushadyComputePass>& ComputePasses, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "To Compushady Float", BlueprintAutocast), Category = "Compushady")
 	static FCompushadyFloat Conv_DoubleToCompushadyFloat(double Value);
+
+	static void EnqueueToGPUMulti(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const FCompushadySignaled& OnSignaled, TArray<ICompushadyPipeline*> Pipelines);
 };

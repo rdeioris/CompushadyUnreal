@@ -127,5 +127,4 @@ protected:
 	FPixelShaderRHIRef PixelShaderRef;
 	FMeshShaderRHIRef MeshShaderRef;
 	FGraphicsPipelineStateInitializer PipelineStateInitializer;
-	FGraphicsPipelineStateRHIRef PipelineStateRHIRef;
 };

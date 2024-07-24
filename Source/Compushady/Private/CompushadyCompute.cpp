@@ -136,25 +136,37 @@ bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compusha
 	}
 	ComputeShaderRef->SetHash(Hash);
 
-	ComputePipelineStateRef = RHICreateComputePipelineState(ComputeShaderRef);
-	if (!ComputePipelineStateRef.IsValid() || !ComputePipelineStateRef->IsValid())
-	{
-		ErrorMessages = "Unable to create Compute Pipeline State";
-		return false;
-	}
-
 	return true;
+}
+
+bool UCompushadyCompute::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled)
+{
+	return ICompushadyPipeline::CheckResourceBindings(ResourceArray, ResourceBindings, OnSignaled);
+}
+
+void UCompushadyCompute::Dispatch_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, const FIntVector& XYZ)
+{
+	SetComputePipelineState(RHICmdList, ComputeShaderRef);
+	Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
+
+	RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
 }
 
 void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
 {
+	if (IsRunning())
+	{
+		OnSignaled.ExecuteIfBound(false, "The Compute is already running");
+		return;
+	}
+
 	if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
 	{
 		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid ThreadGroupCount %s"), *XYZ.ToString()));
 		return;
 	}
 
-	if (!CheckResourceBindings(ResourceArray, ResourceBindings, OnSignaled))
+	if (!CheckResourceBindings(ResourceArray, OnSignaled))
 	{
 		return;
 	}
@@ -164,10 +176,7 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 	EnqueueToGPU(
 		[this, ResourceArray, XYZ](FRHICommandListImmediate& RHICmdList)
 		{
-			SetComputePipelineState(RHICmdList, ComputeShaderRef);
-			Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
-
-			RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
+			Dispatch_RenderThread(RHICmdList, ResourceArray, XYZ);
 		}, OnSignaled);
 }
 
@@ -267,7 +276,7 @@ void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& Resour
 		return;
 	}
 
-	if (!CheckResourceBindings(ResourceArray, ResourceBindings, OnSignaled))
+	if (!CheckResourceBindings(ResourceArray, OnSignaled))
 	{
 		return;
 	}

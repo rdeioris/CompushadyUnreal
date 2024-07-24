@@ -754,7 +754,7 @@ namespace Compushady
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, Texture);
 #endif
 				}
-				}
+			}
 
 			for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
 			{
@@ -778,7 +778,7 @@ namespace Compushady
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
 #endif
-			}
+		}
 
 		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
 #if COMPUSHADY_UE_VERSION < 53
@@ -831,7 +831,7 @@ namespace Compushady
 		}
 #endif
 	}
-			}
+}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
@@ -905,6 +905,19 @@ void ICompushadyPipeline::TrackResources(const FCompushadyResourceArray& Resourc
 void ICompushadyPipeline::UntrackResources()
 {
 	CurrentTrackedResources.Empty();
+}
+
+void ICompushadyPipeline::TrackResourcesAndMarkAsRunning(const FCompushadyResourceArray& ResourceArray)
+{
+	TrackResources(ResourceArray);
+	bRunning = true;
+}
+
+void ICompushadyPipeline::UntrackResourcesAndUnmarkAsRunning()
+{
+	UntrackResources();
+	check(bRunning);
+	bRunning = false;
 }
 
 void ICompushadyPipeline::OnSignalReceived()

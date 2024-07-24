@@ -270,6 +270,9 @@ public:
 
 	void OnSignalReceived() override;
 
+	void TrackResourcesAndMarkAsRunning(const FCompushadyResourceArray& ResourceArray);
+	void UntrackResourcesAndUnmarkAsRunning();
+
 protected:
 	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled);
 

@@ -1154,3 +1154,76 @@ FCompushadyFloat UCompushadyFunctionLibrary::Conv_DoubleToCompushadyFloat(double
 	CompushadyFloat.Value = Value;
 	return CompushadyFloat;
 }
+
+void UCompushadyFunctionLibrary::EnqueueToGPUMulti(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const FCompushadySignaled& OnSignaled, TArray<ICompushadyPipeline*> Pipelines)
+{
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPUMulti)(
+		[InFunction](FRHICommandListImmediate& RHICmdList)
+		{
+			InFunction(RHICmdList);
+		});
+
+	FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+	FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
+	FFunctionGraphTask::CreateAndDispatchWhenReady([OnSignaled, Pipelines]
+		{
+			for (ICompushadyPipeline* Pipeline : Pipelines)
+			{
+				Pipeline->UntrackResourcesAndUnmarkAsRunning();
+			}
+			OnSignaled.ExecuteIfBound(true, "");
+		}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
+}
+
+void UCompushadyFunctionLibrary::DispatchMultiPass(const TArray<FCompushadyComputePass>& ComputePasses, const FCompushadySignaled& OnSignaled)
+{
+	TArray<UCompushadyCompute*> ComputesArray;
+	TArray<FCompushadyResourceArray> ResourceArrays;
+	TArray<FIntVector> XYZs;
+
+	for (const FCompushadyComputePass& ComputePass : ComputePasses)
+	{
+		if (!ComputePass.Compute)
+		{
+			OnSignaled.ExecuteIfBound(false, TEXT("Compute is NULL"));
+			return;
+		}
+
+		if (ComputePass.Compute->IsRunning())
+		{
+			OnSignaled.ExecuteIfBound(false, "The Compute is already running");
+			return;
+		}
+
+		if (ComputePass.XYZ.X <= 0 || ComputePass.XYZ.Y <= 0 || ComputePass.XYZ.Z <= 0)
+		{
+			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid ThreadGroupCount %s"), *ComputePass.XYZ.ToString()));
+			return;
+		}
+
+		if (!ComputePass.Compute->CheckResourceBindings(ComputePass.ResourceArray, OnSignaled))
+		{
+			return;
+		}
+
+		ComputesArray.Add(ComputePass.Compute);
+		ResourceArrays.Add(ComputePass.ResourceArray);
+		XYZs.Add(ComputePass.XYZ);
+	}
+
+	for (int32 Index = 0; Index < ComputesArray.Num(); Index++)
+	{
+		ComputesArray[Index]->TrackResourcesAndMarkAsRunning(ResourceArrays[Index]);
+	}
+
+	EnqueueToGPUMulti(
+		[ComputesArray, ResourceArrays, XYZs](FRHICommandListImmediate& RHICmdList)
+		{
+			for (int32 Index = 0; Index < ComputesArray.Num(); Index++)
+			{
+				ComputesArray[Index]->Dispatch_RenderThread(RHICmdList, ResourceArrays[Index], XYZs[Index]);
+			}
+			RHICmdList.EndUAVOverlap();
+		}, OnSignaled, static_cast<TArray<ICompushadyPipeline*>>(ComputesArray));
+}
