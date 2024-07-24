@@ -1,7 +1,10 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyCBV.h"
+#include "Compushady.h"
+#if COMPUSHADY_UE_VERSION >= 54
 #include "Blueprint/BlueprintExceptionInfo.h"
+#endif
 
 bool UCompushadyCBV::Initialize(const FString& Name, const uint8* Data, const int64 Size)
 {
