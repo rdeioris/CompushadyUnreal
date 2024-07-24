@@ -102,6 +102,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FCompushadyResourceBindings PSResourceBindings;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const TArray<uint8>& GetVertexShaderSPIRV() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const TArray<uint8>& GetPixelShaderSPIRV() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const TArray<uint8>& GetVertexShaderDXIL() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const TArray<uint8>& GetPixelShaderDXIL() const;
+
 	/* The following block is mainly used for unit testing */
 	UFUNCTION()
 	void StoreLastSignal(bool bSuccess, const FString& ErrorMessage);
@@ -127,4 +139,10 @@ protected:
 	FPixelShaderRHIRef PixelShaderRef;
 	FMeshShaderRHIRef MeshShaderRef;
 	FGraphicsPipelineStateInitializer PipelineStateInitializer;
+
+	TArray<uint8> VertexShaderSPIRV;
+	TArray<uint8> PixelShaderSPIRV;
+
+	TArray<uint8> VertexShaderDXIL;
+	TArray<uint8> PixelShaderDXIL;
 };

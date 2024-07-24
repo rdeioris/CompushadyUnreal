@@ -63,6 +63,8 @@ bool UCompushadyRasterizer::InitVSPSFromGLSL(const TArray<uint8>& VertexShaderCo
 		return false;
 	}
 
+	VertexShaderSPIRV = VertexShaderByteCode;
+
 	TArray<uint8> PixelShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
 	if (!Compushady::CompileGLSL(PixelShaderCode, PixelShaderEntryPoint, "ps_6_0", PixelShaderByteCode, ErrorMessages))
@@ -70,32 +72,21 @@ bool UCompushadyRasterizer::InitVSPSFromGLSL(const TArray<uint8>& VertexShaderCo
 		return false;
 	}
 
+	PixelShaderSPIRV = PixelShaderByteCode;
+
 	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
-		FString VertexShaderHLSL;
-		if (!Compushady::SPIRVToHLSL(VertexShaderByteCode, VertexShaderHLSL, ErrorMessages))
-		{
-			return false;
-		}
-
-		FString PixelShaderHLSL;
-		if (!Compushady::SPIRVToHLSL(PixelShaderByteCode, PixelShaderHLSL, ErrorMessages))
-		{
-			return false;
-		}
-
-		TStringBuilderBase<UTF8CHAR> VertexSourceUTF8;
-		VertexSourceUTF8 = TCHAR_TO_UTF8(*VertexShaderHLSL);
-
 		TArray<uint8> HLSLVertexShaderCode;
-		HLSLVertexShaderCode.Append(reinterpret_cast<const uint8*>(*VertexSourceUTF8), VertexSourceUTF8.Len());
-
-		TStringBuilderBase<UTF8CHAR> PixelSourceUTF8;
-		PixelSourceUTF8 = TCHAR_TO_UTF8(*PixelShaderHLSL);
+		if (!Compushady::SPIRVToHLSL(VertexShaderByteCode, HLSLVertexShaderCode, ErrorMessages))
+		{
+			return false;
+		}
 
 		TArray<uint8> HLSLPixelShaderCode;
-		HLSLPixelShaderCode.Append(reinterpret_cast<const uint8*>(*PixelSourceUTF8), PixelSourceUTF8.Len());
-
+		if (!Compushady::SPIRVToHLSL(PixelShaderByteCode, HLSLPixelShaderCode, ErrorMessages))
+		{
+			return false;
+		}
 
 		return InitVSPSFromHLSL(HLSLVertexShaderCode, VertexShaderEntryPoint, HLSLPixelShaderCode, PixelShaderEntryPoint, RasterizerConfig, ErrorMessages);
 	}
@@ -637,4 +628,24 @@ void UCompushadyRasterizer::StoreLastSignal(bool bSuccess, const FString& ErrorM
 {
 	bLastSuccess = bSuccess;
 	LastErrorMessages = ErrorMessage;
+}
+
+const TArray<uint8>& UCompushadyRasterizer::GetVertexShaderSPIRV() const
+{
+	return VertexShaderSPIRV;
+}
+
+const TArray<uint8>& UCompushadyRasterizer::GetPixelShaderSPIRV() const
+{
+	return PixelShaderSPIRV;
+}
+
+const TArray<uint8>& UCompushadyRasterizer::GetVertexShaderDXIL() const
+{
+	return VertexShaderDXIL;
+}
+
+const TArray<uint8>& UCompushadyRasterizer::GetPixelShaderDXIL() const
+{
+	return PixelShaderDXIL;
 }

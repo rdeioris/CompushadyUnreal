@@ -125,12 +125,26 @@ bool UCompushadyFunctionLibrary::DisassembleSPIRVFile(const FString& Filename, F
 		return false;
 	}
 
-	return Compushady::DisassembleSPIRV(ByteCode, Disassembled, ErrorMessages);
+	TArray<uint8> DisassembledBytes;
+	if (!Compushady::DisassembleSPIRV(ByteCode, DisassembledBytes, ErrorMessages))
+	{
+		return false;
+	}
+
+	Disassembled = Compushady::ShaderCodeToString(DisassembledBytes);
+	return true;
 }
 
 bool UCompushadyFunctionLibrary::DisassembleSPIRVBlob(const TArray<uint8>& Blob, FString& Disassembled, FString& ErrorMessages)
 {
-	return Compushady::DisassembleSPIRV(Blob, Disassembled, ErrorMessages);
+	TArray<uint8> DisassembledBytes;
+	if (!Compushady::DisassembleSPIRV(Blob, DisassembledBytes, ErrorMessages))
+	{
+		return false;
+	}
+
+	Disassembled = Compushady::ShaderCodeToString(DisassembledBytes);
+	return true;
 }
 
 bool UCompushadyFunctionLibrary::DisassembleDXILFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages)
@@ -151,7 +165,14 @@ bool UCompushadyFunctionLibrary::DisassembleDXILBlob(const TArray<uint8>& Blob, 
 
 bool UCompushadyFunctionLibrary::SPIRVBlobToHLSL(const TArray<uint8>& Blob, FString& HLSL, FString& ErrorMessages)
 {
-	return Compushady::SPIRVToHLSL(Blob, HLSL, ErrorMessages);
+	TArray<uint8> HLSLBytes;
+	if (!Compushady::SPIRVToHLSL(Blob, HLSLBytes, ErrorMessages))
+	{
+		return false;
+	}
+
+	HLSL = Compushady::ShaderCodeToString(HLSLBytes);
+	return true;
 }
 
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint)

@@ -47,16 +47,12 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 
 	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
 	{
-		FString HLSL;
-		if (!Compushady::SPIRVToHLSL(SPIRV, HLSL, ErrorMessages))
+		TArray<uint8> HLSLShaderCode;
+		if (!Compushady::SPIRVToHLSL(SPIRV, HLSLShaderCode, ErrorMessages))
 		{
 			return false;
 		}
-		TStringBuilderBase<UTF8CHAR> SourceUTF8;
-		SourceUTF8 = TCHAR_TO_UTF8(*HLSL);
-
-		TArray<uint8> HLSLShaderCode;
-		HLSLShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
+		
 		return InitFromHLSL(HLSLShaderCode, EntryPoint, ErrorMessages);
 	}
 	else

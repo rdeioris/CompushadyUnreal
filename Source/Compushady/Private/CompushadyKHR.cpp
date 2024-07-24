@@ -12,8 +12,8 @@ namespace Compushady
 	{
 		static void* LibHandle = nullptr;
 		static const uint8* (*GLSLToSpirV)(const char* Glsl, const SIZE_T GlslSize, const char* ShaderModel, const uint32 Flags, SIZE_T* SpirVSize, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
-		static void* (*SpirVDisassemble)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* DisassembledSize, char** Errors) = nullptr;
-		static void* (*SpirVToHLSL)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* OutputSize, char** Errors) = nullptr;
+		static const uint8* (*SpirVToHLSL)(const uint8* SpirV, const SIZE_T SpirVSize, const uint32 Flags, SIZE_T* HlslSize, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
+		static const uint8* (*SpirVDisassemble)(const uint8* SpirV, const SIZE_T SpirVSize, SIZE_T* AssemblySize, void* (*Allocator)(const SIZE_T)) = nullptr;
 		static void* (*SpirVToGLSL)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* OutputSize, char** Errors) = nullptr;
 		static void* (*SpirVToMSL)(const uint32* Binary, const SIZE_T WordCount, void* (*Allocator)(SIZE_T), SIZE_T* OutputSize, char** Errors) = nullptr;
 
@@ -53,28 +53,29 @@ namespace Compushady
 				}
 			}
 
-			/*if (!SpirVDisassemble)
-			{
-				SpirVDisassemble = reinterpret_cast<void* (*)(const uint32*, const SIZE_T, void* (*)(SIZE_T), SIZE_T*, char**)>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_spirv_disassemble")));
-
-				if (!SpirVDisassemble)
-				{
-					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_spirv_disassemble symbol in libcompushady_khr"));
-					return false;
-				}
-			}
-
 			if (!SpirVToHLSL)
 			{
-				SpirVToHLSL = reinterpret_cast<void* (*)(const uint32*, const SIZE_T, void* (*)(SIZE_T), SIZE_T*, char**)>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_spirv_to_hlsl")));
+				SpirVToHLSL = reinterpret_cast<const uint8 * (*)(const uint8 * SpirV, const SIZE_T SpirVSize, const uint32 Flags, SIZE_T * HlslSize, char** ErrorPtr, SIZE_T * ErrorLen, void* (*Allocator)(const SIZE_T))> (FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_spv_to_hlsl")));
 
 				if (!SpirVToHLSL)
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_spirv_to_hlsl symbol in libcompushady_khr"));
+					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_spv_to_hlsl symbol in compushady_khr"));
 					return false;
 				}
 			}
 
+			if (!SpirVDisassemble)
+			{
+				SpirVDisassemble = reinterpret_cast<const uint8 * (*)(const uint8 * SpirV, const SIZE_T SpirVSize, SIZE_T * AssemblySize, void* (*Allocator)(const SIZE_T))>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_spv_disassemble")));
+
+				if (!SpirVDisassemble)
+				{
+					UE_LOG(LogCompushady, Error, TEXT("Unable to find compushady_khr_spv_disassemble symbol in compushady_khr"));
+					return false;
+				}
+			}
+
+			/*
 			if (!SpirVToGLSL)
 			{
 				SpirVToGLSL = reinterpret_cast<void* (*)(const uint32*, const SIZE_T, void* (*)(SIZE_T), SIZE_T*, char**)>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_spirv_to_glsl")));
@@ -117,7 +118,8 @@ bool Compushady::CompileGLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	{
 		if (Errors)
 		{
-			ErrorMessages = UTF8_TO_TCHAR(Errors);
+			FUTF8ToTCHAR Converter(reinterpret_cast<UTF8CHAR*>(Errors), ErrorsLen);
+			ErrorMessages = FString(Converter.Length(), Converter.Get());
 			FMemory::Free(Errors);
 		}
 		else
@@ -133,37 +135,28 @@ bool Compushady::CompileGLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	return true;
 }
 
-bool Compushady::DisassembleSPIRV(const TArray<uint8>& ByteCode, FString& Disassembled, FString& ErrorMessages)
+bool Compushady::DisassembleSPIRV(const TArray<uint8>& ByteCode, TArray<uint8>& Disassembled, FString& ErrorMessages)
 {
 	if (!KHR::Setup())
 	{
 		return false;
 	}
 
-	SIZE_T DisassembledSize;
-	char* Errors = nullptr;
-	void* Data = KHR::SpirVDisassemble(reinterpret_cast<const uint32*>(ByteCode.GetData()), ByteCode.Num() / 4, KHR::Malloc, &DisassembledSize, &Errors);
+	SIZE_T DisassembledSize = 0;
+	const uint8* Data = KHR::SpirVDisassemble(ByteCode.GetData(), ByteCode.Num(), &DisassembledSize, KHR::Malloc);
 	if (!Data)
 	{
-		if (Errors)
-		{
-			ErrorMessages = UTF8_TO_TCHAR(Errors);
-			FMemory::Free(Errors);
-		}
-		else
-		{
-			ErrorMessages = "Unable to disassemble SPIRV";
-		}
+		ErrorMessages = "Unable to disassemble SPIRV";
 		return false;
 	}
 
-	Disassembled = UTF8_TO_TCHAR(Data);
-	FMemory::Free(Data);
+	Disassembled.Append(Data, DisassembledSize);
+	FMemory::Free(const_cast<uint8*>(Data));
 
 	return true;
 }
 
-bool Compushady::SPIRVToHLSL(const TArray<uint8>& ByteCode, FString& HLSL, FString& ErrorMessages)
+bool Compushady::SPIRVToHLSL(const TArray<uint8>& ByteCode, TArray<uint8>& HLSL, FString& ErrorMessages)
 {
 	if (!KHR::Setup())
 	{
@@ -172,12 +165,14 @@ bool Compushady::SPIRVToHLSL(const TArray<uint8>& ByteCode, FString& HLSL, FStri
 
 	SIZE_T OutputSize = 0;
 	char* Errors = nullptr;
-	void* Data = KHR::SpirVToHLSL(reinterpret_cast<const uint32*>(ByteCode.GetData()), ByteCode.Num() / 4, KHR::Malloc, &OutputSize, &Errors);
+	SIZE_T ErrorsLen = 0;
+	const uint8* Data = KHR::SpirVToHLSL(ByteCode.GetData(), ByteCode.Num(), 0, &OutputSize, &Errors, &ErrorsLen, KHR::Malloc);
 	if (!Data)
 	{
 		if (Errors)
 		{
-			ErrorMessages = UTF8_TO_TCHAR(Errors);
+			FUTF8ToTCHAR Converter(reinterpret_cast<UTF8CHAR*>(Errors), ErrorsLen);
+			ErrorMessages = FString(Converter.Length(), Converter.Get());
 			FMemory::Free(Errors);
 		}
 		else
@@ -187,8 +182,8 @@ bool Compushady::SPIRVToHLSL(const TArray<uint8>& ByteCode, FString& HLSL, FStri
 		return false;
 	}
 
-	HLSL = UTF8_TO_TCHAR(Data);
-	FMemory::Free(Data);
+	HLSL.Append(Data, OutputSize);
+	FMemory::Free(const_cast<uint8*>(Data));
 
 	return true;
 }
