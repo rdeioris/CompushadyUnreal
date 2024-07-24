@@ -12,10 +12,10 @@
 #include "ScreenPass.h"
 
 BEGIN_SHADER_PARAMETER_STRUCT(FCompushadyPixelShaderParameters, )
-SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
-//SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-//SHADER_PARAMETER_RDG_TEXTURE(Texture2D<float4>, GBufferATexture)
-RENDER_TARGET_BINDING_SLOTS()
+	SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
+	//SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+	//SHADER_PARAMETER_RDG_TEXTURE(Texture2D<float4>, GBufferATexture)
+	RENDER_TARGET_BINDING_SLOTS()
 END_SHADER_PARAMETER_STRUCT()
 
 class FCompushadyPostProcess : public ISceneViewExtension, public TSharedFromThis<FCompushadyPostProcess, ESPMode::ThreadSafe>
