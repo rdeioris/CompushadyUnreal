@@ -685,6 +685,26 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromRenderTarget2
 	return CompushadySRV;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromMediaTexture(UMediaTexture* MediaTexture)
+{
+	if (!MediaTexture->GetResource() || !MediaTexture->GetResource()->IsInitialized())
+	{
+		MediaTexture->UpdateResource();
+	}
+
+	FlushRenderingCommands();
+
+	FTextureResource* Resource = MediaTexture->GetResource();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(Resource->GetTextureRHI()))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
 UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget)
 {
 	if (!RenderTarget->GetResource() || !RenderTarget->GetResource()->IsInitialized())

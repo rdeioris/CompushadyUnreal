@@ -108,6 +108,9 @@ public:
 	static UCompushadySRV* CreateCompushadySRVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromMediaTexture(UMediaTexture* MediaTexture);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyRTV* CreateCompushadyRTVFromRenderTarget2D(UTextureRenderTarget2D* RenderTarget);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
