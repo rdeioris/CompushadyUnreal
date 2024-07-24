@@ -1125,7 +1125,26 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromH
 	}
 
 	return CompushadyBlendable;
+}
 
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint)
+{
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
+
+	TArray<uint8> ShaderCode;
+	Compushady::StringToShaderCode(PixelShaderSource, ShaderCode);
+
+	if (!CompushadyBlendable->InitFromGLSL(ShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyBlendable->UpdateResources(PSResourceArray, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyBlendable;
 }
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture)

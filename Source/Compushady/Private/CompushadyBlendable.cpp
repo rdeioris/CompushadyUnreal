@@ -112,7 +112,8 @@ public:
 
 	virtual void PostRenderBasePassDeferred_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView, const FRenderTargetBindingSlots& RenderTargets, TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures) override
 	{
-		//return;
+		return;
+#if 0
 		NewSceneTextures = CreateSceneTextureUniformBuffer(GraphBuilder, InView);
 
 		FCompushadyPixelShaderParameters* Parameters = GraphBuilder.AllocParameters<FCompushadyPixelShaderParameters>();
@@ -169,6 +170,7 @@ public:
 			//RHICmdList.EndRenderPass();
 			});
 		//GBufferA = NewSceneTextures->GetContents()->GBufferATexture;
+#endif
 	}
 
 	FScreenPassTexture PostProcessCallback_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
@@ -280,6 +282,17 @@ public:
 bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(ShaderCode, EntryPoint, PSResourceBindings, ErrorMessages);
+	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool UCompushadyBlendable::InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
+{
+	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromGLSL(ShaderCode, EntryPoint, PSResourceBindings, ErrorMessages);
 	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
 	{
 		return false;

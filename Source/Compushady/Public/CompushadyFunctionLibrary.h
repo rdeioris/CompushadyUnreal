@@ -191,8 +191,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySoundWave* CreateCompushadySoundWave(const UCompushadyCompute* Compute, const FCompushadyResourceArray& ResourceArray, const float Duration);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "PSResourceArray,SceneTexturesMap"), Category = "Compushady")
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "PSResourceArray"), Category = "Compushady")
 	static UCompushadyBlendable* CreateCompushadyBlendableFromHLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main");
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "PSResourceArray"), Category = "Compushady")
+	static UCompushadyBlendable* CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main");
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture);

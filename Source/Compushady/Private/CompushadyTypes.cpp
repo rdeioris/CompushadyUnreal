@@ -1143,3 +1143,56 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uin
 
 	return PixelShaderRef;
 }
+
+FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	TArray<uint8> PixelShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "ps_6_0", PixelShaderByteCode, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (RHIGetInterfaceType() == ERHIInterfaceType::D3D12)
+	{
+		TArray<uint8> HLSLPixelShaderCode;
+		if (!Compushady::SPIRVToHLSL(PixelShaderByteCode, HLSLPixelShaderCode, ErrorMessages))
+		{
+			return nullptr;
+		}
+
+		return CreatePixelShaderFromHLSL(HLSLPixelShaderCode, EntryPoint, ResourceBindings, ErrorMessages);
+	}
+	else
+	{
+		FIntVector ThreadGroupSize;
+		if (!Compushady::FixupSPIRV(PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return nullptr;
+		}
+	}
+
+	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, ResourceBindings, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> PSByteCode;
+	FSHAHash PSHash;
+	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PixelShaderResourceBindings.CBVs.Num(), PixelShaderResourceBindings.SRVs.Num(), PixelShaderResourceBindings.UAVs.Num(), PixelShaderResourceBindings.Samplers.Num(), PSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
+		return nullptr;
+	}
+
+	FPixelShaderRHIRef PixelShaderRef = RHICreatePixelShader(PSByteCode, PSHash);
+	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Pixel Shader";
+		return nullptr;
+	}
+
+	PixelShaderRef->SetHash(PSHash);
+
+	return PixelShaderRef;
+}

@@ -12,13 +12,15 @@
 /**
  * 
  */
-UCLASS(BlueprintType)
+UCLASS(BlueprintType, Blueprintable)
 class COMPUSHADY_API UCompushadyBlendable : public UObject, public ICompushadyPipeline, public IBlendableInterface
 {
 	GENERATED_BODY()
 
 public:
 	bool InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
+	bool InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
+
 	virtual void OverrideBlendableSettings(class FSceneView& View, float Weight) const override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Compushady")
