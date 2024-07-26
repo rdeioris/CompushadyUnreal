@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class COMPUSHADY_API UCompushadyK2Node_MakeHLSLString : public UK2Node
+class COMPUSHADYBLUEPRINTNODES_API UCompushadyK2Node_MakeHLSLString : public UK2Node
 {
 	GENERATED_BODY()
 
