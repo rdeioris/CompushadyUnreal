@@ -78,6 +78,7 @@ TSharedRef<FCompushadySyntaxHighlighter> FCompushadySyntaxHighlighter::CreateHLS
 	COMPUSHADY_SH_ADD_TYPE_RULE("AppendStructuredBuffer");
 	COMPUSHADY_SH_ADD_TYPE_RULE("Buffer");
 	COMPUSHADY_SH_ADD_TYPE_RULE("ByteAddressBuffer");
+	COMPUSHADY_SH_ADD_TYPE_RULE("ConstantBuffer");
 	COMPUSHADY_SH_ADD_TYPE_RULE("ConsumeStructuredBuffer");
 	COMPUSHADY_SH_ADD_TYPE_RULE("SamplerComparisonState");
 	COMPUSHADY_SH_ADD_TYPE_RULE("SamplerState");

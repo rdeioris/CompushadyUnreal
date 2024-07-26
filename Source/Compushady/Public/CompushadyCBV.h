@@ -82,13 +82,19 @@ public:
 	bool GetUInt(const int64 Offset, uint32& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetPerspectiveFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose = true);
+	bool SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetPerspectiveFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose = true);
+	bool SetProjectionMatrixFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetPerspectiveFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose = true);
+	bool SetProjectionMatrixFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool SetProjectionMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool SetViewMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose = true);
 
 	bool IsValidOffset(const int64 Offset, const int64 Size) const;
 
