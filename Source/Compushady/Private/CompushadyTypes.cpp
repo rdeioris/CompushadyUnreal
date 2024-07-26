@@ -6,6 +6,7 @@
 #include "CompushadySampler.h"
 #include "CompushadySRV.h"
 #include "CompushadyUAV.h"
+#include "CommonRenderResources.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Engine/Canvas.h"
@@ -794,6 +795,93 @@ namespace Compushady
 #endif
 		}
 
+		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
+#if COMPUSHADY_UE_VERSION < 53
+		template<>
+		void SetupParametersRHI(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+		{
+			for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
+			{
+				FUniformBufferRHIRef BufferRHI = CBVFunction(Index);
+				if (!BufferRHI)
+				{
+					continue;
+				}
+				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, BufferRHI);
+			}
+
+			for (int32 Index = 0; Index < ResourceBindings.SRVs.Num(); Index++)
+			{
+				TPair<FShaderResourceViewRHIRef, FTextureRHIRef> SRVPair = SRVFunction(Index);
+				if (!SRVPair.Key && !SRVPair.Value)
+				{
+					continue;
+				}
+
+				if (SRVPair.Key)
+				{
+					RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Key);
+				}
+				else
+				{
+					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
+				}
+			}
+
+			for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
+			{
+				FSamplerStateRHIRef SamplerState = SamplerFunction(Index);
+				if (!SamplerState)
+				{
+					continue;
+				}
+				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
+			}
+		}
+
+		template<>
+		void SetupParametersRHI(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+		{
+			for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
+			{
+				FUniformBufferRHIRef BufferRHI = CBVFunction(Index);
+				if (!BufferRHI)
+				{
+					continue;
+				}
+				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, BufferRHI);
+			}
+
+			for (int32 Index = 0; Index < ResourceBindings.SRVs.Num(); Index++)
+			{
+				TPair<FShaderResourceViewRHIRef, FTextureRHIRef> SRVPair = SRVFunction(Index);
+				if (!SRVPair.Key && !SRVPair.Value)
+				{
+					continue;
+				}
+
+				if (SRVPair.Key)
+				{
+					RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Key);
+				}
+				else
+				{
+					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
+				}
+			}
+
+			for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
+			{
+				FSamplerStateRHIRef SamplerState = SamplerFunction(Index);
+				if (!SamplerState)
+				{
+					continue;
+				}
+				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
+			}
+		}
+#endif
+
 		template<typename SHADER_TYPE>
 		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
 		{
@@ -830,57 +918,6 @@ namespace Compushady
 					return ResourceArray.Samplers[Index]->GetRHI();
 				});
 		}
-
-		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
-#if COMPUSHADY_UE_VERSION < 53
-		template<>
-		void SetupParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
-		{
-			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
-			{
-				if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
-				{
-					ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
-				}
-				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-			}
-
-			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
-			{
-				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-			}
-
-			for (int32 Index = 0; Index < ResourceArray.Samplers.Num(); Index++)
-			{
-				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
-			}
-		}
-
-		template<>
-		void SetupParameters(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
-		{
-			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
-			{
-				if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
-				{
-					ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
-				}
-				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-			}
-
-			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
-			{
-				RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-				RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-			}
-
-			for (int32 Index = 0; Index < ResourceArray.Samplers.Num(); Index++)
-			{
-				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
-			}
-		}
-#endif
 	}
 }
 
@@ -1392,9 +1429,9 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 
 	FGraphicsPipelineStateInitializer GraphicsPSOInit;
 	RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
-	GraphicsPSOInit.BlendState = FScreenPassPipelineState::FDefaultBlendState::GetRHI();
+	GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI(); /* FScreenPassPipelineState::FDefaultBlendState::GetRHI(); */
 	GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
-	GraphicsPSOInit.DepthStencilState = FScreenPassPipelineState::FDefaultDepthStencilState::GetRHI();
+	GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI(); /* FScreenPassPipelineState::FDefaultDepthStencilState::GetRHI(); */
 	GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
 	GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShaderRef;
 	GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShaderRef;

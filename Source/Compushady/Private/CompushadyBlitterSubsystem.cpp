@@ -1,6 +1,7 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyBlitterSubsystem.h"
+#include "RenderGraphBuilder.h"
 #include "SceneViewExtension.h"
 
 struct FCompushadyBlitterDrawable
@@ -199,6 +200,7 @@ public:
 			});
 	}
 
+#if COMPUSHADY_UE_VERSION >= 53
 	FScreenPassTexture PostProcessAfterMotionBlur_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
 	{
 		FScreenPassTexture Output = InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
@@ -237,6 +239,7 @@ public:
 			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyBlitterViewExtension::PostProcessAfterMotionBlur_RenderThread));
 		}
 	}
+#endif
 
 	void AddDrawable(const FCompushadyBlitterDrawable& Drawable)
 	{
