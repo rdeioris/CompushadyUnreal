@@ -333,7 +333,7 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 
 			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::Draw"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Load_Store, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil, Width, Height))
 			{
-				SetupRasterization(RHICmdList, RasterizeConfig, Width, Height);
+				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
@@ -391,7 +391,7 @@ void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResou
 
 			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::ClearAndDraw"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Clear_Store, EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil, Width, Height))
 			{
-				SetupRasterization(RHICmdList, RasterizeConfig, Width, Height);
+				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
@@ -403,7 +403,7 @@ void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResou
 		}, OnSignaled);
 }
 
-void UCompushadyRasterizer::SetupRasterization(FRHICommandListImmediate& RHICmdList, const FCompushadyRasterizeConfig& RasterizeConfig, const int32 Width, const int32 Height)
+void UCompushadyRasterizer::SetupRasterization_RenderThread(FRHICommandListImmediate& RHICmdList, const FCompushadyRasterizeConfig& RasterizeConfig, const int32 Width, const int32 Height)
 {
 	float ViewportMinX = RasterizeConfig.Viewport.Min.X > 0 ? RasterizeConfig.Viewport.Min.X : 0;
 	float ViewportMinY = RasterizeConfig.Viewport.Min.Y > 0 ? RasterizeConfig.Viewport.Min.Y : 0;
@@ -462,7 +462,7 @@ void UCompushadyRasterizer::DrawIndirect(const FCompushadyResourceArray& VSResou
 			uint32 Height = 0;
 			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::DrawIndirect"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Load_Store, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil, Width, Height))
 			{
-				SetupRasterization(RHICmdList, RasterizeConfig, Width, Height);
+				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
@@ -606,7 +606,7 @@ void UCompushadyRasterizer::DispatchMesh(const FCompushadyResourceArray& MSResou
 			uint32 Height = 0;
 			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::DispatchMesh"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Load_Store, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil, Width, Height))
 			{
-				SetupRasterization(RHICmdList, RasterizeConfig, Width, Height);
+				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, MeshShaderRef, MSResourceArray, MSResourceBindings);
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});

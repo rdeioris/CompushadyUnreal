@@ -203,7 +203,7 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromWorldSceneAccelerationStructure(UObject* WorldContextObject);
 
-	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	UCompushadyCompute* CreateCompushadyComputeFromGLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "RasterizerConfig"), Category = "Compushady")

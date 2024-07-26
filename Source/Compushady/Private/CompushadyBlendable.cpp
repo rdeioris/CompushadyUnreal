@@ -282,7 +282,7 @@ public:
 bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(ShaderCode, EntryPoint, PSResourceBindings, ErrorMessages);
-	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
+	if (!PixelShaderRef)
 	{
 		return false;
 	}
@@ -293,7 +293,7 @@ bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const F
 bool UCompushadyBlendable::InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromGLSL(ShaderCode, EntryPoint, PSResourceBindings, ErrorMessages);
-	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
+	if (!PixelShaderRef)
 	{
 		return false;
 	}

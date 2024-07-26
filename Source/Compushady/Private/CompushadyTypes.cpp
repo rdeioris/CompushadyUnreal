@@ -1,4 +1,4 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 
 #include "CompushadyTypes.h"
@@ -8,6 +8,7 @@
 #include "CompushadyUAV.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
+#include "Engine/Canvas.h"
 #include "Serialization/ArrayWriter.h"
 
 FTextureRHIRef UCompushadyResource::GetTextureRHI() const
@@ -714,70 +715,120 @@ namespace Compushady
 	namespace Pipeline
 	{
 		template<typename SHADER_TYPE>
-		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
+		void SetupParametersRHI(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
 		{
 #if COMPUSHADY_UE_VERSION >= 53
 			FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
 #endif
 
-			for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
+			for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
 			{
-				if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
+				FUniformBufferRHIRef BufferRHI = CBVFunction(Index);
+				if (!BufferRHI)
 				{
-					ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
+					continue;
 				}
 #if COMPUSHADY_UE_VERSION >= 53
-				BatchedParameters.SetShaderUniformBuffer(ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
+				BatchedParameters.SetShaderUniformBuffer(ResourceBindings.CBVs[Index].SlotIndex, BufferRHI);
 #else
-				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
+				RHICmdList.SetShaderUniformBuffer(Shader, ResourceBindings.CBVs[Index].SlotIndex, BufferRHI);
 #endif
 			}
 
-			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
+			for (int32 Index = 0; Index < ResourceBindings.SRVs.Num(); Index++)
 			{
-				if (!ResourceArray.SRVs[Index]->IsSceneTexture())
+				TPair<FShaderResourceViewRHIRef, FTextureRHIRef> SRVPair = SRVFunction(Index);
+				if (!SRVPair.Key && !SRVPair.Value)
 				{
-					RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+					continue;
+				}
+
+				if (SRVPair.Key)
+				{
 #if COMPUSHADY_UE_VERSION >= 53
-					BatchedParameters.SetShaderResourceViewParameter(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+					BatchedParameters.SetShaderResourceViewParameter(ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Key);
 #else
-					RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
+					RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Key);
 #endif
 				}
 				else
 				{
-					FTextureRHIRef Texture = ResourceArray.SRVs[Index]->GetRHI(PPInputs);
-					RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::RTV, ERHIAccess::SRVMask));
 #if COMPUSHADY_UE_VERSION >= 53
-					BatchedParameters.SetShaderTexture(ResourceBindings.SRVs[Index].SlotIndex, Texture);
+					BatchedParameters.SetShaderTexture(ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #else
-					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, Texture);
+					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #endif
 				}
 			}
 
-			for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
+			for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
 			{
-				RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
+				FUnorderedAccessViewRHIRef UAV = UAVFunction(Index);
+				if (!UAV)
+				{
+					continue;
+				}
 #if COMPUSHADY_UE_VERSION >= 53
-				BatchedParameters.SetUAVParameter(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
+				BatchedParameters.SetUAVParameter(ResourceBindings.UAVs[Index].SlotIndex, UAV);
 #else
-				RHICmdList.SetUAVParameter(Shader, ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
+				RHICmdList.SetUAVParameter(Shader, ResourceBindings.UAVs[Index].SlotIndex, UAV);
 #endif
 			}
 
-			for (int32 Index = 0; Index < ResourceArray.Samplers.Num(); Index++)
+			for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
 			{
+				FSamplerStateRHIRef SamplerState = SamplerFunction(Index);
+				if (!SamplerState)
+				{
+					continue;
+				}
 #if COMPUSHADY_UE_VERSION >= 53
-				BatchedParameters.SetShaderSampler(ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
+				BatchedParameters.SetShaderSampler(ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
 #else
-				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, ResourceArray.Samplers[Index]->GetRHI());
+				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
 #endif
 			}
 
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
 #endif
+		}
+
+		template<typename SHADER_TYPE>
+		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
+		{
+			SetupParametersRHI(RHICmdList, Shader, ResourceBindings,
+				[&](const int32 Index) // CBV
+				{
+					if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
+					{
+						ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
+					}
+					return ResourceArray.CBVs[Index]->GetRHI();
+				},
+				[&](const int32 Index) -> TPair<FShaderResourceViewRHIRef, FTextureRHIRef>// SRV
+				{
+					if (!ResourceArray.SRVs[Index]->IsSceneTexture())
+					{
+						RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+						return { ResourceArray.SRVs[Index]->GetRHI() , nullptr };
+					}
+					else
+					{
+						FTextureRHIRef Texture = ResourceArray.SRVs[Index]->GetRHI(PPInputs);
+						RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::RTV, ERHIAccess::SRVMask));
+						return { nullptr, Texture };
+					}
+				},
+				[&](const int32 Index) // UAV
+				{
+					RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
+					return ResourceArray.UAVs[Index]->GetRHI();
+				},
+				[&](const int32 Index) // SamplerState
+				{
+					return ResourceArray.Samplers[Index]->GetRHI();
+				});
 		}
 
 		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
@@ -877,6 +928,26 @@ void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FRa
 		RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
 		GlobalResources.SetUAV(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
 	}
+}
+
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+{
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
+}
+
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+{
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
+}
+
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+{
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
+}
+
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+{
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
 }
 
 void ICompushadyPipeline::TrackResource(UObject* InResource)
@@ -1108,6 +1179,40 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 
 	return true;
 }
+FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	FIntVector ThreadGroupSize;
+	TArray<uint8> VertexShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "vs_6_0", VertexShaderByteCode, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::Utils::CreateResourceBindings(VertexShaderResourceBindings, ResourceBindings, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> VSByteCode;
+	FSHAHash VSHash;
+	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VertexShaderResourceBindings.CBVs.Num(), VertexShaderResourceBindings.SRVs.Num(), VertexShaderResourceBindings.UAVs.Num(), VertexShaderResourceBindings.Samplers.Num(), VSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
+		return nullptr;
+	}
+
+	FVertexShaderRHIRef VertexShaderRef = RHICreateVertexShader(VSByteCode, VSHash);
+	if (!VertexShaderRef.IsValid() || !VertexShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Vertex Shader";
+		return nullptr;
+	}
+
+	VertexShaderRef->SetHash(VSHash);
+
+	return VertexShaderRef;
+}
 
 FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
 {
@@ -1195,4 +1300,109 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const TArray<uin
 	PixelShaderRef->SetHash(PSHash);
 
 	return PixelShaderRef;
+}
+
+FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	TArray<uint8> VertexShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "vs_6_0", VertexShaderByteCode, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (RHIGetInterfaceType() == ERHIInterfaceType::D3D12)
+	{
+		TArray<uint8> HLSLPixelShaderCode;
+		if (!Compushady::SPIRVToHLSL(VertexShaderByteCode, HLSLPixelShaderCode, ErrorMessages))
+		{
+			return nullptr;
+		}
+
+		return CreateVertexShaderFromHLSL(HLSLPixelShaderCode, EntryPoint, ResourceBindings, ErrorMessages);
+	}
+	else
+	{
+		FIntVector ThreadGroupSize;
+		if (!Compushady::FixupSPIRV(VertexShaderByteCode, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return nullptr;
+		}
+	}
+
+	if (!Compushady::Utils::CreateResourceBindings(VertexShaderResourceBindings, ResourceBindings, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> VSByteCode;
+	FSHAHash VSHash;
+	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VertexShaderResourceBindings.CBVs.Num(), VertexShaderResourceBindings.SRVs.Num(), VertexShaderResourceBindings.UAVs.Num(), VertexShaderResourceBindings.Samplers.Num(), VSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
+		return nullptr;
+	}
+
+	FVertexShaderRHIRef VertexShaderRef = RHICreateVertexShader(VSByteCode, VSHash);
+	if (!VertexShaderRef.IsValid() || !VertexShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Vertex Shader";
+		return nullptr;
+	}
+
+	VertexShaderRef->SetHash(VSHash);
+
+	return VertexShaderRef;
+}
+
+FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreateVertexShaderFromHLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ErrorMessages);
+}
+
+FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreateVertexShaderFromGLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ErrorMessages);
+}
+
+FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreatePixelShaderFromHLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ErrorMessages);
+}
+
+FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreatePixelShaderFromGLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ErrorMessages);
+}
+
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction)
+{
+	FRHIRenderPassInfo PassInfo(RenderTarget, ERenderTargetActions::Load_Store);
+	RHICmdList.BeginRenderPass(PassInfo, PassName);
+
+	RHICmdList.SetViewport(0, 0, 0.0f, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(), 1.0f);
+
+	FGraphicsPipelineStateInitializer GraphicsPSOInit;
+	RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+	GraphicsPSOInit.BlendState = FScreenPassPipelineState::FDefaultBlendState::GetRHI();
+	GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
+	GraphicsPSOInit.DepthStencilState = FScreenPassPipelineState::FDefaultDepthStencilState::GetRHI();
+	GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
+	GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShaderRef;
+	GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShaderRef;
+	GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+
+	SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+
+	InFunction();
+
+	RHICmdList.EndRenderPass();
 }
