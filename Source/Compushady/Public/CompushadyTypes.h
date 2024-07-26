@@ -10,14 +10,6 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
 #include "MediaTexture.h"
-#if COMPUSHADY_UE_VERSION >= 53
-#include "PostProcess/PostProcessMaterialInputs.h"
-#else
-struct FPostProcessMaterialInputs
-{
-
-};
-#endif
 #include "CompushadyTypes.generated.h"
 
 /**
@@ -192,6 +184,33 @@ enum class ECompushadyKeepAspectRatio : uint8
 	None,
 	Horizontal,
 	Vertical
+};
+
+UENUM(BlueprintType)
+enum class ECompushadySceneTexture : uint8
+{
+	None = 0,
+	SceneColorInput,
+	GBufferA,
+	GBufferB,
+	GBufferC,
+	GBufferD,
+	GBufferE,
+	GBufferF,
+	SceneColor,
+	Depth,
+	CustomDepth,
+	Max
+};
+
+struct FCompushadySceneTextures
+{
+	TStaticArray<FTextureRHIRef, (uint32)ECompushadySceneTexture::Max> Textures;
+
+	void SetTexture(const ECompushadySceneTexture SceneTexture, FTextureRHIRef Texture)
+	{
+		Textures[(uint32)SceneTexture] = Texture;
+	}
 };
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
@@ -403,7 +422,7 @@ namespace Compushady
 		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
 		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
 		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
-		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs);
+		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures);
 		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
 
 		COMPUSHADY_API void SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction);

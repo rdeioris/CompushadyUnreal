@@ -1,8 +1,10 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyBlitterSubsystem.h"
+#include "PostProcess/PostProcessMaterialInputs.h"
 #include "RenderGraphBuilder.h"
 #include "SceneViewExtension.h"
+#include "ScreenPass.h"
 
 struct FCompushadyBlitterDrawable
 {

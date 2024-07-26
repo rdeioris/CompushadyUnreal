@@ -30,12 +30,16 @@ public class Compushady : ModuleRules
                 "Slate",
                 "UMG",
                 "AudioExtensions",
+                "BlueprintGraph",
+                "GraphEditor",
+                "KismetCompiler"
             }
             );
 
         if (Target.Type == TargetType.Editor)
         {
             PrivateDependencyModuleNames.Add("Projects");
+            PrivateDependencyModuleNames.Add("UnrealEd");
         }
 
         string ThirdPartyDirectory = System.IO.Path.Combine(ModuleDirectory, "..", "ThirdParty");

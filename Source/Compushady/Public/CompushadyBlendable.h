@@ -12,7 +12,7 @@
 /**
  * 
  */
-UCLASS(BlueprintType, Blueprintable)
+UCLASS(BlueprintType)
 class COMPUSHADY_API UCompushadyBlendable : public UObject, public ICompushadyPipeline, public IBlendableInterface
 {
 	GENERATED_BODY()
@@ -21,13 +21,9 @@ public:
 	bool InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
 	bool InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
 
+	/* IBlendableInterface implementation */
 	virtual void OverrideBlendableSettings(class FSceneView& View, float Weight) const override;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Compushady")
-	UCompushadyShader* ShaderAsset;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	TEnumAsByte<EBlendableLocation> BlendableLocation;
+	/* IBlendableInterface implementation */
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResources(const FCompushadyResourceArray& InPSResourceArray, FString& ErrorMessages);

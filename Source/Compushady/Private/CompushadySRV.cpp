@@ -149,48 +149,9 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 	return true;
 }
 
-FTextureRHIRef UCompushadySRV::GetRHI(const FPostProcessMaterialInputs& PPInputs) const
+FTextureRHIRef UCompushadySRV::GetRHI(const FCompushadySceneTextures& SceneTextures) const
 {
-#if COMPUSHADY_UE_VERSION >= 53
-	switch (SceneTexture)
-	{
-	case(ECompushadySceneTexture::SceneColorInput):
-		return PPInputs.GetInput(EPostProcessMaterialInput::SceneColor).TextureSRV->GetParent()->GetRHI();
-		break;
-	case(ECompushadySceneTexture::GBufferA):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->GBufferATexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::GBufferB):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->GBufferBTexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::GBufferC):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->GBufferCTexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::GBufferD):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->GBufferDTexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::GBufferE):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->GBufferETexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::GBufferF):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->GBufferFTexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::SceneColor):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->SceneColorTexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::Depth):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture->GetRHI();
-		break;
-	case(ECompushadySceneTexture::CustomDepth):
-		return PPInputs.SceneTextures.SceneTextures->GetContents()->CustomDepthTexture->GetRHI();
-		break;
-	default:
-		return nullptr;
-		break;
-	}
-#else
-	return nullptr;
-#endif
+	return SceneTextures.Textures[(uint32)SceneTexture];
 }
 
 FShaderResourceViewRHIRef UCompushadySRV::GetRHI() const

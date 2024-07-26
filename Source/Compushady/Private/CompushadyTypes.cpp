@@ -883,7 +883,7 @@ namespace Compushady
 #endif
 
 		template<typename SHADER_TYPE>
-		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
+		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures)
 		{
 			SetupParametersRHI(RHICmdList, Shader, ResourceBindings,
 				[&](const int32 Index) // CBV
@@ -903,8 +903,8 @@ namespace Compushady
 					}
 					else
 					{
-						FTextureRHIRef Texture = ResourceArray.SRVs[Index]->GetRHI(PPInputs);
-						RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::RTV, ERHIAccess::SRVMask));
+						FTextureRHIRef Texture = ResourceArray.SRVs[Index]->GetRHI(SceneTextures);
+						RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
 						return { nullptr, Texture };
 					}
 				},
@@ -936,9 +936,9 @@ void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FMe
 	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {});
 }
 
-void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FPostProcessMaterialInputs& PPInputs)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, PPInputs);
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, SceneTextures);
 }
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
@@ -1429,9 +1429,9 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 
 	FGraphicsPipelineStateInitializer GraphicsPSOInit;
 	RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
-	GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI(); /* FScreenPassPipelineState::FDefaultBlendState::GetRHI(); */
+	GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
 	GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
-	GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI(); /* FScreenPassPipelineState::FDefaultDepthStencilState::GetRHI(); */
+	GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
 	GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
 	GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShaderRef;
 	GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShaderRef;

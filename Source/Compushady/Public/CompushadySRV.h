@@ -7,22 +7,6 @@
 #include "UObject/NoExportTypes.h"
 #include "CompushadySRV.generated.h"
 
-UENUM(BlueprintType)
-enum class ECompushadySceneTexture : uint8
-{
-	None,
-	SceneColorInput,
-	GBufferA,
-	GBufferB,
-	GBufferC,
-	GBufferD,
-	GBufferE,
-	GBufferF,
-	SceneColor,
-	Depth,
-	CustomDepth
-};
-
 /**
  * 
  */
@@ -39,7 +23,7 @@ public:
 	bool InitializeFromWorldSceneAccelerationStructure(UWorld* World);
 	
 	FShaderResourceViewRHIRef GetRHI() const;
-	FTextureRHIRef GetRHI(const FPostProcessMaterialInputs& PPInputs) const;
+	FTextureRHIRef GetRHI(const FCompushadySceneTextures& SceneTextures) const;
 
 	bool IsSceneTexture() const;
 
