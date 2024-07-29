@@ -70,10 +70,6 @@ public:
 	/* end of testing block */
 
 protected:
-
-	bool CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages);
-
-	ERHIInterfaceType RHIInterfaceType;
 	FComputeShaderRHIRef ComputeShaderRef;
 
 	FIntVector ThreadGroupSize;

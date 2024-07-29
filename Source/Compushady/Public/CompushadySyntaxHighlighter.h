@@ -61,6 +61,7 @@ public:
 	~FCompushadySyntaxHighlighter();
 
 	static TSharedRef<FCompushadySyntaxHighlighter> CreateHLSL();
+	static TSharedRef<FCompushadySyntaxHighlighter> CreateSPIRV();
 	static TSharedRef<FCompushadySyntaxHighlighter> CreateGLSL();
 	static TSharedRef<FCompushadySyntaxHighlighter> CreateWGSL();
 

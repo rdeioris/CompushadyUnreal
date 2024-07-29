@@ -11,25 +11,23 @@ bool UCompushadyRayTracer::InitFromHLSL(const TArray<uint8>& RayGenShaderCode, c
 {
 	RHIInterfaceType = RHIGetInterfaceType();
 
-	FIntVector ThreadGroupSize;
-
 	TArray<uint8> RayGenShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings RayGenShaderResourceBindings;
-	if (!Compushady::CompileHLSL(RayGenShaderCode, RayGenShaderEntryPoint, "lib_6_3", RayGenShaderByteCode, RayGenShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::CompileHLSL(RayGenShaderCode, RayGenShaderEntryPoint, "lib_6_3", RayGenShaderByteCode, ErrorMessages, false))
 	{
 		return false;
 	}
 
 	TArray<uint8> RayMissShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings RayMissShaderResourceBindings;
-	if (!Compushady::CompileHLSL(RayMissShaderCode, RayMissShaderEntryPoint, "lib_6_3", RayMissShaderByteCode, RayMissShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::CompileHLSL(RayMissShaderCode, RayMissShaderEntryPoint, "lib_6_3", RayMissShaderByteCode, ErrorMessages, false))
 	{
 		return false;
 	}
 
 	TArray<uint8> RayHitGroupShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings RayHitGroupShaderResourceBindings;
-	if (!Compushady::CompileHLSL(RayHitGroupShaderCode, RayHitGroupShaderEntryPoint, "lib_6_3", RayHitGroupShaderByteCode, RayHitGroupShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::CompileHLSL(RayHitGroupShaderCode, RayHitGroupShaderEntryPoint, "lib_6_3", RayHitGroupShaderByteCode, ErrorMessages, false))
 	{
 		return false;
 	}

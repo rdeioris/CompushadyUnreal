@@ -7,70 +7,19 @@
 
 bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
-	RHIInterfaceType = RHIGetInterfaceType();
-
-	TArray<uint8> ByteCode;
-	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "cs_6_5", ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-	{
-		return false;
-	}
-
-	if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
-	{
-		SPIRV = ByteCode;
-	}
-	else if (RHIInterfaceType == ERHIInterfaceType::Metal)
-	{
-		SPIRV = ByteCode;
-	}
-	else if (RHIInterfaceType == ERHIInterfaceType::D3D12)
-	{
-		DXIL = ByteCode;
-	}
-
-	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
+	ComputeShaderRef = Compushady::Utils::CreateComputeShaderFromHLSL(ShaderCode, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
+	return ComputeShaderRef != nullptr;
 }
 
 bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
-	RHIInterfaceType = RHIGetInterfaceType();
-
-	TArray<uint8> ByteCode;
-	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "cs_6_0", ByteCode, ErrorMessages))
-	{
-		return false;
-	}
-
-	SPIRV = ByteCode;
-
-	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
-	{
-		TArray<uint8> HLSLShaderCode;
-		if (!Compushady::SPIRVToHLSL(SPIRV, HLSLShaderCode, ErrorMessages))
-		{
-			return false;
-		}
-		
-		return InitFromHLSL(HLSLShaderCode, EntryPoint, ErrorMessages);
-	}
-	else
-	{
-		if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return false;
-		}
-	}
-
-	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
+	ComputeShaderRef = Compushady::Utils::CreateComputeShaderFromGLSL(ShaderCode, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
+	return ComputeShaderRef != nullptr;
 }
 
 bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
 {
-	RHIInterfaceType = RHIGetInterfaceType();
-
-	if (RHIInterfaceType != ERHIInterfaceType::Vulkan)
+	if (RHIGetInterfaceType() != ERHIInterfaceType::Vulkan)
 	{
 		ErrorMessages = "SPIRV shaders are currently supported only on Vulkan";
 		return false;
@@ -84,14 +33,12 @@ bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString&
 		return false;
 	}
 
-	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
+	return false;
 }
 
 bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
 {
-	RHIInterfaceType = RHIGetInterfaceType();
-
-	if (RHIInterfaceType != ERHIInterfaceType::D3D12)
+	if (RHIGetInterfaceType() != ERHIInterfaceType::D3D12)
 	{
 		ErrorMessages = "DXIL shaders are currently supported only on Direct3D12";
 		return false;
@@ -106,33 +53,7 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 		return false;
 	}
 
-	return CreateComputePipeline(ByteCode, ShaderResourceBindings, ErrorMessages);
-}
-
-bool UCompushadyCompute::CreateComputePipeline(TArray<uint8>& ByteCode, Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings, FString& ErrorMessages)
-{
-	if (!Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages))
-	{
-		return false;
-	}
-
-	TArray<uint8> UnrealByteCode;
-	FSHAHash Hash;
-	if (!Compushady::ToUnrealShader(ByteCode, UnrealByteCode, ResourceBindings.NumCBVs, ResourceBindings.NumSRVs, ResourceBindings.NumUAVs, ResourceBindings.NumSamplers, Hash))
-	{
-		ErrorMessages = "Unable to add Unreal metadata to the shader";
-		return false;
-	}
-
-	ComputeShaderRef = RHICreateComputeShader(UnrealByteCode, Hash);
-	if (!ComputeShaderRef.IsValid() || !ComputeShaderRef->IsValid())
-	{
-		ErrorMessages = "Unable to create Compute Shader";
-		return false;
-	}
-	ComputeShaderRef->SetHash(Hash);
-
-	return true;
+	return false;
 }
 
 bool UCompushadyCompute::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled)

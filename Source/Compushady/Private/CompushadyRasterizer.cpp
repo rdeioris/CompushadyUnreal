@@ -8,107 +8,59 @@
 
 bool UCompushadyRasterizer::InitVSPSFromHLSL(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
-	RHIInterfaceType = RHIGetInterfaceType();
-
-	FIntVector ThreadGroupSize;
-
-	TArray<uint8> VertexShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
-	if (!Compushady::CompileHLSL(VertexShaderCode, VertexShaderEntryPoint, "vs_6_0", VertexShaderByteCode, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	VertexShaderRef = Compushady::Utils::CreateVertexShaderFromHLSL(VertexShaderCode, VertexShaderEntryPoint, VSResourceBindings, ErrorMessages);
+	if (!VertexShaderRef)
 	{
 		return false;
 	}
 
-	TArray<uint8> PixelShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
-	if (!Compushady::CompileHLSL(PixelShaderCode, PixelShaderEntryPoint, "ps_6_0", PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
+	if (!VertexShaderRef)
 	{
 		return false;
 	}
 
-	return CreateVSPSRasterizerPipeline(VertexShaderByteCode, PixelShaderByteCode, VertexShaderResourceBindings, PixelShaderResourceBindings, RasterizerConfig, ErrorMessages);
+	return CreateVSPSRasterizerPipeline(RasterizerConfig, ErrorMessages);
 }
 
 bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode, const FString& MeshShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
-	RHIInterfaceType = RHIGetInterfaceType();
-
 	FIntVector ThreadGroupSize;
-
-	TArray<uint8> MeshShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings;
-	if (!Compushady::CompileHLSL(MeshShaderCode, MeshShaderEntryPoint, "ms_6_5", MeshShaderByteCode, MeshShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	MeshShaderRef = Compushady::Utils::CreateMeshShaderFromHLSL(MeshShaderCode, MeshShaderEntryPoint, MSResourceBindings, ThreadGroupSize, ErrorMessages);
+	if (!MeshShaderRef)
 	{
 		return false;
 	}
 
-	TArray<uint8> PixelShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
-	if (!Compushady::CompileHLSL(PixelShaderCode, PixelShaderEntryPoint, "ps_6_0", PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
+	if (!VertexShaderRef)
 	{
 		return false;
 	}
 
-	return CreateMSPSRasterizerPipeline(MeshShaderByteCode, PixelShaderByteCode, MeshShaderResourceBindings, PixelShaderResourceBindings, RasterizerConfig, ErrorMessages);
+	return CreateMSPSRasterizerPipeline(RasterizerConfig, ErrorMessages);
 }
 
 bool UCompushadyRasterizer::InitVSPSFromGLSL(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
-	RHIInterfaceType = RHIGetInterfaceType();
-
-	TArray<uint8> VertexShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
-	if (!Compushady::CompileGLSL(VertexShaderCode, VertexShaderEntryPoint, "vs_6_0", VertexShaderByteCode, ErrorMessages))
+	VertexShaderRef = Compushady::Utils::CreateVertexShaderFromHLSL(VertexShaderCode, VertexShaderEntryPoint, VSResourceBindings, ErrorMessages);
+	if (!VertexShaderRef)
 	{
 		return false;
 	}
 
-	VertexShaderSPIRV = VertexShaderByteCode;
-
-	TArray<uint8> PixelShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
-	if (!Compushady::CompileGLSL(PixelShaderCode, PixelShaderEntryPoint, "ps_6_0", PixelShaderByteCode, ErrorMessages))
+	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
+	if (!VertexShaderRef)
 	{
 		return false;
 	}
 
-	PixelShaderSPIRV = PixelShaderByteCode;
-
-	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
-	{
-		TArray<uint8> HLSLVertexShaderCode;
-		if (!Compushady::SPIRVToHLSL(VertexShaderByteCode, HLSLVertexShaderCode, ErrorMessages))
-		{
-			return false;
-		}
-
-		TArray<uint8> HLSLPixelShaderCode;
-		if (!Compushady::SPIRVToHLSL(PixelShaderByteCode, HLSLPixelShaderCode, ErrorMessages))
-		{
-			return false;
-		}
-
-		return InitVSPSFromHLSL(HLSLVertexShaderCode, VertexShaderEntryPoint, HLSLPixelShaderCode, PixelShaderEntryPoint, RasterizerConfig, ErrorMessages);
-	}
-	else
-	{
-		FIntVector ThreadGroupSize;
-		if (!Compushady::FixupSPIRV(VertexShaderByteCode, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return false;
-		}
-
-		if (!Compushady::FixupSPIRV(PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return false;
-		}
-	}
-
-	return CreateVSPSRasterizerPipeline(VertexShaderByteCode, PixelShaderByteCode, VertexShaderResourceBindings, PixelShaderResourceBindings, RasterizerConfig, ErrorMessages);
+	return CreateVSPSRasterizerPipeline(RasterizerConfig, ErrorMessages);
 }
 
-bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
+bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
+#if 0
 	// check for semantics
 	if (VertexShaderResourceBindings.InputSemantics.Num() > 0)
 	{
@@ -124,50 +76,7 @@ bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(TArray<uint8>& VertexSh
 			return false;
 		}
 	}
-
-	if (!Compushady::Utils::CreateResourceBindings(VertexShaderResourceBindings, VSResourceBindings, ErrorMessages))
-	{
-		return false;
-	}
-
-	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, PSResourceBindings, ErrorMessages))
-	{
-		return false;
-	}
-
-	TArray<uint8> VSByteCode;
-	FSHAHash VSHash;
-	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VSResourceBindings.NumCBVs, VSResourceBindings.NumSRVs, VSResourceBindings.NumUAVs, VSResourceBindings.NumSamplers, VSHash))
-	{
-		ErrorMessages = "Unable to add Unreal metadata to the Vertex Shader";
-		return false;
-	}
-
-	VertexShaderRef = RHICreateVertexShader(VSByteCode, VSHash);
-	if (!VertexShaderRef.IsValid() || !VertexShaderRef->IsValid())
-	{
-		ErrorMessages = "Unable to create Vertex Shader";
-		return false;
-	}
-
-	VertexShaderRef->SetHash(VSHash);
-
-	TArray<uint8> PSByteCode;
-	FSHAHash PSHash;
-	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSResourceBindings.NumSamplers, PSHash))
-	{
-		ErrorMessages = "Unable to add Unreal metadata to the Pixel Shader";
-		return false;
-	}
-
-	PixelShaderRef = RHICreatePixelShader(PSByteCode, PSHash);
-	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
-	{
-		ErrorMessages = "Unable to create Pixel Shader";
-		return false;
-	}
-
-	PixelShaderRef->SetHash(PSHash);
+#endif
 
 	FillPipelineStateInitializer(RasterizerConfig);
 
@@ -216,8 +125,9 @@ void UCompushadyRasterizer::FillPipelineStateInitializer(const FCompushadyRaster
 	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
 }
 
-bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShaderByteCode, TArray<uint8>& PixelShaderByteCode, Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
+bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
+#if 0
 	// check for semantics
 	if (MeshShaderResourceBindings.InputSemantics.Num() > 0)
 	{
@@ -233,50 +143,7 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(TArray<uint8>& MeshShad
 			return false;
 		}
 	}
-
-	if (!Compushady::Utils::CreateResourceBindings(MeshShaderResourceBindings, MSResourceBindings, ErrorMessages))
-	{
-		return false;
-	}
-
-	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, PSResourceBindings, ErrorMessages))
-	{
-		return false;
-	}
-
-	TArray<uint8> MSByteCode;
-	FSHAHash MSHash;
-	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MSResourceBindings.NumCBVs, MSResourceBindings.NumSRVs, MSResourceBindings.NumUAVs, MSResourceBindings.NumSamplers, MSHash))
-	{
-		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
-		return false;
-	}
-
-	MeshShaderRef = RHICreateMeshShader(MSByteCode, MSHash);
-	if (!MeshShaderRef.IsValid() || !MeshShaderRef->IsValid())
-	{
-		ErrorMessages = "Unable to create Mesh Shader";
-		return false;
-	}
-
-	MeshShaderRef->SetHash(MSHash);
-
-	TArray<uint8> PSByteCode;
-	FSHAHash PSHash;
-	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PSResourceBindings.NumCBVs, PSResourceBindings.NumSRVs, PSResourceBindings.NumUAVs, PSResourceBindings.NumSamplers, PSHash))
-	{
-		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
-		return false;
-	}
-
-	PixelShaderRef = RHICreatePixelShader(PSByteCode, PSHash);
-	if (!PixelShaderRef.IsValid() || !PixelShaderRef->IsValid())
-	{
-		ErrorMessages = "Unable to create Pixel Shader";
-		return false;
-	}
-
-	PixelShaderRef->SetHash(PSHash);
+#endif
 
 	FillPipelineStateInitializer(RasterizerConfig);
 

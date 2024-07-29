@@ -1,10 +1,25 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 
 #include "CompushadySoundWave.h"
 
-int32 UCompushadySoundWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSamples)
+void UCompushadySoundWave::UpdateSamples()
 {
-	UE_LOG(LogTemp, Error, TEXT("Generating for %d %d"), OutAudio.Num(), NumSamples);
-	return 0;
+	if (!UAV)
+	{
+		return;
+	}
+
+	if (TempData.Num() != UAV->GetBufferSize())
+	{
+		TempData.Empty(UAV->GetBufferSize());
+		TempData.AddUninitialized(UAV->GetBufferSize());
+	}
+
+	UAV->MapReadAndExecuteSync([this](const void* Data)
+		{
+			FMemory::Memcpy(TempData.GetData(), Data, UAV->GetBufferSize());
+		});
+
+	QueueAudio(TempData.GetData(), TempData.Num());
 }

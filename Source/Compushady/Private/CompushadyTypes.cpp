@@ -58,17 +58,17 @@ FTextureRHIRef UCompushadyResource::GetReadbackTexture()
 	return ReadbackTextureRHIRef;
 }
 
-bool UCompushadyResource::UpdateTextureSliceSync(const uint8* Ptr, const int64 Size, const int32 Slice)
+bool UCompushadyResource::UpdateTextureSliceSyncWithFunction(const uint8* Ptr, const int64 Size, const int32 Slice, TFunction<void(FRHICommandListImmediate& RHICmdList, void* Data, const uint32 SourcePitch, const uint32 DestPitch)> InFunction)
 {
 	if (IsRunning() || !IsValidTexture())
 	{
 		return false;
 	}
 
-	const int32 RowPitch = TextureRHIRef->GetSizeX() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes;
+	const uint32 RowPitch = TextureRHIRef->GetSizeX() * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateTexture)(
-		[this, Ptr, Size, Slice, RowPitch](FRHICommandListImmediate& RHICmdList)
+		[this, Ptr, Size, Slice, RowPitch, InFunction](FRHICommandListImmediate& RHICmdList)
 		{
 			const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
 			if (Dimension == ETextureDimension::Texture2D)
@@ -77,6 +77,7 @@ bool UCompushadyResource::UpdateTextureSliceSync(const uint8* Ptr, const int64 S
 				void* Data = RHICmdList.LockTexture2D(TextureRHIRef, 0, EResourceLockMode::RLM_WriteOnly, DestStride, false);
 				if (Data)
 				{
+					InFunction(RHICmdList, Data, RowPitch, DestStride);
 					CopyTextureData2D(Ptr, Data, TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat(), RowPitch, DestStride);
 					RHICmdList.UnlockTexture2D(TextureRHIRef, 0, false);
 				}
@@ -104,6 +105,30 @@ bool UCompushadyResource::UpdateTextureSliceSync(const uint8* Ptr, const int64 S
 	FlushRenderingCommands();
 
 	return true;
+}
+
+bool UCompushadyResource::UpdateTextureSliceSync(const uint8* Ptr, const int64 Size, const int32 Slice)
+{
+	return UpdateTextureSliceSyncWithFunction(Ptr, Size, Slice, [&](FRHICommandListImmediate& RHICmdList, void* Data, const uint32 SourcePitch, const uint32 DestPitch)
+		{
+			const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
+			if (Dimension == ETextureDimension::Texture2D)
+			{
+				CopyTextureData2D(Ptr, Data, TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat(), SourcePitch, DestPitch);
+			}
+			else if (Dimension == ETextureDimension::Texture2DArray)
+			{
+				CopyTextureData2D(Ptr, Data, TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat(), SourcePitch, DestPitch);
+			}
+			else if (Dimension == ETextureDimension::Texture3D)
+			{
+				FUpdateTextureRegion3D UpdateRegion(0, 0, Slice, 0, 0, 0,
+					TextureRHIRef->GetSizeX(),
+					TextureRHIRef->GetSizeY(),
+					1);
+				RHICmdList.UpdateTexture3D(TextureRHIRef, 0, UpdateRegion, SourcePitch, SourcePitch * TextureRHIRef->GetSizeY(), Ptr);
+			}
+		});
 }
 
 bool UCompushadyResource::UpdateTextureSliceSync(const TArray<uint8>& Pixels, const int32 Slice)
@@ -760,7 +785,7 @@ namespace Compushady
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #endif
 				}
-			}
+				}
 
 			for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
 			{
@@ -793,7 +818,7 @@ namespace Compushady
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
 #endif
-		}
+			}
 
 		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
 #if COMPUSHADY_UE_VERSION < 53
@@ -918,8 +943,8 @@ namespace Compushady
 					return ResourceArray.Samplers[Index]->GetRHI();
 				});
 		}
-	}
-}
+			}
+				}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
@@ -1218,10 +1243,17 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 }
 FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
 {
+	const FString TargetProfile = "vs_6_0";
+
 	FIntVector ThreadGroupSize;
 	TArray<uint8> VertexShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
-	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "vs_6_0", VertexShaderByteCode, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, TargetProfile, VertexShaderByteCode, ErrorMessages, false))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::FixupShaderByteCode(VertexShaderByteCode, TargetProfile, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return nullptr;
 	}
@@ -1253,10 +1285,17 @@ FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const TArray<u
 
 FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
 {
+	const FString TargetProfile = "ps_6_0";
+
 	FIntVector ThreadGroupSize;
 	TArray<uint8> PixelShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
-	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, "ps_6_0", PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, TargetProfile, PixelShaderByteCode, ErrorMessages, false))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::FixupShaderByteCode(PixelShaderByteCode, TargetProfile, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return nullptr;
 	}
@@ -1288,30 +1327,19 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uin
 
 FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
 {
+	const FString TargetProfile = "ps_6_0";
+
+	FIntVector ThreadGroupSize;
 	TArray<uint8> PixelShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings PixelShaderResourceBindings;
-	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "ps_6_0", PixelShaderByteCode, ErrorMessages))
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, TargetProfile, PixelShaderByteCode, ErrorMessages))
 	{
 		return nullptr;
 	}
 
-	if (RHIGetInterfaceType() == ERHIInterfaceType::D3D12)
+	if (!Compushady::FixupShaderByteCode(PixelShaderByteCode, TargetProfile, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{
-		TArray<uint8> HLSLPixelShaderCode;
-		if (!Compushady::SPIRVToHLSL(PixelShaderByteCode, HLSLPixelShaderCode, ErrorMessages))
-		{
-			return nullptr;
-		}
-
-		return CreatePixelShaderFromHLSL(HLSLPixelShaderCode, EntryPoint, ResourceBindings, ErrorMessages);
-	}
-	else
-	{
-		FIntVector ThreadGroupSize;
-		if (!Compushady::FixupSPIRV(PixelShaderByteCode, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return nullptr;
-		}
+		return nullptr;
 	}
 
 	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, ResourceBindings, ErrorMessages))
@@ -1339,32 +1367,185 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const TArray<uin
 	return PixelShaderRef;
 }
 
-FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
-	TArray<uint8> VertexShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
-	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, "vs_6_0", VertexShaderByteCode, ErrorMessages))
+	const FString TargetProfile = "cs_6_0";
+
+	TArray<uint8> ComputeShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings ComputeShaderResourceBindings;
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, TargetProfile, ComputeShaderByteCode, ErrorMessages, false))
 	{
 		return nullptr;
 	}
 
-	if (RHIGetInterfaceType() == ERHIInterfaceType::D3D12)
+	if (!Compushady::FixupShaderByteCode(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
-		TArray<uint8> HLSLPixelShaderCode;
-		if (!Compushady::SPIRVToHLSL(VertexShaderByteCode, HLSLPixelShaderCode, ErrorMessages))
-		{
-			return nullptr;
-		}
-
-		return CreateVertexShaderFromHLSL(HLSLPixelShaderCode, EntryPoint, ResourceBindings, ErrorMessages);
+		return nullptr;
 	}
-	else
+
+	if (!Compushady::Utils::CreateResourceBindings(ComputeShaderResourceBindings, ResourceBindings, ErrorMessages))
 	{
-		FIntVector ThreadGroupSize;
-		if (!Compushady::FixupSPIRV(VertexShaderByteCode, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return nullptr;
-		}
+		return nullptr;
+	}
+
+	TArray<uint8> CSByteCode;
+	FSHAHash CSHash;
+	if (!Compushady::ToUnrealShader(ComputeShaderByteCode, CSByteCode, ComputeShaderResourceBindings.CBVs.Num(), ComputeShaderResourceBindings.SRVs.Num(), ComputeShaderResourceBindings.UAVs.Num(), ComputeShaderResourceBindings.Samplers.Num(), CSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the compute shader";
+		return nullptr;
+	}
+
+	FComputeShaderRHIRef ComputeShaderRef = RHICreateComputeShader(CSByteCode, CSHash);
+	if (!ComputeShaderRef.IsValid() || !ComputeShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Compute Shader";
+		return nullptr;
+	}
+
+	ComputeShaderRef->SetHash(CSHash);
+
+	return ComputeShaderRef;
+}
+
+FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	const FString TargetProfile = "cs_6_0";
+
+	TArray<uint8> ComputeShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings ComputeShaderResourceBindings;
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, TargetProfile, ComputeShaderByteCode, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::FixupShaderByteCode(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::Utils::CreateResourceBindings(ComputeShaderResourceBindings, ResourceBindings, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> CSByteCode;
+	FSHAHash CSHash;
+	if (!Compushady::ToUnrealShader(ComputeShaderByteCode, CSByteCode, ComputeShaderResourceBindings.CBVs.Num(), ComputeShaderResourceBindings.SRVs.Num(), ComputeShaderResourceBindings.UAVs.Num(), ComputeShaderResourceBindings.Samplers.Num(), CSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the compute shader";
+		return nullptr;
+	}
+
+	FComputeShaderRHIRef ComputeShaderRef = RHICreateComputeShader(CSByteCode, CSHash);
+	if (!ComputeShaderRef.IsValid() || !ComputeShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Compute Shader";
+		return nullptr;
+	}
+
+	ComputeShaderRef->SetHash(CSHash);
+
+	return ComputeShaderRef;
+}
+
+FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	const FString TargetProfile = "ms_6_5";
+
+	TArray<uint8> MeshShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings;
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, TargetProfile, MeshShaderByteCode, ErrorMessages, false))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::FixupShaderByteCode(MeshShaderByteCode, TargetProfile, MeshShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::Utils::CreateResourceBindings(MeshShaderResourceBindings, ResourceBindings, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> MSByteCode;
+	FSHAHash MSHash;
+	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MeshShaderResourceBindings.CBVs.Num(), MeshShaderResourceBindings.SRVs.Num(), MeshShaderResourceBindings.UAVs.Num(), MeshShaderResourceBindings.Samplers.Num(), MSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the mesh shader";
+		return nullptr;
+	}
+
+	FMeshShaderRHIRef MeshShaderRef = RHICreateMeshShader(MSByteCode, MSHash);
+	if (!MeshShaderRef.IsValid() || !MeshShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Mesh Shader";
+		return nullptr;
+	}
+
+	MeshShaderRef->SetHash(MSHash);
+
+	return MeshShaderRef;
+}
+
+FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	const FString TargetProfile = "ms_6_5";
+
+	TArray<uint8> MeshShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings MeshShaderResourceBindings;
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, TargetProfile, MeshShaderByteCode, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::FixupShaderByteCode(MeshShaderByteCode, TargetProfile, MeshShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
+	{
+		return nullptr;
+	}
+
+	if (!Compushady::Utils::CreateResourceBindings(MeshShaderResourceBindings, ResourceBindings, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> MSByteCode;
+	FSHAHash MSHash;
+	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MeshShaderResourceBindings.CBVs.Num(), MeshShaderResourceBindings.SRVs.Num(), MeshShaderResourceBindings.UAVs.Num(), MeshShaderResourceBindings.Samplers.Num(), MSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the mesh shader";
+		return nullptr;
+	}
+
+	FMeshShaderRHIRef MeshShaderRef = RHICreateMeshShader(MSByteCode, MSHash);
+	if (!MeshShaderRef.IsValid() || !MeshShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Mesh Shader";
+		return nullptr;
+	}
+
+	MeshShaderRef->SetHash(MSHash);
+
+	return MeshShaderRef;
+}
+
+FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	const FString TargetProfile = "vs_6_0";
+
+	TArray<uint8> VertexShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings VertexShaderResourceBindings;
+	if (!Compushady::CompileGLSL(ShaderCode, EntryPoint, TargetProfile, VertexShaderByteCode, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	FIntVector ThreadGroupSize;
+	if (!Compushady::FixupShaderByteCode(VertexShaderByteCode, TargetProfile, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
+	{
+		return nullptr;
 	}
 
 	if (!Compushady::Utils::CreateResourceBindings(VertexShaderResourceBindings, ResourceBindings, ErrorMessages))
@@ -1418,6 +1599,34 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const FString& S
 	TArray<uint8> ShaderCodeBytes;
 	StringToShaderCode(ShaderCode, ShaderCodeBytes);
 	return CreatePixelShaderFromGLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ErrorMessages);
+}
+
+FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreateComputeShaderFromHLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
+}
+
+FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreateComputeShaderFromGLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
+}
+
+FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreateMeshShaderFromHLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
+}
+
+FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreateMeshShaderFromGLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
 }
 
 void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction)

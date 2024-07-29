@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/TextWidgetTypes.h"
 #include "Runtime/Slate/Public/Widgets/Input/SMultiLineEditableTextBox.h"
+#include "CompushadyTypes.h"
 #include "CompushadyShaderTextBox.generated.h"
 
 /**
@@ -28,6 +29,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void SetSource(const FString& Source);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	ECompushadyShaderLanguage ShaderLanguage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	FTextBlockStyle SyntaxTypeStyle;

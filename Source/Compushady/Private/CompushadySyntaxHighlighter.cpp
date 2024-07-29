@@ -54,7 +54,8 @@ void FCompushadySyntaxHighlighter::ParseTokens(const FString& SourceString, FTex
 		None,
 		LookingForSingleLineComment,
 		LookingForMultiLineComment,
-		LookingForDoubleQuoteString
+		LookingForDoubleQuoteString,
+		LookingForWhitespace,
 	};
 
 	TArray<FTextLayout::FNewLineData> LinesToAdd;
@@ -67,7 +68,7 @@ void FCompushadySyntaxHighlighter::ParseTokens(const FString& SourceString, FTex
 		TSharedRef<FString> ModelString = MakeShared<FString>();
 		TArray<TSharedRef<IRun>> Runs;
 
-		if (ParseState == EParseState::LookingForSingleLineComment)
+		if (ParseState == EParseState::LookingForSingleLineComment || ParseState == EParseState::LookingForWhitespace)
 		{
 			ParseState = EParseState::None;
 		}
@@ -113,6 +114,12 @@ void FCompushadySyntaxHighlighter::ParseTokens(const FString& SourceString, FTex
 							RunInfo.Name = TEXT("SyntaxHighlight.Compushady.Comment");
 							CurrentBlockStyle = &SyntaxHighlighterConfig.CommentStyle;
 							ParseState = EParseState::LookingForMultiLineComment;
+						}
+						else if (TokenString == TEXT("%"))
+						{
+							RunInfo.Name = TEXT("SyntaxHighlight.Compushady.Attribute");
+							CurrentBlockStyle = &SyntaxHighlighterConfig.AttributeStyle;
+							ParseState = EParseState::LookingForWhitespace;
 						}
 						else if (TokenString == TEXT("\""))
 						{
@@ -164,6 +171,11 @@ void FCompushadySyntaxHighlighter::ParseTokens(const FString& SourceString, FTex
 						RunInfo.Name = TEXT("SyntaxHighlight.Compushady.Comment");
 						CurrentBlockStyle = &SyntaxHighlighterConfig.CommentStyle;
 					}
+					else if (ParseState == EParseState::LookingForWhitespace)
+					{
+						RunInfo.Name = TEXT("SyntaxHighlight.Compushady.Attribute");
+						CurrentBlockStyle = &SyntaxHighlighterConfig.AttributeStyle;
+					}
 					else if (ParseState == EParseState::LookingForDoubleQuoteString)
 					{
 						RunInfo.Name = TEXT("SyntaxHighlight.Compushady.String");
@@ -175,6 +187,10 @@ void FCompushadySyntaxHighlighter::ParseTokens(const FString& SourceString, FTex
 			}
 			else
 			{
+				if (ParseState == EParseState::LookingForWhitespace)
+				{
+					ParseState = EParseState::None;
+				}
 				RunInfo.Name = TEXT("SyntaxHighlight.Compushady.WhiteSpace");
 				TSharedRef<ISlateRun> Run = FSlateTextRun::Create(RunInfo, ModelString, SyntaxHighlighterConfig.BaseStyle /* use normal style here*/, ModelRange);
 				Runs.Add(Run);

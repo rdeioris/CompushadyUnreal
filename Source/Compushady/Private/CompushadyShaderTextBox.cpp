@@ -13,7 +13,18 @@ void UCompushadyShaderTextBox::ReleaseSlateResources(bool bReleaseChildren)
 
 TSharedRef<SWidget> UCompushadyShaderTextBox::RebuildWidget()
 {
-	SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateHLSL());
+	if (ShaderLanguage == ECompushadyShaderLanguage::SPIRV)
+	{
+		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateSPIRV());
+	}
+	else if (ShaderLanguage == ECompushadyShaderLanguage::GLSL)
+	{
+		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateGLSL());
+	}
+	else
+	{
+		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateHLSL());
+	}
 	return SourceWidget.ToSharedRef();
 }
 

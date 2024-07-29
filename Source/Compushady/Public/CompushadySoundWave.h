@@ -1,13 +1,14 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Sound/SoundWaveProcedural.h"
+#include "CompushadyUAV.h"
 #include "CompushadySoundWave.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class COMPUSHADY_API UCompushadySoundWave : public USoundWaveProcedural
@@ -15,10 +16,14 @@ class COMPUSHADY_API UCompushadySoundWave : public USoundWaveProcedural
 	GENERATED_BODY()
 
 public:
-	virtual int32 OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSamples) override;
-	
-	virtual Audio::EAudioMixerStreamDataFormat::Type GetGeneratedPCMDataFormat() const override { return Audio::EAudioMixerStreamDataFormat::Float; }
+	Audio::EAudioMixerStreamDataFormat::Type GetGeneratedPCMDataFormat() const override { return Audio::EAudioMixerStreamDataFormat::Float; }
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
+	UCompushadyUAV* UAV;
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	void UpdateSamples();
 
 protected:
-	float GeneratedSeconds;
+	TArray<uint8> TempData;
 };

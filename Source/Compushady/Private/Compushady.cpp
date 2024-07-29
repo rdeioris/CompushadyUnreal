@@ -100,7 +100,7 @@ public:
 					SNew(SMultiLineEditableTextBox)
 						.AutoWrapText(false)
 						.Margin(0.0f)
-						.Marshaller(FCompushadySyntaxHighlighter::Create())
+						.Marshaller(FCompushadySyntaxHighlighter::CreateHLSL())
 						.Text(FText::FromString(CompushadyShader->Code))
 						.OnTextChanged_Lambda([CompushadyShader](const FText& InCode)
 							{
@@ -129,6 +129,7 @@ void FCompushadyModule::StartupModule()
 #if WITH_EDITOR
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>(TEXT("PropertyEditor"));
 	PropertyModule.RegisterCustomClassLayout(TEXT("CompushadyShader"), FOnGetDetailCustomizationInstance::CreateStatic(&FCompushadyShaderCustomization::MakeInstance));
+	//PropertyModule.RegisterCustomPropertyTypeLayout(TEXT("SubmixEffectCompushadySettings"), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FCompushadyShaderCustomization::MakeInstance));
 
 	PropertyModule.NotifyCustomizationModuleChanged();
 #endif

@@ -10,10 +10,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyDXCTest_Empty, "Compushady.DXC.Empty
 bool FCompushadyDXCTest_Empty::RunTest(const FString& Parameters)
 {
 	TArray<uint8> ByteCode;
-	Compushady::FCompushadyShaderResourceBindings Bindings;
-	FIntVector ThreadGroupSize;
 	FString ErrorMessages;
-	const bool bSuccess = Compushady::CompileHLSL({}, "", "cs_6_0", ByteCode, Bindings, ThreadGroupSize, ErrorMessages);
+	const bool bSuccess = Compushady::CompileHLSL({}, "", "cs_6_0", ByteCode, ErrorMessages, false);
 
 	TestFalse(TEXT("bSuccess"), bSuccess);
 
@@ -27,14 +25,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyDXCTest_EmptyEntryPoint, "Compushady
 bool FCompushadyDXCTest_EmptyEntryPoint::RunTest(const FString& Parameters)
 {
 	TArray<uint8> ByteCode;
-	Compushady::FCompushadyShaderResourceBindings Bindings;
-	FIntVector ThreadGroupSize;
 	FString ErrorMessages;
 
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode("[numthreads(1, 1, 1)] void main() {}", ShaderCode);
 
-	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "", "cs_6_0", ByteCode, Bindings, ThreadGroupSize, ErrorMessages);
+	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "", "cs_6_0", ByteCode, ErrorMessages, false);
 
 	TestFalse(TEXT("bSuccess"), bSuccess);
 
@@ -48,14 +44,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyDXCTest_NoTarget, "Compushady.DXC.No
 bool FCompushadyDXCTest_NoTarget::RunTest(const FString& Parameters)
 {
 	TArray<uint8> ByteCode;
-	Compushady::FCompushadyShaderResourceBindings Bindings;
-	FIntVector ThreadGroupSize;
 	FString ErrorMessages;
 
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode("[numthreads(1, 1, 1)] void main() {}", ShaderCode);
 
-	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "", ByteCode, Bindings, ThreadGroupSize, ErrorMessages);
+	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "", ByteCode, ErrorMessages, false);
 
 	TestFalse(TEXT("bSuccess"), bSuccess);
 
@@ -69,14 +63,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyDXCTest_SyntaxError, "Compushady.DXC
 bool FCompushadyDXCTest_SyntaxError::RunTest(const FString& Parameters)
 {
 	TArray<uint8> ByteCode;
-	Compushady::FCompushadyShaderResourceBindings Bindings;
-	FIntVector ThreadGroupSize;
 	FString ErrorMessages;
 
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode("bug!", ShaderCode);
 
-	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, Bindings, ThreadGroupSize, ErrorMessages);
+	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, ErrorMessages, false);
 
 	TestFalse(TEXT("bSuccess"), bSuccess);
 
@@ -90,14 +82,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyDXCTest_Nop, "Compushady.DXC.Nop", E
 bool FCompushadyDXCTest_Nop::RunTest(const FString& Parameters)
 {
 	TArray<uint8> ByteCode;
-	Compushady::FCompushadyShaderResourceBindings Bindings;
-	FIntVector ThreadGroupSize;
 	FString ErrorMessages;
 
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode("[numthreads(1, 1, 1)] void main() {}", ShaderCode);
 
-	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, Bindings, ThreadGroupSize, ErrorMessages);
+	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, ErrorMessages, false);
 
 	TestTrue(TEXT("bSuccess"), bSuccess);
 
@@ -118,7 +108,11 @@ bool FCompushadyDXCTest_ThreadGroupSize::RunTest(const FString& Parameters)
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode("[numthreads(2, 4, 8)] void main() {}", ShaderCode);
 
-	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, Bindings, ThreadGroupSize, ErrorMessages);
+	bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, ErrorMessages, false);
+
+	TestTrue(TEXT("bSuccess"), bSuccess);
+
+	bSuccess = Compushady::FixupShaderByteCode(ShaderCode, "cs_6_0", Bindings, ThreadGroupSize, ErrorMessages, false);
 
 	TestTrue(TEXT("bSuccess"), bSuccess);
 
@@ -141,7 +135,13 @@ bool FCompushadyDXCTest_Bindings::RunTest(const FString& Parameters)
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode("float value1; float value2; Buffer<float4> Input0; Texture1D<uint3> Input1; RWTexture1D<uint> Output0; RWBuffer<float> Output1; [numthreads(1, 1, 1)] void main() { float value3 = value1 + value2; Output0[0] = Input1[0].r + value3; Output1[0] = Input0[0].x; }", ShaderCode);
 
-	const bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, Bindings, ThreadGroupSize, ErrorMessages);
+	bool bSuccess = Compushady::CompileHLSL(ShaderCode, "main", "cs_6_0", ByteCode, ErrorMessages, false);
+
+	TestTrue(TEXT("bSuccess"), bSuccess);
+
+	bSuccess = Compushady::FixupShaderByteCode(ShaderCode, "cs_6_0", Bindings, ThreadGroupSize, ErrorMessages, false);
+
+	TestTrue(TEXT("bSuccess"), bSuccess);
 
 	TestEqual(TEXT("Bindings.CBVs.Num()"), Bindings.CBVs.Num(), 1);
 	TestEqual(TEXT("Bindings.SRVs.Num()"), Bindings.SRVs.Num(), 2);

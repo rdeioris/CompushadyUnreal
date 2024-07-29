@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "Engine/DataAsset.h"
+#include "CompushadyTypes.h"
 #include "CompushadyShader.generated.h"
 
 /**
@@ -16,6 +17,9 @@ class COMPUSHADY_API UCompushadyShader : public UDataAsset
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Compushady")
+	ECompushadyShaderLanguage ShaderLanguage;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Compushady")
 	FString Code;
 	

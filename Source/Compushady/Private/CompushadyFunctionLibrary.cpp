@@ -3,6 +3,11 @@
 
 #include "CompushadyFunctionLibrary.h"
 #include "Serialization/ArrayWriter.h"
+#include "AudioDeviceManager.h"
+#include "AudioMixerDevice.h"
+#include "AudioBusSubsystem.h"
+#include "CompushadyAudioSubsystem.h"
+#include "CompushadySoundWave.h"
 
 UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBV(const FString& Name, const int64 Size)
 {
@@ -163,10 +168,10 @@ bool UCompushadyFunctionLibrary::DisassembleDXILBlob(const TArray<uint8>& Blob, 
 	return Compushady::DisassembleDXIL(Blob, Disassembled, ErrorMessages);
 }
 
-bool UCompushadyFunctionLibrary::SPIRVBlobToHLSL(const TArray<uint8>& Blob, FString& HLSL, FString& ErrorMessages)
+bool UCompushadyFunctionLibrary::SPIRVBlobToHLSL(const TArray<uint8>& Blob, FString& HLSL, FString& EntryPoint, FString& ErrorMessages)
 {
 	TArray<uint8> HLSLBytes;
-	if (!Compushady::SPIRVToHLSL(Blob, HLSLBytes, ErrorMessages))
+	if (!Compushady::SPIRVToHLSL(Blob, HLSLBytes, EntryPoint, ErrorMessages))
 	{
 		return false;
 	}
@@ -175,12 +180,31 @@ bool UCompushadyFunctionLibrary::SPIRVBlobToHLSL(const TArray<uint8>& Blob, FStr
 	return true;
 }
 
-UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint)
+bool UCompushadyFunctionLibrary::HLSLToSPIRVBlob(const FString& HLSL, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& Blob, FString& ErrorMessages)
+{
+	TArray<uint8> HLSLShaderCode;
+	Compushady::StringToShaderCode(HLSL, HLSLShaderCode);
+	return Compushady::CompileHLSL(HLSLShaderCode, EntryPoint, TargetProfile, Blob, ErrorMessages, true);
+}
+
+bool UCompushadyFunctionLibrary::SPIRVBlobToGLSL(const TArray<uint8>& Blob, FString& GLSL, FString& ErrorMessages)
+{
+	TArray<uint8> GLSLBytes;
+	if (!Compushady::SPIRVToGLSL(Blob, GLSLBytes, ErrorMessages))
+	{
+		return false;
+	}
+
+	GLSL = Compushady::ShaderCodeToString(GLSLBytes);
+	return true;
+}
+
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(const FString& ShaderSource, FString& ErrorMessages, const FString& EntryPoint)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 
 	TArray<uint8> ShaderCode;
-	Compushady::StringToShaderCode(Source, ShaderCode);
+	Compushady::StringToShaderCode(ShaderSource, ShaderCode);
 
 	if (!CompushadyCompute->InitFromHLSL(ShaderCode, EntryPoint, ErrorMessages))
 	{
@@ -190,12 +214,12 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 	return CompushadyCompute;
 }
 
-UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromGLSLString(const FString& Source, FString& ErrorMessages, const FString& EntryPoint)
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromGLSLString(const FString& ShaderSource, FString& ErrorMessages, const FString& EntryPoint)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 
 	TArray<uint8> ShaderCode;
-	Compushady::StringToShaderCode(Source, ShaderCode);
+	Compushady::StringToShaderCode(ShaderSource, ShaderCode);
 
 	if (!CompushadyCompute->InitFromGLSL(ShaderCode, EntryPoint, ErrorMessages))
 	{
@@ -495,6 +519,34 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2DArray(co
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format)
 {
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create3D(*Name, Width, Height, Depth, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
+{
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
 	FTextureRHIRef TextureRHIRef = nullptr;
 
@@ -998,7 +1050,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 		[&BufferRHIRef, Name, Data, Stride](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVMask, ResourceCreateInfo);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -1028,7 +1080,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 		[&BufferRHIRef, Name, Data, Stride](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVMask, ResourceCreateInfo);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -1050,14 +1102,23 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 	return CompushadySRV;
 }
 
-UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadySoundWave(const UCompushadyCompute* Compute, const FCompushadyResourceArray& ResourceArray, const float Duration)
+UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadyUAVSoundWave(const FString& Name, const float Duration, const int32 SampleRate, const int32 NumChannels, UAudioBus* AudioBus)
 {
 	UCompushadySoundWave* CompushadySoundWave = NewObject<UCompushadySoundWave>();
 
-	CompushadySoundWave->Duration = 10000;
-	CompushadySoundWave->SetSampleRate(48000);
-	CompushadySoundWave->NumChannels = 1;
+	CompushadySoundWave->Duration = Duration;
+	CompushadySoundWave->SetSampleRate(SampleRate);
+	CompushadySoundWave->NumChannels = NumChannels;
 	CompushadySoundWave->bLooping = true;
+
+	CompushadySoundWave->UAV = CreateCompushadyUAVBuffer(Name, SampleRate * Duration * NumChannels * sizeof(float), EPixelFormat::PF_R32_FLOAT);
+
+	if (AudioBus)
+	{
+		FSoundSourceBusSendInfo BusInfo;
+		BusInfo.AudioBus = AudioBus;
+		CompushadySoundWave->BusSends.Add(BusInfo);
+	}
 
 	return CompushadySoundWave;
 }
@@ -1286,4 +1347,41 @@ void UCompushadyFunctionLibrary::DispatchMultiPass(const TArray<FCompushadyCompu
 			}
 			RHICmdList.EndUAVOverlap();
 		}, OnSignaled, static_cast<TArray<ICompushadyPipeline*>>(ComputesArray));
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVAudioTexture2D(UObject* WorldContextObject, const FString& Name, UAudioBus* AudioBus)
+{
+	if (Audio::FMixerDevice* MixerDevice = FAudioDeviceManager::GetAudioMixerDeviceFromWorldContext(WorldContextObject))
+	{
+		int32 NumBusChannels = AudioBus->GetNumChannels();
+
+		int32 AudioMixerSampleRate = (int32)MixerDevice->GetSampleRate();
+
+		// Start the audio bus. This won't do anythign if the bus is already started elsewhere.
+		uint32 AudioBusId = AudioBus->GetUniqueID();
+		int32 NumChannels = (int32)AudioBus->AudioBusChannels + 1;
+
+		UAudioBusSubsystem* AudioBusSubsystem = MixerDevice->GetSubsystem<UAudioBusSubsystem>();
+		check(AudioBusSubsystem);
+		Audio::FAudioBusKey AudioBusKey = Audio::FAudioBusKey(AudioBusId);
+		AudioBusSubsystem->StartAudioBus(AudioBusKey, NumChannels, false);
+
+		// Get an output patch for the audio bus
+		int32 NumFramesPerBufferToAnalyze = MixerDevice->GetNumOutputFrames();
+
+		UCompushadySRV* SRV = CreateCompushadySRVTexture2D(Name, NumFramesPerBufferToAnalyze, NumChannels, EPixelFormat::PF_R32_FLOAT);
+
+		if (SRV)
+		{
+			Audio::FPatchOutputStrongPtr PatchOutputStrongPtr = AudioBusSubsystem->AddPatchOutputForAudioBus(AudioBusKey, NumFramesPerBufferToAnalyze, NumChannels);
+
+			UE_LOG(LogTemp, Error, TEXT("NumBusChannels: %d AudioMixerSampleRate: %d NumFramesPerBufferToAnalyze: %d"), NumBusChannels, AudioMixerSampleRate, NumFramesPerBufferToAnalyze);
+
+			WorldContextObject->GetWorld()->GetSubsystem<UCompushadyAudioSubsystem>()->RegisterAudioTexture(SRV, PatchOutputStrongPtr);
+
+			return SRV;
+		}
+	}
+
+	return nullptr;
 }

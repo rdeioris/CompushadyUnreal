@@ -203,6 +203,16 @@ enum class ECompushadySceneTexture : uint8
 	Max
 };
 
+UENUM(BlueprintType)
+enum class ECompushadyShaderLanguage : uint8
+{
+	HLSL,
+	SPIRV,
+	GLSL,
+	WGSL,
+	MSL
+};
+
 struct FCompushadySceneTextures
 {
 	TStaticArray<FTextureRHIRef, (uint32)ECompushadySceneTexture::Max> Textures;
@@ -388,6 +398,7 @@ public:
 	bool UpdateTextureSliceSync(const TArray<uint8>& Pixels, const int32 Slice);
 
 	bool UpdateTextureSliceSync(const uint8* Ptr, const int64 Size, const int32 Slice);
+	bool UpdateTextureSliceSyncWithFunction(const uint8* Ptr, const int64 Size, const int32 Slice, TFunction<void(FRHICommandListImmediate& RHICmdList, void* Data, const uint32 SourcePitch, const uint32 DestPitch)> InFunction);
 
 	bool MapTextureSliceAndExecuteSync(TFunction<void(const void*, const int32)> InFunction, const int32 Slice);
 
@@ -413,11 +424,19 @@ namespace Compushady
 		COMPUSHADY_API FVertexShaderRHIRef CreateVertexShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
+		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 
 		COMPUSHADY_API FVertexShaderRHIRef CreateVertexShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FVertexShaderRHIRef CreateVertexShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
+		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 
 		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
 		COMPUSHADY_API void SetupPipelineParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings);
