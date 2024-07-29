@@ -43,13 +43,13 @@ bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode
 
 bool UCompushadyRasterizer::InitVSPSFromGLSL(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
-	VertexShaderRef = Compushady::Utils::CreateVertexShaderFromHLSL(VertexShaderCode, VertexShaderEntryPoint, VSResourceBindings, ErrorMessages);
+	VertexShaderRef = Compushady::Utils::CreateVertexShaderFromGLSL(VertexShaderCode, VertexShaderEntryPoint, VSResourceBindings, ErrorMessages);
 	if (!VertexShaderRef)
 	{
 		return false;
 	}
 
-	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
+	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromGLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
 	if (!VertexShaderRef)
 	{
 		return false;
