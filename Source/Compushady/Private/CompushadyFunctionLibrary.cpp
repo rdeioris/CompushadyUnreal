@@ -1357,7 +1357,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVAudioTexture2D(UO
 
 		int32 AudioMixerSampleRate = (int32)MixerDevice->GetSampleRate();
 
-		// Start the audio bus. This won't do anythign if the bus is already started elsewhere.
+		// Start the audio bus (if required)
 		uint32 AudioBusId = AudioBus->GetUniqueID();
 		int32 NumChannels = (int32)AudioBus->AudioBusChannels + 1;
 
@@ -1374,8 +1374,6 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVAudioTexture2D(UO
 		if (SRV)
 		{
 			Audio::FPatchOutputStrongPtr PatchOutputStrongPtr = AudioBusSubsystem->AddPatchOutputForAudioBus(AudioBusKey, NumFramesPerBufferToAnalyze, NumChannels);
-
-			UE_LOG(LogTemp, Error, TEXT("NumBusChannels: %d AudioMixerSampleRate: %d NumFramesPerBufferToAnalyze: %d"), NumBusChannels, AudioMixerSampleRate, NumFramesPerBufferToAnalyze);
 
 			WorldContextObject->GetWorld()->GetSubsystem<UCompushadyAudioSubsystem>()->RegisterAudioTexture(SRV, PatchOutputStrongPtr);
 
