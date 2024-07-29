@@ -158,6 +158,9 @@ struct FCompushadyResourceBindings
 	TMap<int32, FCompushadyResourceBinding> SamplersSlotMap;
 
 	uint32 NumSamplers = 0;
+
+	TArray<Compushady::FCompushadyShaderSemantic> InputSemantics;
+	TArray<Compushady::FCompushadyShaderSemantic> OutputSemantics;
 };
 
 USTRUCT(BlueprintType)

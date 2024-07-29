@@ -300,6 +300,7 @@ void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 
 	if (!VertexShaderRef)
 	{
+		UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
 		return;
 	}
 
@@ -313,6 +314,7 @@ void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 
 	if (!PixelShaderRef)
 	{
+		UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
 		return;
 	}
 

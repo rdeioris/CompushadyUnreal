@@ -1239,6 +1239,9 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 		OutBindings.SamplersSlotMap.Add(ResourceBinding.SlotIndex, ResourceBinding);
 	}
 
+	OutBindings.InputSemantics = InBindings.InputSemantics;
+	OutBindings.OutputSemantics = InBindings.OutputSemantics;
+
 	return true;
 }
 FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
@@ -1255,13 +1258,6 @@ FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const TArray<u
 
 	if (!Compushady::Utils::FinalizeShader(VertexShaderByteCode, TargetProfile, VertexShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
-		return nullptr;
-	}
-
-	// check for semantics
-	if (VertexShaderResourceBindings.InputSemantics.Num() > 0)
-	{
-		ErrorMessages = FString::Printf(TEXT("Unsupported input semantic in vertex shader: %s/%d"), *(VertexShaderResourceBindings.InputSemantics[0]).Name, VertexShaderResourceBindings.InputSemantics[0].Index);
 		return nullptr;
 	}
 
@@ -1300,15 +1296,6 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uin
 	if (!Compushady::Utils::FinalizeShader(PixelShaderByteCode, TargetProfile, PixelShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return nullptr;
-	}
-
-	for (const Compushady::FCompushadyShaderSemantic& Semantic : PixelShaderResourceBindings.InputSemantics)
-	{
-		if (!PixelShaderResourceBindings.OutputSemantics.Contains(Semantic))
-		{
-			ErrorMessages = FString::Printf(TEXT("Unknown/Unaligned input semantic in pixel shader: %s/%d (register: %u mask: 0x%x)"), *Semantic.Name, Semantic.Index, Semantic.Register, Semantic.Mask);
-			return nullptr;
-		}
 	}
 
 	TArray<uint8> PSByteCode;
@@ -1453,13 +1440,6 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromHLSL(const TArray<uint8
 
 	if (!Compushady::Utils::FinalizeShader(MeshShaderByteCode, TargetProfile, MeshShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
-		return nullptr;
-	}
-
-	// check for semantics
-	if (MeshShaderResourceBindings.InputSemantics.Num() > 0)
-	{
-		ErrorMessages = FString::Printf(TEXT("Unsupported input semantic in mesh shader: %s/%d"), *(MeshShaderResourceBindings.InputSemantics[0]).Name, MeshShaderResourceBindings.InputSemantics[0].Index);
 		return nullptr;
 	}
 
