@@ -705,8 +705,6 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 	CopyTextureInfo.Size.Y = TextureRHIRef->GetSizeY();
 	CopyTextureInfo.Size.Z = 1;
 
-	UE_LOG(LogTemp, Error, TEXT("TextureSize: %d %d"), TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY());
-
 	const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
 	if (Dimension == ETextureDimension::Texture2DArray)
 	{
