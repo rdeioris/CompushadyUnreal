@@ -412,51 +412,6 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	return true;
 }
 
-bool Compushady::FixupShaderByteCode(TArray<uint8>& ByteCode, const FString& TargetProfile, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const bool bIsSPIRV)
-{
-	const ERHIInterfaceType RHIInterfaceType = RHIGetInterfaceType();
-	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
-	{
-		if (bIsSPIRV)
-		{
-			TArray<uint8> HLSL;
-			FString EntryPoint;
-
-			if (!Compushady::SPIRVToHLSL(ByteCode, HLSL, EntryPoint, ErrorMessages))
-			{
-				return false;
-			}
-
-			ByteCode.Empty();
-			if (!CompileHLSL(HLSL, EntryPoint, TargetProfile, ByteCode, ErrorMessages, false))
-			{
-				return false;
-			}
-
-			return FixupShaderByteCode(ByteCode, TargetProfile, ShaderResourceBindings, ThreadGroupSize, ErrorMessages, false);
-		}
-
-		if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return false;
-		}
-	}
-	else if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
-	{
-		if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-		{
-			return false;
-		}
-	}
-	else
-	{
-		ErrorMessages = "Unsupported RHI";
-		return false;
-	}
-
-	return true;
-}
-
 bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 	if (!DXC::Setup())

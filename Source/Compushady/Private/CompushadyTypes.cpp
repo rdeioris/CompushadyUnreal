@@ -705,6 +705,8 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 	CopyTextureInfo.Size.Y = TextureRHIRef->GetSizeY();
 	CopyTextureInfo.Size.Z = 1;
 
+	UE_LOG(LogTemp, Error, TEXT("TextureSize: %d %d"), TextureRHIRef->GetSizeX(), TextureRHIRef->GetSizeY());
+
 	const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
 	if (Dimension == ETextureDimension::Texture2DArray)
 	{
@@ -785,7 +787,7 @@ namespace Compushady
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #endif
 				}
-				}
+			}
 
 			for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
 			{
@@ -818,7 +820,7 @@ namespace Compushady
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
 #endif
-			}
+		}
 
 		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
 #if COMPUSHADY_UE_VERSION < 53
@@ -943,8 +945,8 @@ namespace Compushady
 					return ResourceArray.Samplers[Index]->GetRHI();
 				});
 		}
-			}
-				}
+	}
+}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
@@ -1253,13 +1255,15 @@ FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const TArray<u
 		return nullptr;
 	}
 
-	if (!Compushady::FixupShaderByteCode(VertexShaderByteCode, TargetProfile, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
+	if (!Compushady::Utils::FinalizeShader(VertexShaderByteCode, TargetProfile, VertexShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return nullptr;
 	}
 
-	if (!Compushady::Utils::CreateResourceBindings(VertexShaderResourceBindings, ResourceBindings, ErrorMessages))
+	// check for semantics
+	if (VertexShaderResourceBindings.InputSemantics.Num() > 0)
 	{
+		ErrorMessages = FString::Printf(TEXT("Unsupported input semantic in vertex shader: %s/%d"), *(VertexShaderResourceBindings.InputSemantics[0]).Name, VertexShaderResourceBindings.InputSemantics[0].Index);
 		return nullptr;
 	}
 
@@ -1295,14 +1299,18 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uin
 		return nullptr;
 	}
 
-	if (!Compushady::FixupShaderByteCode(PixelShaderByteCode, TargetProfile, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
+	if (!Compushady::Utils::FinalizeShader(PixelShaderByteCode, TargetProfile, PixelShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return nullptr;
 	}
 
-	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, ResourceBindings, ErrorMessages))
+	for (const Compushady::FCompushadyShaderSemantic& Semantic : PixelShaderResourceBindings.InputSemantics)
 	{
-		return nullptr;
+		if (!PixelShaderResourceBindings.OutputSemantics.Contains(Semantic))
+		{
+			ErrorMessages = FString::Printf(TEXT("Unknown/Unaligned input semantic in pixel shader: %s/%d (register: %u mask: 0x%x)"), *Semantic.Name, Semantic.Index, Semantic.Register, Semantic.Mask);
+			return nullptr;
+		}
 	}
 
 	TArray<uint8> PSByteCode;
@@ -1337,12 +1345,7 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const TArray<uin
 		return nullptr;
 	}
 
-	if (!Compushady::FixupShaderByteCode(PixelShaderByteCode, TargetProfile, PixelShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
-	{
-		return nullptr;
-	}
-
-	if (!Compushady::Utils::CreateResourceBindings(PixelShaderResourceBindings, ResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::FinalizeShader(PixelShaderByteCode, TargetProfile, PixelShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{
 		return nullptr;
 	}
@@ -1378,12 +1381,7 @@ FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromHLSL(const TArray
 		return nullptr;
 	}
 
-	if (!Compushady::FixupShaderByteCode(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
-	{
-		return nullptr;
-	}
-
-	if (!Compushady::Utils::CreateResourceBindings(ComputeShaderResourceBindings, ResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::FinalizeShader(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return nullptr;
 	}
@@ -1419,12 +1417,7 @@ FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromGLSL(const TArray
 		return nullptr;
 	}
 
-	if (!Compushady::FixupShaderByteCode(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
-	{
-		return nullptr;
-	}
-
-	if (!Compushady::Utils::CreateResourceBindings(ComputeShaderResourceBindings, ResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::FinalizeShader(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{
 		return nullptr;
 	}
@@ -1460,13 +1453,15 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromHLSL(const TArray<uint8
 		return nullptr;
 	}
 
-	if (!Compushady::FixupShaderByteCode(MeshShaderByteCode, TargetProfile, MeshShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
+	if (!Compushady::Utils::FinalizeShader(MeshShaderByteCode, TargetProfile, MeshShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return nullptr;
 	}
 
-	if (!Compushady::Utils::CreateResourceBindings(MeshShaderResourceBindings, ResourceBindings, ErrorMessages))
+	// check for semantics
+	if (MeshShaderResourceBindings.InputSemantics.Num() > 0)
 	{
+		ErrorMessages = FString::Printf(TEXT("Unsupported input semantic in mesh shader: %s/%d"), *(MeshShaderResourceBindings.InputSemantics[0]).Name, MeshShaderResourceBindings.InputSemantics[0].Index);
 		return nullptr;
 	}
 
@@ -1501,12 +1496,7 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const TArray<uint8
 		return nullptr;
 	}
 
-	if (!Compushady::FixupShaderByteCode(MeshShaderByteCode, TargetProfile, MeshShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
-	{
-		return nullptr;
-	}
-
-	if (!Compushady::Utils::CreateResourceBindings(MeshShaderResourceBindings, ResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::FinalizeShader(MeshShaderByteCode, TargetProfile, MeshShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{
 		return nullptr;
 	}
@@ -1543,12 +1533,7 @@ FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromGLSL(const TArray<u
 	}
 
 	FIntVector ThreadGroupSize;
-	if (!Compushady::FixupShaderByteCode(VertexShaderByteCode, TargetProfile, VertexShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
-	{
-		return nullptr;
-	}
-
-	if (!Compushady::Utils::CreateResourceBindings(VertexShaderResourceBindings, ResourceBindings, ErrorMessages))
+	if (!Compushady::Utils::FinalizeShader(VertexShaderByteCode, TargetProfile, VertexShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{
 		return nullptr;
 	}
@@ -1651,4 +1636,49 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 	InFunction();
 
 	RHICmdList.EndRenderPass();
+}
+
+bool Compushady::Utils::FinalizeShader(TArray<uint8>& ByteCode, const FString& TargetProfile, Compushady::FCompushadyShaderResourceBindings& ShaderResourceBindings, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const bool bIsSPIRV)
+{
+	const ERHIInterfaceType RHIInterfaceType = RHIGetInterfaceType();
+	if (RHIInterfaceType == ERHIInterfaceType::D3D12)
+	{
+		if (bIsSPIRV)
+		{
+			TArray<uint8> HLSL;
+			FString EntryPoint;
+
+			if (!Compushady::SPIRVToHLSL(ByteCode, HLSL, EntryPoint, ErrorMessages))
+			{
+				return false;
+			}
+
+			ByteCode.Empty();
+			if (!Compushady::CompileHLSL(HLSL, EntryPoint, TargetProfile, ByteCode, ErrorMessages, false))
+			{
+				return false;
+			}
+
+			return FinalizeShader(ByteCode, TargetProfile, ShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false);
+		}
+
+		if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return false;
+		}
+	}
+	else if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
+	{
+		if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		ErrorMessages = "Unsupported RHI";
+		return false;
+	}
+
+	return Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages);
 }

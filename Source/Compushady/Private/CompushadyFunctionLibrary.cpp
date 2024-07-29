@@ -1345,7 +1345,6 @@ void UCompushadyFunctionLibrary::DispatchMultiPass(const TArray<FCompushadyCompu
 			{
 				ComputesArray[Index]->Dispatch_RenderThread(RHICmdList, ResourceArrays[Index], XYZs[Index]);
 			}
-			RHICmdList.EndUAVOverlap();
 		}, OnSignaled, static_cast<TArray<ICompushadyPipeline*>>(ComputesArray));
 }
 

@@ -88,7 +88,6 @@ namespace Compushady
 	COMPUSHADY_API bool CompileGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& ByteCode, FString& ErrorMessages);
 	COMPUSHADY_API bool FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 	COMPUSHADY_API bool FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
-	COMPUSHADY_API bool FixupShaderByteCode(TArray<uint8>& ByteCode, const FString& TargetProfile, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const bool bIsSPIRV);
 	COMPUSHADY_API bool DisassembleSPIRV(const TArray<uint8>& ByteCode, TArray<uint8>& Disassembled, FString& ErrorMessages);
 	COMPUSHADY_API bool DisassembleDXIL(const TArray<uint8>& ByteCode, FString& Disassembled, FString& ErrorMessages);
 	COMPUSHADY_API bool SPIRVToHLSL(const TArray<uint8>& ByteCode, TArray<uint8>& HLSL, FString& EntryPoint, FString& ErrorMessages);

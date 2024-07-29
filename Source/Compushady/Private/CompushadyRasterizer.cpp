@@ -60,24 +60,6 @@ bool UCompushadyRasterizer::InitVSPSFromGLSL(const TArray<uint8>& VertexShaderCo
 
 bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
-#if 0
-	// check for semantics
-	if (VertexShaderResourceBindings.InputSemantics.Num() > 0)
-	{
-		ErrorMessages = FString::Printf(TEXT("Unsupported input semantic in vertex shader: %s/%d"), *(VertexShaderResourceBindings.InputSemantics[0]).Name, VertexShaderResourceBindings.InputSemantics[0].Index);
-		return false;
-	}
-
-	for (const Compushady::FCompushadyShaderSemantic& Semantic : PixelShaderResourceBindings.InputSemantics)
-	{
-		if (!VertexShaderResourceBindings.OutputSemantics.Contains(Semantic))
-		{
-			ErrorMessages = FString::Printf(TEXT("Unknown/Unaligned input semantic in pixel shader: %s/%d (register: %u mask: 0x%x)"), *Semantic.Name, Semantic.Index, Semantic.Register, Semantic.Mask);
-			return false;
-		}
-	}
-#endif
-
 	FillPipelineStateInitializer(RasterizerConfig);
 
 	PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = GEmptyVertexDeclaration.VertexDeclarationRHI;
@@ -127,24 +109,6 @@ void UCompushadyRasterizer::FillPipelineStateInitializer(const FCompushadyRaster
 
 bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
 {
-#if 0
-	// check for semantics
-	if (MeshShaderResourceBindings.InputSemantics.Num() > 0)
-	{
-		ErrorMessages = FString::Printf(TEXT("Unsupported input semantic in mesh shader: %s/%d"), *(MeshShaderResourceBindings.InputSemantics[0]).Name, MeshShaderResourceBindings.InputSemantics[0].Index);
-		return false;
-	}
-
-	for (const Compushady::FCompushadyShaderSemantic& Semantic : PixelShaderResourceBindings.InputSemantics)
-	{
-		if (!MeshShaderResourceBindings.OutputSemantics.Contains(Semantic))
-		{
-			ErrorMessages = FString::Printf(TEXT("Unknown/Unaligned input semantic in pixel shader: %s/%d (register: %u mask: 0x%x)"), *Semantic.Name, Semantic.Index, Semantic.Register, Semantic.Mask);
-			return false;
-		}
-	}
-#endif
-
 	FillPipelineStateInitializer(RasterizerConfig);
 
 	PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = nullptr;
