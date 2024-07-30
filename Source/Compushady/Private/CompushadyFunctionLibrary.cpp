@@ -1042,6 +1042,16 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromByteArr
 	return CompushadySRV;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromFile(const FString& Name, const FString& Filename, const EPixelFormat PixelFormat)
+{
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Filename))
+	{
+		return nullptr;
+	}
+	return CreateCompushadySRVBufferFromByteArray(Name, Data, PixelFormat);
+}
+
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride)
 {
 	FBufferRHIRef BufferRHIRef;
@@ -1100,6 +1110,16 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 	}
 
 	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride)
+{
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Filename))
+	{
+		return nullptr;
+	}
+	return CreateCompushadySRVStructuredBufferFromByteArray(Name, Data, Stride);
 }
 
 UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadyUAVSoundWave(const FString& Name, const float Duration, const int32 SampleRate, const int32 NumChannels, UAudioBus* AudioBus)
