@@ -15,7 +15,7 @@ bool UCompushadyRasterizer::InitVSPSFromHLSL(const TArray<uint8>& VertexShaderCo
 	}
 
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
-	if (!VertexShaderRef)
+	if (!PixelShaderRef)
 	{
 		return false;
 	}
@@ -33,7 +33,7 @@ bool UCompushadyRasterizer::InitMSPSFromHLSL(const TArray<uint8>& MeshShaderCode
 	}
 
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
-	if (!VertexShaderRef)
+	if (!PixelShaderRef)
 	{
 		return false;
 	}

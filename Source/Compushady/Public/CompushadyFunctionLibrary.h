@@ -63,6 +63,9 @@ public:
 	static UCompushadyCBV* CreateCompushadyCBVFromFloatArray(const FString& Name, const TArray<float>& Data);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyCBV* CreateCompushadyCBVFromIntArray(const FString& Name, const TArray<int32>& Data);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -82,6 +85,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromQuad3DGrid(const FString& Name, const int32 Cols, const int32 Rows, const float XIncrement, const float YIncrement, const float Z, const int32 Stride, const bool bCCW);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);

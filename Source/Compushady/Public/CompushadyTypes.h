@@ -16,6 +16,8 @@
  *
  */
 
+struct FCompushadyRasterizerConfig;
+
 USTRUCT(BlueprintType)
 struct COMPUSHADY_API FCompushadyFloat
 {
@@ -226,6 +228,57 @@ struct FCompushadySceneTextures
 	}
 };
 
+UENUM(BlueprintType)
+enum class ECompushadyRasterizerFillMode : uint8
+{
+	Solid,
+	Wireframe
+};
+
+UENUM(BlueprintType)
+enum class ECompushadyRasterizerCullMode : uint8
+{
+	None,
+	ClockWise,
+	CounterClockWise
+};
+
+USTRUCT(BlueprintType)
+struct COMPUSHADY_API FCompushadyRasterizerConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	ECompushadyRasterizerFillMode FillMode = ECompushadyRasterizerFillMode::Solid;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	ECompushadyRasterizerCullMode CullMode = ECompushadyRasterizerCullMode::None;
+
+};
+
+USTRUCT(BlueprintType)
+struct COMPUSHADY_API FCompushadyRasterizeConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FBox Viewport;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FBox2D Scissor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 StencilValue;
+
+	FCompushadyRasterizeConfig()
+	{
+		Viewport.Init();
+		Scissor.Init();
+		StencilValue = 0;
+	}
+
+};
+
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
 
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatPayload, bool, bSuccess, float&, Payload, const FString&, ErrorMessage);
@@ -332,6 +385,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void ReadbackToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	TArray<FVector> ReadbackFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 12);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	TArray<int32> ReadbackIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 4);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
@@ -454,6 +513,10 @@ namespace Compushady
 
 		COMPUSHADY_API void RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction);
 
+		COMPUSHADY_API void RasterizePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FGraphicsPipelineStateInitializer& PipelineStateInitializer, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction);
+
 		COMPUSHADY_API bool FinalizeShader(TArray<uint8>& ByteCode, const FString& TargetProfile, Compushady::FCompushadyShaderResourceBindings& ShaderResourceBindings, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const bool bIsSPIRV);
+	
+		COMPUSHADY_API void FillRasterizerPipelineStateInitializer(FVertexShaderRHIRef VS, FMeshShaderRHIRef MS, FPixelShaderRHIRef PS, const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer);
 	}
 }

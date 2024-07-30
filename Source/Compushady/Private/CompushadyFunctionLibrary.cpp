@@ -42,6 +42,17 @@ UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBVFromFloatArray(co
 	return CompushadyCBV;
 }
 
+UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBVFromIntArray(const FString& Name, const TArray<int32>& Data)
+{
+	UCompushadyCBV* CompushadyCBV = NewObject<UCompushadyCBV>();
+	if (!CompushadyCBV->Initialize(Name, reinterpret_cast<const uint8*>(Data.GetData()), Data.Num() * sizeof(int32)))
+	{
+		return nullptr;
+	}
+
+	return CompushadyCBV;
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
@@ -247,6 +258,76 @@ UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterize
 	return CompushadyRasterizer;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromQuad3DGrid(const FString& Name, const int32 Cols, const int32 Rows, const float XIncrement, const float YIncrement, const float Z, const int32 Stride, const bool bCCW)
+{
+	if (Cols <= 0 || Rows <= 0)
+	{
+		return nullptr;
+	}
+
+	TArray<float> Data;
+	Data.AddUninitialized(Cols * Rows * 3 * 6);
+
+	for (int32 Row = 0; Row < Rows; Row++)
+	{
+		for (int32 Col = 0; Col < Cols; Col++)
+		{
+			int32 Offset = (Row * Cols + Col) * 3 * 6;
+
+			Data[Offset++] = Col * XIncrement;
+			Data[Offset++] = Row * YIncrement;
+			Data[Offset++] = Z;
+
+			if (!bCCW)
+			{
+				Data[Offset++] = (Col + 1) * XIncrement;
+				Data[Offset++] = Row * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = Col * XIncrement;
+				Data[Offset++] = (Row + 1) * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = (Col + 1) * XIncrement;
+				Data[Offset++] = Row * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = (Col + 1) * XIncrement;
+				Data[Offset++] = (Row + 1) * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = Col * XIncrement;
+				Data[Offset++] = (Row + 1) * YIncrement;
+				Data[Offset++] = Z;
+			}
+			else
+			{
+				Data[Offset++] = Col * XIncrement;
+				Data[Offset++] = (Row + 1) * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = (Col + 1) * XIncrement;
+				Data[Offset++] = Row * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = (Col + 1) * XIncrement;
+				Data[Offset++] = Row * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = Col * XIncrement;
+				Data[Offset++] = (Row + 1) * YIncrement;
+				Data[Offset++] = Z;
+
+				Data[Offset++] = (Col + 1) * XIncrement;
+				Data[Offset++] = (Row + 1) * YIncrement;
+				Data[Offset++] = Z;
+			}
+		}
+	}
+
+	return CreateCompushadySRVStructuredBufferFromFloatArray(Name, Data, Stride);
+}
+
 UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyMSPSRasterizerFromHLSLString(const FString& MeshShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& MeshShaderEntryPoint, const FString& PixelShaderEntryPoint)
 {
 	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
@@ -282,6 +363,11 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat)
 {
+	if (Size <= 0)
+	{
+		return nullptr;
+	}
+
 	FBufferRHIRef BufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
@@ -309,6 +395,11 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FStr
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride)
 {
+	if (Size <= 0 || Stride <= 0)
+	{
+		return nullptr;
+	}
+
 	FBufferRHIRef BufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(

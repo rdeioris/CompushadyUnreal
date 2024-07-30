@@ -153,24 +153,22 @@ public:
 			CurrentDrawables = Drawables;
 		}
 
-		if (CurrentDrawables.Num() == 0)
+		if (CurrentDrawables.Num() > 0)
 		{
-			return;
+			FTexture2DRHIRef RenderTarget = InView.Family->RenderTarget->GetRenderTargetTexture();
+
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
+				ERDGPassFlags::None,
+				[this, RenderTarget, CurrentDrawables](FRHICommandList& RHICmdList)
+				{
+					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
+						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
+						{
+							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
+						});
+				});
 		}
-
-		FTexture2DRHIRef RenderTarget = InView.Family->RenderTarget->GetRenderTargetTexture();
-
-		GraphBuilder.AddPass(
-			RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
-			ERDGPassFlags::None,
-			[this, RenderTarget, CurrentDrawables](FRHICommandList& RHICmdList)
-			{
-				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
-					RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
-					{
-						DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-					});
-			});
 	}
 
 	void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override
@@ -181,25 +179,23 @@ public:
 			CurrentDrawables = BeforePostProcessingDrawables;
 		}
 
-		if (CurrentDrawables.Num() == 0)
+		if (CurrentDrawables.Num() > 0)
 		{
-			return;
+			TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
+
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PrePostProcessPass_RenderThread"),
+				ERDGPassFlags::None,
+				[this, SceneTextures, CurrentDrawables](FRHICommandList& RHICmdList)
+				{
+					FTexture2DRHIRef RenderTarget = SceneTextures->GetContents()->SceneColorTexture->GetRHI();
+					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PrePostProcessPass_RenderThread"),
+						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
+						{
+							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
+						});
+				});
 		}
-
-		TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
-
-		GraphBuilder.AddPass(
-			RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PrePostProcessPass_RenderThread"),
-			ERDGPassFlags::None,
-			[this, SceneTextures, CurrentDrawables](FRHICommandList& RHICmdList)
-			{
-				FTexture2DRHIRef RenderTarget = SceneTextures->GetContents()->SceneColorTexture->GetRHI();
-				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PrePostProcessPass_RenderThread"),
-					RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
-					{
-						DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-					});
-			});
 	}
 
 #if COMPUSHADY_UE_VERSION >= 53
@@ -213,23 +209,21 @@ public:
 			CurrentDrawables = AfterMotionBlurDrawables;
 		}
 
-		if (CurrentDrawables.Num() == 0)
+		if (CurrentDrawables.Num() > 0)
 		{
-			return Output;
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
+				ERDGPassFlags::None,
+				[this, Output, CurrentDrawables](FRHICommandList& RHICmdList)
+				{
+					FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
+					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
+						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
+						{
+							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
+						});
+				});
 		}
-
-		GraphBuilder.AddPass(
-			RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
-			ERDGPassFlags::None,
-			[this, Output, CurrentDrawables](FRHICommandList& RHICmdList)
-			{
-				FTexture2DRHIRef RenderTarget = Output.Texture->GetRHI();
-				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
-					RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
-					{
-						DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-					});
-			});
 
 		return Output;
 	}
@@ -264,6 +258,13 @@ public:
 		AfterMotionBlurDrawables.Add(Drawable);
 	}
 
+	void AddRasterizer(const FCompushadyBlitterRasterizer& Rasterizer)
+	{
+		FScopeLock RasterizersLock(&RasterizersCriticalSection);
+
+		Rasterizers.Add(Rasterizer);
+	}
+
 protected:
 	FCriticalSection DrawablesCriticalSection;
 	TArray<FCompushadyBlitterDrawable> Drawables;
@@ -273,6 +274,11 @@ protected:
 
 	FCriticalSection AfterMotionBlurDrawablesCriticalSection;
 	TArray<FCompushadyBlitterDrawable> AfterMotionBlurDrawables;
+
+	FCriticalSection RasterizersCriticalSection;
+	TArray<FCompushadyBlitterRasterizer> Rasterizers;
+	// reset at every frame
+	TArray<FCompushadyBlitterRasterizer> CurrentRasterizers;
 
 	FVertexShaderRHIRef VertexShaderRef;
 	FCompushadyResourceBindings VSResourceBindings;
@@ -369,6 +375,67 @@ void UCompushadyBlitterSubsystem::AddAfterMotionBlurDrawable(UCompushadyResource
 	Drawable.AspectRatio = KeepAspectRatio;
 
 	ViewExtension->AddAfterMotionBlurDrawable(Drawable);
+}
+
+bool UCompushadyBlitterSubsystem::AddVSPSRasterizerFromHLSL(const FString& VertexShaderSource, const FString& PixelShaderSource, const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig, FGuid& Guid, FString& ErrorMessages, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint)
+{
+	if (!ViewExtension)
+	{
+		return false;
+	}
+
+	FCompushadyBlitterRasterizer BlitterRasterizer = {};
+	BlitterRasterizer.VertexShaderRef = Compushady::Utils::CreateVertexShaderFromHLSL(VertexShaderSource, VertexShaderEntryPoint, BlitterRasterizer.VSResourceBindings, ErrorMessages);
+	if (!BlitterRasterizer.VertexShaderRef)
+	{
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(VSResourceArray, BlitterRasterizer.VSResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	BlitterRasterizer.PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderSource, PixelShaderEntryPoint, BlitterRasterizer.PSResourceBindings, ErrorMessages);
+	if (!BlitterRasterizer.PixelShaderRef)
+	{
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(PSResourceArray, BlitterRasterizer.PSResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	// check for semantics
+	if (BlitterRasterizer.VSResourceBindings.InputSemantics.Num() > 0)
+	{
+		ErrorMessages = FString::Printf(TEXT("Unsupported input semantic in vertex shader: %s/%d"), *(BlitterRasterizer.VSResourceBindings.InputSemantics[0]).Name, BlitterRasterizer.VSResourceBindings.InputSemantics[0].Index);
+		return false;
+	}
+
+	for (const Compushady::FCompushadyShaderSemantic& Semantic : BlitterRasterizer.PSResourceBindings.InputSemantics)
+	{
+		if (!BlitterRasterizer.VSResourceBindings.OutputSemantics.Contains(Semantic))
+		{
+			ErrorMessages = FString::Printf(TEXT("Unknown/Unaligned input semantic in pixel shader: %s/%d (register: %u mask: 0x%x)"), *Semantic.Name, Semantic.Index, Semantic.Register, Semantic.Mask);
+			return false;
+		}
+	}
+
+	BlitterRasterizer.VSResourceArray = VSResourceArray;
+	BlitterRasterizer.PSResourceArray = PSResourceArray;
+
+	BlitterRasterizer.NumVertices = NumVertices;
+	BlitterRasterizer.NumInstances = NumInstances;
+
+	Compushady::Utils::FillRasterizerPipelineStateInitializer(BlitterRasterizer.VertexShaderRef, nullptr, BlitterRasterizer.PixelShaderRef, RasterizerConfig, BlitterRasterizer.PipelineStateInitializer);
+
+	ViewExtension->AddRasterizer(BlitterRasterizer);
+
+	Guid = FGuid::NewGuid();
+
+	return true;
 }
 
 // let's put them here to avoid circular includes

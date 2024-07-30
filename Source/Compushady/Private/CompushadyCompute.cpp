@@ -97,6 +97,34 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		}, OnSignaled);
 }
 
+bool UCompushadyCompute::DispatchSync(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, FString& ErrorMessages)
+{
+	if (IsRunning())
+	{
+		ErrorMessages = "The Compute is already running";
+		return false;
+	}
+
+	if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
+	{
+		ErrorMessages = FString::Printf(TEXT("Invalid ThreadGroupCount %s"), *XYZ.ToString());
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	EnqueueToGPUSync(
+		[this, ResourceArray, XYZ](FRHICommandListImmediate& RHICmdList)
+		{
+			Dispatch_RenderThread(RHICmdList, ResourceArray, XYZ);
+		});
+
+	return true;
+}
+
 void UCompushadyCompute::DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled, const TMap<FString, UCompushadySampler*>& SamplerMap)
 {
 	FCompushadyResourceArray ResourceArray;

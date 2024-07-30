@@ -88,8 +88,6 @@ public:
 	FPixelShaderRHIRef PixelShaderRef;
 	FCompushadyResourceBindings PSResourceBindings;
 	FCompushadyResourceArray PSResourceArray;
-	TRDGUniformBufferRef<FSceneTextureUniformParameters> NewSceneTextures;
-
 };
 
 bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)

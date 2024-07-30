@@ -10,57 +10,6 @@
 #include "RHICommandList.h"
 #include "CompushadyRasterizer.generated.h"
 
-UENUM(BlueprintType)
-enum class ECompushadyRasterizerFillMode : uint8
-{
-	Solid,
-	Wireframe
-};
-
-UENUM(BlueprintType)
-enum class ECompushadyRasterizerCullMode : uint8
-{
-	None,
-	ClockWise,
-	CounterClockWise
-};
-
-USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyRasterizerConfig
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	ECompushadyRasterizerFillMode FillMode = ECompushadyRasterizerFillMode::Solid;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	ECompushadyRasterizerCullMode CullMode = ECompushadyRasterizerCullMode::None;
-
-};
-
-USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyRasterizeConfig
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FBox Viewport;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FBox2D Scissor;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	int32 StencilValue;
-
-	FCompushadyRasterizeConfig()
-	{
-		Viewport.Init();
-		Scissor.Init();
-		StencilValue = 0;
-	}
-
-};
-
 /**
  *
  */

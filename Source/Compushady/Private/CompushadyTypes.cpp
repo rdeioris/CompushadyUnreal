@@ -255,6 +255,61 @@ void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 E
 		}, OnSignaled, ReadbackCacheFloats);
 }
 
+TArray<FVector> UCompushadyResource::ReadbackFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+{
+	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
+	{
+		return {};
+	}
+
+	TArray<FVector> Vectors;
+	Vectors.AddUninitialized(Elements);
+
+	MapReadAndExecuteSync([this, Offset, Elements, Stride, &Vectors](const void* Data)
+		{
+			const int64 NumFloats = FMath::Min<int64>((GetBufferSize() - Offset) / Stride, Elements);
+			const uint8* SourcePtr = reinterpret_cast<const uint8*>(Data) + Offset;
+
+			for (int64 Index = 0; Index < NumFloats; Index++)
+			{
+				const float* Floats = reinterpret_cast<const float*>(SourcePtr);
+				Vectors[Index].X = Floats[0];
+				Vectors[Index].Y = Floats[1];
+				Vectors[Index].Z = Floats[2];
+
+				SourcePtr += Stride;
+			}
+		});
+
+	return Vectors;
+}
+
+TArray<int32> UCompushadyResource::ReadbackIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+{
+	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
+	{
+		return {};
+	}
+
+	TArray<int32> Values;
+	Values.AddUninitialized(Elements);
+
+	MapReadAndExecuteSync([this, Offset, Elements, Stride, &Values](const void* Data)
+		{
+			const int64 NumFloats = FMath::Min<int64>((GetBufferSize() - Offset) / Stride, Elements);
+			const uint8* SourcePtr = reinterpret_cast<const uint8*>(Data) + Offset;
+
+			for (int64 Index = 0; Index < NumFloats; Index++)
+			{
+				const int32* Ints = reinterpret_cast<const int32*>(SourcePtr);
+				Values[Index]= *Ints;
+				SourcePtr += Stride;
+			}
+		});
+
+	return Values;
+}
+
 void UCompushadyResource::CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo)
 {
 	if (IsRunning())
@@ -785,7 +840,7 @@ namespace Compushady
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #endif
 				}
-			}
+		}
 
 			for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
 			{
@@ -799,7 +854,7 @@ namespace Compushady
 #else
 				RHICmdList.SetUAVParameter(Shader, ResourceBindings.UAVs[Index].SlotIndex, UAV);
 #endif
-			}
+	}
 
 			for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
 			{
@@ -813,7 +868,7 @@ namespace Compushady
 #else
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
 #endif
-			}
+}
 
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
@@ -942,9 +997,9 @@ namespace Compushady
 				{
 					return ResourceArray.Samplers[Index]->GetRHI();
 				});
+			}
 		}
-	}
-}
+		}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
@@ -1130,11 +1185,6 @@ bool Compushady::Utils::ValidateResourceBindings(const FCompushadyResourceArray&
 
 bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled)
 {
-	const TArray<UCompushadyCBV*>& CBVs = ResourceArray.CBVs;
-	const TArray<UCompushadySRV*>& SRVs = ResourceArray.SRVs;
-	const TArray<UCompushadyUAV*>& UAVs = ResourceArray.UAVs;
-	const TArray<UCompushadySampler*>& Samplers = ResourceArray.Samplers;
-
 	FString ErrorMessages;
 	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
 	{
@@ -1616,6 +1666,26 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 	RHICmdList.EndRenderPass();
 }
 
+void Compushady::Utils::RasterizePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FGraphicsPipelineStateInitializer& PipelineStateInitializer, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction)
+{
+	FRHIRenderPassInfo PassInfo(RenderTarget, ERenderTargetActions::Load_Store);
+
+	if (DepthStencil)
+	{
+		PassInfo = FRHIRenderPassInfo(RenderTarget, ERenderTargetActions::Load_Store, DepthStencil, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil);
+	}
+	RHICmdList.BeginRenderPass(PassInfo, PassName);
+
+	RHICmdList.SetViewport(0, 0, 0.0f, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(), 1.0f);
+
+	RHICmdList.ApplyCachedRenderTargets(PipelineStateInitializer);
+	SetGraphicsPipelineState(RHICmdList, PipelineStateInitializer, 0);
+
+	InFunction();
+
+	RHICmdList.EndRenderPass();
+}
+
 bool Compushady::Utils::FinalizeShader(TArray<uint8>& ByteCode, const FString& TargetProfile, Compushady::FCompushadyShaderResourceBindings& ShaderResourceBindings, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const bool bIsSPIRV)
 {
 	const ERHIInterfaceType RHIInterfaceType = RHIGetInterfaceType();
@@ -1659,4 +1729,55 @@ bool Compushady::Utils::FinalizeShader(TArray<uint8>& ByteCode, const FString& T
 	}
 
 	return Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages);
+}
+
+void Compushady::Utils::FillRasterizerPipelineStateInitializer(FVertexShaderRHIRef VS, FMeshShaderRHIRef MS, FPixelShaderRHIRef PS, const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer)
+{
+	if (RasterizerConfig.FillMode == ECompushadyRasterizerFillMode::Solid)
+	{
+		switch (RasterizerConfig.CullMode)
+		{
+		case(ECompushadyRasterizerCullMode::None):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::ClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CW>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::CounterClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CCW>::GetRHI();
+			break;
+		}
+	}
+	else if (RasterizerConfig.FillMode == ECompushadyRasterizerFillMode::Wireframe)
+	{
+		switch (RasterizerConfig.CullMode)
+		{
+		case(ECompushadyRasterizerCullMode::None):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_None>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::ClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_CW>::GetRHI();
+			break;
+		case(ECompushadyRasterizerCullMode::CounterClockWise):
+			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_CCW>::GetRHI();
+			break;
+		}
+	}
+
+	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_LessEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
+	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
+	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
+
+	if (VS)
+	{
+		PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = GEmptyVertexDeclaration.VertexDeclarationRHI;
+		PipelineStateInitializer.BoundShaderState.VertexShaderRHI = VS;
+	}
+	else if (MS)
+	{
+		PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = nullptr;
+		PipelineStateInitializer.BoundShaderState.SetMeshShader(MS);
+	}
+
+	PipelineStateInitializer.BoundShaderState.PixelShaderRHI = PS;
 }

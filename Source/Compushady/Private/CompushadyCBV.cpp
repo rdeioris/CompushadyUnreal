@@ -2,6 +2,7 @@
 
 #include "CompushadyCBV.h"
 #include "Compushady.h"
+#include "Kismet/GameplayStatics.h"
 #if COMPUSHADY_UE_VERSION >= 54
 #include "Blueprint/BlueprintExceptionInfo.h"
 #endif
@@ -206,7 +207,11 @@ bool UCompushadyCBV::SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, 
 {
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
-		FMatrix44f Matrix = FMatrix44f(MinimalViewInfo.CalculateProjectionMatrix());
+		FMatrix ViewMatrix;
+		FMatrix ProjectionMatrix;
+		FMatrix ViewProjectionMatrix;
+		UGameplayStatics::GetViewProjectionMatrix(MinimalViewInfo, ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
+		FMatrix44f Matrix = FMatrix44f(ProjectionMatrix);
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
 		return true;
@@ -220,7 +225,7 @@ bool UCompushadyCBV::SetProjectionMatrixFromPlayerCameraManager(const int64 Offs
 	{
 		return false;
 	}
-	return SetProjectionMatrixFromMinimalViewInfo(Offset, PlayerCameraManager->GetCameraCachePOV(), bTranspose);
+	return SetProjectionMatrixFromMinimalViewInfo(Offset, PlayerCameraManager->GetCameraCacheView(), bTranspose);
 }
 
 bool UCompushadyCBV::SetViewMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose)
@@ -232,10 +237,13 @@ bool UCompushadyCBV::SetViewMatrixFromPlayerCameraManager(const int64 Offset, AP
 
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
-		const FMinimalViewInfo& MinimalViewInfo = PlayerCameraManager->GetCameraCachePOV();
-		FMatrix44f ViewMatrix = FRotationMatrix44f(FRotator3f(MinimalViewInfo.Rotation).GetInverse());
-		ViewMatrix *= FTranslationMatrix44f(-FVector3f(MinimalViewInfo.Location));
-		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? ViewMatrix.GetTransposed().M : ViewMatrix.M, 16 * sizeof(float));
+		const FMinimalViewInfo& MinimalViewInfo = PlayerCameraManager->GetCameraCacheView();
+		FMatrix ViewMatrix;
+		FMatrix ProjectionMatrix;
+		FMatrix ViewProjectionMatrix;
+		UGameplayStatics::GetViewProjectionMatrix(MinimalViewInfo, ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
+		FMatrix44f Matrix = FMatrix44f(ViewMatrix);
+		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
 		return true;
 	}
