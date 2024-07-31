@@ -17,8 +17,8 @@ Join the Discord server for support: https://discord.gg/2WvdpkYXHW
 
 Let's start with a glossary:
 
-* HLSL: a high level shading language from microsoft (you can write your shaders in this language)
-* GLSL: a high level shading language from Khronos (you can write your shaders in this language)
+* 'HLSL': a high level shading language from microsoft (you can write your shaders in this language)
+* 'GLSL': a high level shading language from Khronos (you can write your shaders in this language)
 * SPIRV: a low level shading language from Khronos (you can write your shaders in this language but it is very unpractical, higher level languages can compile to SPIRV)
 * DXIL: a low level shading language from Microsoft (limited support on Compushady, higher level languages can compile to DXIL)
 * CPU memory: your system RAM, both your programm and the GPU can access it (slower access from the GPU)
