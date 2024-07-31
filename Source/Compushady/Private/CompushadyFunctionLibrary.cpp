@@ -1209,14 +1209,14 @@ UCompushadySampler* UCompushadyFunctionLibrary::CreateCompushadySampler(const Te
 	return CompushadySampler;
 }
 
-UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromHLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint)
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromHLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
 {
 	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, ShaderCode);
 
-	if (!CompushadyBlendable->InitFromHLSL(ShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	if (!CompushadyBlendable->InitFromHLSL(ShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
 	{
 		return nullptr;
 	}
@@ -1229,14 +1229,14 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromH
 	return CompushadyBlendable;
 }
 
-UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint)
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
 {
 	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, ShaderCode);
 
-	if (!CompushadyBlendable->InitFromGLSL(ShaderCode, PixelShaderEntryPoint, ErrorMessages))
+	if (!CompushadyBlendable->InitFromGLSL(ShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
 	{
 		return nullptr;
 	}
@@ -1297,7 +1297,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompusha
 	{
 		return nullptr;
 	}
-	
+
 
 	return CompushadySRV;
 }

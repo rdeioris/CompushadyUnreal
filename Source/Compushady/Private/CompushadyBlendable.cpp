@@ -56,6 +56,7 @@ protected:
 
 				FCompushadySceneTextures SceneTextures = {};
 				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColorInput, SceneColorInput.Texture->GetRHI());
+
 				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneColorTexture->GetRHI());
 				SceneTextures.SetTexture(ECompushadySceneTexture::Depth, InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture->GetRHI());
 				SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, InOutInputs.SceneTextures.SceneTextures->GetContents()->CustomDepthTexture->GetRHI());
@@ -91,9 +92,19 @@ protected:
 class FCompushadyViewExtension : public ISceneViewExtension, public TSharedFromThis<FCompushadyViewExtension, ESPMode::ThreadSafe>, public ICompushadyViewExtension
 {
 public:
-	FCompushadyViewExtension(FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray) :
+	FCompushadyViewExtension(FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray, const ECompushadyPostProcessLocation PostProcessLocation) :
 		ICompushadyViewExtension(InPixelShaderRef, InPSResourceBindings, InPSResourceArray)
 	{
+		switch (PostProcessLocation)
+		{
+		case ECompushadyPostProcessLocation::AfterMotionBlur:
+			RequiredPass = EPostProcessingPass::MotionBlur;
+			break;
+		case ECompushadyPostProcessLocation::AfterTonemapping:
+		default:
+			RequiredPass = EPostProcessingPass::Tonemap;
+			break;
+		}
 	}
 
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
@@ -102,22 +113,35 @@ public:
 
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
 	{
-		if (Pass == EPostProcessingPass::Tonemap && bIsPassEnabled)
+		if (Pass == RequiredPass && bIsPassEnabled)
 		{
 			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyViewExtension::PostProcessCallback_RenderThread));
 		}
 	}
 
 	virtual int32 GetPriority() const override { return CompushadyPriority; }
+
+protected:
+	EPostProcessingPass RequiredPass;
 };
 
 class FCompushadyPostProcess : public FSceneViewExtensionBase, public ICompushadyViewExtension
 {
 public:
-	FCompushadyPostProcess(const FAutoRegister& AutoRegister, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray) :
+	FCompushadyPostProcess(const FAutoRegister& AutoRegister, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray, const ECompushadyPostProcessLocation PostProcessLocation) :
 		FSceneViewExtensionBase(AutoRegister),
 		ICompushadyViewExtension(InPixelShaderRef, InPSResourceBindings, InPSResourceArray)
 	{
+		switch (PostProcessLocation)
+		{
+		case ECompushadyPostProcessLocation::AfterMotionBlur:
+			RequiredPass = EPostProcessingPass::MotionBlur;
+			break;
+		case ECompushadyPostProcessLocation::AfterTonemapping:
+		default:
+			RequiredPass = EPostProcessingPass::Tonemap;
+			break;
+		}
 	}
 
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
@@ -126,24 +150,29 @@ public:
 
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
 	{
-		if (Pass == EPostProcessingPass::Tonemap && bIsPassEnabled)
+		if (Pass == RequiredPass && bIsPassEnabled)
 		{
 			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyPostProcess::PostProcessCallback_RenderThread));
 		}
 	}
 
 	virtual int32 GetPriority() const override { return CompushadyPriority; }
+
+protected:
+	EPostProcessingPass RequiredPass;
 };
 #endif
 
-bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
+bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages)
 {
+	PostProcessLocation = InPostProcessLocation;
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(ShaderCode, EntryPoint, PSResourceBindings, ErrorMessages);
 	return PixelShaderRef.IsValid();
 }
 
-bool UCompushadyBlendable::InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
+bool UCompushadyBlendable::InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages)
 {
+	PostProcessLocation = InPostProcessLocation;
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromGLSL(ShaderCode, EntryPoint, PSResourceBindings, ErrorMessages);
 	return PixelShaderRef.IsValid();
 }
@@ -152,7 +181,7 @@ void UCompushadyBlendable::OverrideBlendableSettings(class FSceneView& View, flo
 {
 #if COMPUSHADY_UE_VERSION >= 53
 	TArray<FSceneViewExtensionRef>& ViewExtensions = ((FSceneViewFamily*)View.Family)->ViewExtensions;
-	ViewExtensions.Add(MakeShared<FCompushadyViewExtension>(PixelShaderRef, PSResourceBindings, PSResourceArray));
+	ViewExtensions.Add(MakeShared<FCompushadyViewExtension>(PixelShaderRef, PSResourceBindings, PSResourceArray, PostProcessLocation));
 #endif
 }
 
@@ -177,7 +206,7 @@ FPixelShaderRHIRef UCompushadyBlendable::GetPixelShader() const
 
 FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int32 Priority)
 {
-	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = FSceneViewExtensions::NewExtension<FCompushadyPostProcess>(PixelShaderRef, PSResourceBindings, PSResourceArray);
+	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = FSceneViewExtensions::NewExtension<FCompushadyPostProcess>(PixelShaderRef, PSResourceBindings, PSResourceArray, PostProcessLocation);
 	FGuid Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension);
 	NewViewExtension->SetPriority(Priority);
 	return Guid;

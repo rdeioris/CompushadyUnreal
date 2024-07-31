@@ -210,10 +210,10 @@ public:
 	static UCompushadySoundWave* CreateCompushadyUAVSoundWave(const FString& Name, const float Duration, const int32 SampleRate = 48000, const int32 NumChannels = 2, UAudioBus* AudioBus = nullptr);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "PSResourceArray"), Category = "Compushady")
-	static UCompushadyBlendable* CreateCompushadyBlendableFromHLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main");
+	static UCompushadyBlendable* CreateCompushadyBlendableFromHLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main", const ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "PSResourceArray"), Category = "Compushady")
-	static UCompushadyBlendable* CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main");
+	static UCompushadyBlendable* CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main", const ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture);

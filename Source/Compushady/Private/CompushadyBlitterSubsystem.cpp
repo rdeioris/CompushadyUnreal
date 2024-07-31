@@ -201,7 +201,17 @@ public:
 #if COMPUSHADY_UE_VERSION >= 53
 	FScreenPassTexture PostProcessAfterMotionBlur_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
 	{
-		FScreenPassTexture SceneColor = InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
+#if COMPUSHADY_UE_VERSION >= 54
+		const FScreenPassTexture& SceneColorInput = FScreenPassTexture::CopyFromSlice(GraphBuilder, InOutInputs.GetInput(EPostProcessMaterialInput::SceneColor));
+#else
+		FScreenPassTexture SceneColorInput = InOutInputs.GetInput(EPostProcessMaterialInput::SceneColor);
+#endif
+
+		FScreenPassRenderTarget Output = InOutInputs.OverrideOutput;
+		if (!Output.IsValid())
+		{
+			Output = FScreenPassRenderTarget::CreateFromInput(GraphBuilder, SceneColorInput, View.GetOverwriteLoadAction(), TEXT("FCompushadyBlitterViewExtension::PostProcessAfterMotionBlur_RenderThread"));
+		}
 
 		TArray<FCompushadyBlitterDrawable> CurrentDrawables;
 		{
@@ -211,10 +221,7 @@ public:
 
 		if (CurrentDrawables.Num() > 0)
 		{
-			
-			FScreenPassRenderTarget Output = FScreenPassRenderTarget::CreateFromInput(GraphBuilder, SceneColor, View.GetOverwriteLoadAction(), TEXT("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"));
-
-			AddCopyTexturePass(GraphBuilder, SceneColor.Texture, Output.Texture, FRHICopyTextureInfo());
+			AddCopyTexturePass(GraphBuilder, SceneColorInput.Texture, Output.Texture, FRHICopyTextureInfo());
 
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
@@ -228,11 +235,9 @@ public:
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
 						});
 				});
-
-			return Output;
 		}
 
-		return SceneColor;
+		return Output;
 	}
 
 	void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled) override

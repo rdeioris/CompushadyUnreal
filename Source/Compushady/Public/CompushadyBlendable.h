@@ -18,8 +18,8 @@ class COMPUSHADY_API UCompushadyBlendable : public UObject, public ICompushadyPi
 	GENERATED_BODY()
 
 public:
-	bool InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
-	bool InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages);
+	bool InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
+	bool InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
 
 	/* IBlendableInterface implementation */
 	virtual void OverrideBlendableSettings(class FSceneView& View, float Weight) const override;
@@ -41,4 +41,6 @@ protected:
 
 	UPROPERTY()
 	FCompushadyResourceArray PSResourceArray;
+
+	ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping;
 };

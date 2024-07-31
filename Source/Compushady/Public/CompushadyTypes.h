@@ -192,6 +192,13 @@ enum class ECompushadyKeepAspectRatio : uint8
 };
 
 UENUM(BlueprintType)
+enum class ECompushadyPostProcessLocation : uint8
+{
+	AfterTonemapping,
+	AfterMotionBlur
+};
+
+UENUM(BlueprintType)
 enum class ECompushadySceneTexture : uint8
 {
 	None = 0,
@@ -525,7 +532,7 @@ namespace Compushady
 		COMPUSHADY_API void RasterizePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FGraphicsPipelineStateInitializer& PipelineStateInitializer, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction);
 
 		COMPUSHADY_API bool FinalizeShader(TArray<uint8>& ByteCode, const FString& TargetProfile, Compushady::FCompushadyShaderResourceBindings& ShaderResourceBindings, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const bool bIsSPIRV);
-	
+
 		COMPUSHADY_API void FillRasterizerPipelineStateInitializer(FVertexShaderRHIRef VS, FMeshShaderRHIRef MS, FPixelShaderRHIRef PS, const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer);
 	}
 }
