@@ -195,7 +195,8 @@ UENUM(BlueprintType)
 enum class ECompushadyPostProcessLocation : uint8
 {
 	AfterTonemapping,
-	AfterMotionBlur
+	AfterMotionBlur,
+	PrePostProcess
 };
 
 UENUM(BlueprintType)

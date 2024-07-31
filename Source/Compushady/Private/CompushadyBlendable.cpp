@@ -97,6 +97,9 @@ public:
 	{
 		switch (PostProcessLocation)
 		{
+		case ECompushadyPostProcessLocation::PrePostProcess:
+			bPrePostProcess = true;
+			break;
 		case ECompushadyPostProcessLocation::AfterMotionBlur:
 			RequiredPass = EPostProcessingPass::MotionBlur;
 			break;
@@ -113,16 +116,63 @@ public:
 
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
 	{
-		if (Pass == RequiredPass && bIsPassEnabled)
+		if (!bPrePostProcess && Pass == RequiredPass && bIsPassEnabled)
 		{
 			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyViewExtension::PostProcessCallback_RenderThread));
 		}
 	}
 
+	void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override
+	{
+		if (!bPrePostProcess)
+		{
+			return;
+		}
+
+		TRDGUniformBufferRef<FSceneTextureUniformParameters> InputSceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
+
+		FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
+		TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
+
+		GraphBuilder.AddPass(
+			RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
+			ERDGPassFlags::None,
+			[this, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
+			{
+				FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
+
+				FCompushadySceneTextures SceneTextures = {};
+				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColorInput, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
+
+				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::Depth, InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, InputSceneTextures->GetContents()->CustomDepthTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, InputSceneTextures->GetContents()->GBufferATexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, InputSceneTextures->GetContents()->GBufferBTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, InputSceneTextures->GetContents()->GBufferCTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, InputSceneTextures->GetContents()->GBufferDTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, InputSceneTextures->GetContents()->GBufferETexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferF, InputSceneTextures->GetContents()->GBufferFTexture->GetRHI());
+
+				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
+					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
+					{
+						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
+							0, 0, 1, 1,
+							RenderTarget->GetSizeXY(),
+							FIntPoint(1, 1),
+							INDEX_NONE,
+							false, EDRF_UseTriangleOptimization);
+					});
+			});
+	}
+
 	virtual int32 GetPriority() const override { return CompushadyPriority; }
 
 protected:
-	EPostProcessingPass RequiredPass;
+	EPostProcessingPass RequiredPass = EPostProcessingPass::Tonemap;
+	bool bPrePostProcess = false;
 };
 
 class FCompushadyPostProcess : public FSceneViewExtensionBase, public ICompushadyViewExtension
@@ -134,6 +184,9 @@ public:
 	{
 		switch (PostProcessLocation)
 		{
+		case ECompushadyPostProcessLocation::PrePostProcess:
+			bPrePostProcess = true;
+			break;
 		case ECompushadyPostProcessLocation::AfterMotionBlur:
 			RequiredPass = EPostProcessingPass::MotionBlur;
 			break;
@@ -150,16 +203,63 @@ public:
 
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
 	{
-		if (Pass == RequiredPass && bIsPassEnabled)
+		if (!bPrePostProcess && Pass == RequiredPass && bIsPassEnabled)
 		{
 			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyPostProcess::PostProcessCallback_RenderThread));
 		}
 	}
 
+	void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override
+	{
+		if (!bPrePostProcess)
+		{
+			return;
+		}
+
+		TRDGUniformBufferRef<FSceneTextureUniformParameters> InputSceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
+
+		FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
+		TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
+
+		GraphBuilder.AddPass(
+			RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
+			ERDGPassFlags::None,
+			[this, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
+			{
+				FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
+
+				FCompushadySceneTextures SceneTextures = {};
+				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColorInput, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
+
+				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::Depth, InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, InputSceneTextures->GetContents()->CustomDepthTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, InputSceneTextures->GetContents()->GBufferATexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, InputSceneTextures->GetContents()->GBufferBTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, InputSceneTextures->GetContents()->GBufferCTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, InputSceneTextures->GetContents()->GBufferDTexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, InputSceneTextures->GetContents()->GBufferETexture->GetRHI());
+				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferF, InputSceneTextures->GetContents()->GBufferFTexture->GetRHI());
+
+				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
+					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
+					{
+						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
+							0, 0, 1, 1,
+							RenderTarget->GetSizeXY(),
+							FIntPoint(1, 1),
+							INDEX_NONE,
+							false, EDRF_UseTriangleOptimization);
+					});
+			});
+	}
+
 	virtual int32 GetPriority() const override { return CompushadyPriority; }
 
 protected:
-	EPostProcessingPass RequiredPass;
+	EPostProcessingPass RequiredPass = EPostProcessingPass::Tonemap;
+	bool bPrePostProcess = false;
 };
 #endif
 
