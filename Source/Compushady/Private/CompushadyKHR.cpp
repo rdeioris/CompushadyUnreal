@@ -11,7 +11,7 @@ namespace Compushady
 	namespace KHR
 	{
 		static void* LibHandle = nullptr;
-		static const uint8* (*GLSLToSpirV)(const char* Glsl, const SIZE_T GlslSize, const char* ShaderModel, const uint32 Flags, SIZE_T* SpirVSize, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
+		static const uint8* (*GLSLToSpirV)(const char* Glsl, const SIZE_T GlslSize, const char* ShaderModel, const char* EntryPoint, const uint32 Flags, SIZE_T* SpirVSize, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
 		static const uint8* (*SpirVToHLSL)(const uint8* SpirV, const SIZE_T SpirVSize, const uint32 Flags, SIZE_T* HlslSize, char** EntryPointPtr, SIZE_T* EntryPointLen, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
 		static const uint8* (*SpirVDisassemble)(const uint8* SpirV, const SIZE_T SpirVSize, const uint32 Flags, SIZE_T* AssemblySize, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
 		static const uint8* (*SpirVToGLSL)(const uint8* SpirV, const SIZE_T SpirVSize, const uint32 Flags, SIZE_T* GlslSize, char** ErrorPtr, SIZE_T* ErrorLen, void* (*Allocator)(const SIZE_T)) = nullptr;
@@ -44,7 +44,7 @@ namespace Compushady
 
 			if (!GLSLToSpirV)
 			{
-				GLSLToSpirV = reinterpret_cast<const uint8 * (*)(const char*, const SIZE_T, const char*, const uint32, SIZE_T*, char**, SIZE_T*, void* (*)(const SIZE_T))>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_glsl_to_spv")));
+				GLSLToSpirV = reinterpret_cast<const uint8 * (*)(const char*, const SIZE_T, const char*, const char*, const uint32, SIZE_T*, char**, SIZE_T*, void* (*)(const SIZE_T))>(FPlatformProcess::GetDllExport(LibHandle, TEXT("compushady_khr_glsl_to_spv")));
 
 				if (!GLSLToSpirV)
 				{
@@ -114,7 +114,13 @@ bool Compushady::CompileGLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	SIZE_T SpvSize = 0;
 	char* Errors = nullptr;
 	SIZE_T ErrorsLen = 0;
-	const uint8* Data = KHR::GLSLToSpirV(reinterpret_cast<const char*>(ShaderCode.GetData()), ShaderCode.Num(), TCHAR_TO_UTF8(*TargetProfile), 0, &SpvSize, &Errors, &ErrorsLen, KHR::Malloc);
+
+	TArray<uint8> TargetProfileC;
+	StringToCString(TargetProfile, TargetProfileC);
+	TArray<uint8> EntryPointC;
+	StringToCString(EntryPoint, EntryPointC);
+
+	const uint8* Data = KHR::GLSLToSpirV(reinterpret_cast<const char*>(ShaderCode.GetData()), ShaderCode.Num(), reinterpret_cast<const char*>(TargetProfileC.GetData()), reinterpret_cast<const char*>(EntryPointC.GetData()), 0, &SpvSize, &Errors, &ErrorsLen, KHR::Malloc);
 	if (!Data)
 	{
 		if (Errors)

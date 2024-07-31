@@ -9,26 +9,23 @@
 #include "SceneViewExtension.h"
 #include "SystemTextures.h"
 
-class FCompushadyPostProcess : public ISceneViewExtension, public TSharedFromThis<FCompushadyPostProcess, ESPMode::ThreadSafe>
+#include "CompushadyBlitterSubsystem.h"
+
+class ICompushadyViewExtension
 {
 public:
-	FCompushadyPostProcess(FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray) :
+	void SetPriority(const int32 NewPriority)
+	{
+		CompushadyPriority = NewPriority;
+	}
+
+protected:
+
+	ICompushadyViewExtension(FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray) :
 		PixelShaderRef(InPixelShaderRef),
 		PSResourceBindings(InPSResourceBindings),
 		PSResourceArray(InPSResourceArray)
 	{
-	}
-
-	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
-	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {}
-	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override {}
-
-	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
-	{
-		if (Pass == EPostProcessingPass::Tonemap && bIsPassEnabled)
-		{
-			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyPostProcess::PostProcessCallback_RenderThread));
-		}
 	}
 
 	FScreenPassTexture PostProcessCallback_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
@@ -40,11 +37,12 @@ public:
 #endif
 
 		FScreenPassRenderTarget Output = InOutInputs.OverrideOutput;
-
 		if (!Output.IsValid())
 		{
-			Output = FScreenPassRenderTarget::CreateFromInput(GraphBuilder, SceneColorInput, View.GetOverwriteLoadAction(), TEXT("Compushady PostProcessing Target"));
+			Output = FScreenPassRenderTarget::CreateFromInput(GraphBuilder, SceneColorInput, View.GetOverwriteLoadAction(), TEXT("ICompushadyViewExtension::PostProcessCallback_RenderThread"));
 		}
+
+		GraphBuilder.ConvertToExternalTexture(Output.Texture);
 
 		FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
 		TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
@@ -82,13 +80,61 @@ public:
 			});
 
 		return Output;
-#endif
 	}
 
 	FPixelShaderRHIRef PixelShaderRef;
 	FCompushadyResourceBindings PSResourceBindings;
 	FCompushadyResourceArray PSResourceArray;
+	int32 CompushadyPriority = 0;
 };
+
+class FCompushadyViewExtension : public ISceneViewExtension, public TSharedFromThis<FCompushadyViewExtension, ESPMode::ThreadSafe>, public ICompushadyViewExtension
+{
+public:
+	FCompushadyViewExtension(FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray) :
+		ICompushadyViewExtension(InPixelShaderRef, InPSResourceBindings, InPSResourceArray)
+	{
+	}
+
+	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {}
+	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override {}
+
+	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
+	{
+		if (Pass == EPostProcessingPass::Tonemap && bIsPassEnabled)
+		{
+			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyViewExtension::PostProcessCallback_RenderThread));
+		}
+	}
+
+	virtual int32 GetPriority() const override { return CompushadyPriority; }
+};
+
+class FCompushadyPostProcess : public FSceneViewExtensionBase, public ICompushadyViewExtension
+{
+public:
+	FCompushadyPostProcess(const FAutoRegister& AutoRegister, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray) :
+		FSceneViewExtensionBase(AutoRegister),
+		ICompushadyViewExtension(InPixelShaderRef, InPSResourceBindings, InPSResourceArray)
+	{
+	}
+
+	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {}
+	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override {}
+
+	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
+	{
+		if (Pass == EPostProcessingPass::Tonemap && bIsPassEnabled)
+		{
+			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyPostProcess::PostProcessCallback_RenderThread));
+		}
+	}
+
+	virtual int32 GetPriority() const override { return CompushadyPriority; }
+};
+#endif
 
 bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
@@ -106,7 +152,7 @@ void UCompushadyBlendable::OverrideBlendableSettings(class FSceneView& View, flo
 {
 #if COMPUSHADY_UE_VERSION >= 53
 	TArray<FSceneViewExtensionRef>& ViewExtensions = ((FSceneViewFamily*)View.Family)->ViewExtensions;
-	ViewExtensions.Add(MakeShared<FCompushadyPostProcess>(PixelShaderRef, PSResourceBindings, PSResourceArray));
+	ViewExtensions.Add(MakeShared<FCompushadyViewExtension>(PixelShaderRef, PSResourceBindings, PSResourceArray));
 #endif
 }
 
@@ -127,4 +173,12 @@ bool UCompushadyBlendable::UpdateResources(const FCompushadyResourceArray& InPSR
 FPixelShaderRHIRef UCompushadyBlendable::GetPixelShader() const
 {
 	return PixelShaderRef;
+}
+
+FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int32 Priority)
+{
+	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = FSceneViewExtensions::NewExtension<FCompushadyPostProcess>(PixelShaderRef, PSResourceBindings, PSResourceArray);
+	FGuid Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension);
+	NewViewExtension->SetPriority(Priority);
+	return Guid;
 }

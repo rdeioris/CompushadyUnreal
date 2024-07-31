@@ -201,6 +201,8 @@ public:
 #if COMPUSHADY_UE_VERSION >= 53
 	FScreenPassTexture PostProcessAfterMotionBlur_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
 	{
+		FScreenPassTexture SceneColor = InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
+
 		TArray<FCompushadyBlitterDrawable> CurrentDrawables;
 		{
 			FScopeLock DrawablesLock(&AfterMotionBlurDrawablesCriticalSection);
@@ -209,8 +211,7 @@ public:
 
 		if (CurrentDrawables.Num() > 0)
 		{
-			FScreenPassTexture SceneColor = InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
-
+			
 			FScreenPassRenderTarget Output = FScreenPassRenderTarget::CreateFromInput(GraphBuilder, SceneColor, View.GetOverwriteLoadAction(), TEXT("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"));
 
 			AddCopyTexturePass(GraphBuilder, SceneColor.Texture, Output.Texture, FRHICopyTextureInfo());
@@ -231,7 +232,7 @@ public:
 			return Output;
 		}
 
-		return InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
+		return SceneColor;
 	}
 
 	void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled) override
@@ -433,6 +434,13 @@ bool UCompushadyBlitterSubsystem::AddVSPSRasterizerFromHLSL(const FString& Verte
 	return true;
 }
 #endif
+
+
+FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension)
+{
+	AdditionalViewExtensions.Add(InViewExtension);
+	return FGuid::NewGuid();
+}
 
 // let's put them here to avoid circular includes
 void UCompushadyResource::Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)

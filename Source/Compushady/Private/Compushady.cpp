@@ -29,6 +29,12 @@ namespace Compushady
 		ShaderCode.Append(reinterpret_cast<const uint8*>(*SourceUTF8), SourceUTF8.Len());
 	}
 
+	void StringToCString(const FString& Code, TArray<uint8>& ShaderCode)
+	{
+		StringToShaderCode(Code, ShaderCode);
+		ShaderCode.Add(0);
+	}
+
 	FString ShaderCodeToString(const TArray<uint8>& ShaderCode)
 	{
 		FUTF8ToTCHAR Converter(reinterpret_cast<const UTF8CHAR*>(ShaderCode.GetData()), ShaderCode.Num());

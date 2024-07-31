@@ -10,7 +10,7 @@
 #include "CompushadyBlendable.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS(BlueprintType)
 class COMPUSHADY_API UCompushadyBlendable : public UObject, public ICompushadyPipeline, public IBlendableInterface
@@ -28,6 +28,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResources(const FCompushadyResourceArray& InPSResourceArray, FString& ErrorMessages);
 
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	FGuid AddToBlitter(UObject* WorldContextObject, const int32 Priority = 0);
+
 	FPixelShaderRHIRef GetPixelShader() const;
 
 protected:
@@ -35,7 +38,7 @@ protected:
 
 	UPROPERTY()
 	FCompushadyResourceBindings PSResourceBindings;
-	
+
 	UPROPERTY()
 	FCompushadyResourceArray PSResourceArray;
 };

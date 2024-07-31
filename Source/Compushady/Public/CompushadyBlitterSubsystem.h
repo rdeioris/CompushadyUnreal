@@ -29,6 +29,8 @@ struct FCompushadyBlitterRasterizer
 	int32 NumInstances;
 };
 
+class FSceneViewExtensionBase;
+
 UCLASS()
 class COMPUSHADY_API UCompushadyBlitterSubsystem : public UWorldSubsystem
 {
@@ -47,6 +49,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
+	FGuid AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension);
+
 protected:
 	TSharedPtr<class FCompushadyBlitterViewExtension, ESPMode::ThreadSafe> ViewExtension;
+
+	TArray<TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe>> AdditionalViewExtensions;
 };
