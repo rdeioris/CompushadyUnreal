@@ -17,17 +17,21 @@ Join the Discord server for support: https://discord.gg/2WvdpkYXHW
 
 Let's start with a glossary:
 
-* 'HLSL': a high level shading language from microsoft (you can write your shaders in this language)
-* 'GLSL': a high level shading language from Khronos (you can write your shaders in this language)
-* SPIRV: a low level shading language from Khronos (you can write your shaders in this language but it is very unpractical, higher level languages can compile to SPIRV)
-* DXIL: a low level shading language from Microsoft (limited support on Compushady, higher level languages can compile to DXIL)
-* CPU memory: your system RAM, both your programm and the GPU can access it (slower access from the GPU)
-* GPU memory: the memory directly installed on the GPU (if available, very quick access) or a portion of the system ram dedcated to it (in this case the access will be slower)
-* CBV: Constant Buffer View, it represents a tiny block (generally no more than 4096 bytes) of constantly changing data accessible by a shader. Those blocks are generally mapped to the CPU memory.
-* SRV: Shader Resource View, it represents potentially big readonly data in the form of buffers (raw bytes) or textures.
-* UAV: Unordered Access View, it represents potentially big read/write data in the form of buffers (raw bytes) or textures.
-* Samplers: blocks of configuration defining the filtering and addressing mode when reading pixels from textures.
-* Blitter: a Compushady subsystem for quickly drawing on the screen or applying postt processing effects
+* `HLSL`: a high level shading language from microsoft (you can write your shaders in this language)
+* `GLSL`: a high level shading language from Khronos (you can write your shaders in this language)
+* `SPIRV`: a low level shading language from Khronos (you can write your shaders in this language but it is very unpractical, higher level languages can compile to SPIRV)
+* `DXIL`: a low level shading language from Microsoft (limited support on Compushady, higher level languages can compile to DXIL)
+* `CPU memory`: your system RAM, both your programm and the GPU can access it (slower access from the GPU)
+* `GPU memory`: the memory directly installed on the GPU (if available, very quick access) or a portion of the system ram dedcated to it (in this case the access will be slower)
+* `CBV`: Constant Buffer View, it represents a tiny block (generally no more than 4096 bytes) of constantly changing data accessible by a shader. Those blocks are generally mapped to the CPU memory.
+* `SRV`: Shader Resource View, it represents potentially big readonly data in the form of buffers (raw bytes) or textures.
+* `UAV`: Unordered Access View, it represents potentially big read/write data in the form of buffers (raw bytes) or textures.
+* `Samplers`: blocks of configuration defining the filtering and addressing mode when reading pixels from textures.
+* `RTV`: Render Target View, a texture to which the Rasterizer (see below) can write to
+* `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffer. The Rasterizer can optionally write to it.
+* `Compute`: A compute shader, composed by a shader and a set of 0 or more CBV, SRV, UAV or samplers. You use Compute for running generic task on a GPU
+* `Rasterizer`: A vertex + pixel shader or mesh + pixel shader (where supported) with a set of 0 or more RTV, CBV, SRV, UAV or samplers and 0 or 1 DSV. You use a Rasterizer for drawing triangles, lines and points using the GPU.
+* `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
 
 ## Tutorials
 
