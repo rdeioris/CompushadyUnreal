@@ -40,6 +40,8 @@ public:
 	void Initialize(FSubsystemCollectionBase& Collection) override;
 	void Deinitialize() override;
 
+	bool ShouldCreateSubsystem(UObject* Outer) const override;
+
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 

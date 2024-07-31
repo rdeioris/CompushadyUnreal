@@ -286,6 +286,11 @@ protected:
 	FSamplerStateRHIRef SamplerStateRef;
 };
 
+bool UCompushadyBlitterSubsystem::ShouldCreateSubsystem(UObject* Outer) const
+{
+	return (RHIGetInterfaceType() == ERHIInterfaceType::D3D12 || RHIGetInterfaceType() == ERHIInterfaceType::Vulkan);
+}
+
 void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	FString ErrorMessages;
