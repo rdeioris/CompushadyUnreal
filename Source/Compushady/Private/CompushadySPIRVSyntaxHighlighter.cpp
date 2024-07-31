@@ -7,7 +7,6 @@
 #include "Runtime/Slate/Public/Framework/Text/SlateTextRun.h"
 
 
-
 TSharedRef<FCompushadySyntaxHighlighter> FCompushadySyntaxHighlighter::CreateSPIRV()
 {
 	// https://github.com/KhronosGroup/SPIRV-Headers/blob/main/include/spirv/unified1/spirv.json

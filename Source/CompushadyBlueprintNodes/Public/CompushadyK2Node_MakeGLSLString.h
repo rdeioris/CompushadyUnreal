@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "CompushadyK2Node_MakeStringBase.h"
-#include "CompushadyK2Node_MakeHLSLString.generated.h"
+#include "CompushadyK2Node_MakeGLSLString.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class COMPUSHADYBLUEPRINTNODES_API UCompushadyK2Node_MakeHLSLString : public UCompushadyK2Node_MakeStringBase
+class COMPUSHADYBLUEPRINTNODES_API UCompushadyK2Node_MakeGLSLString : public UCompushadyK2Node_MakeStringBase
 {
 	GENERATED_BODY()
 
