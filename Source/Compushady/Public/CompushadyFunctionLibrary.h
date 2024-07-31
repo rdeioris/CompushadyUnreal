@@ -87,9 +87,6 @@ public:
 	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromQuad3DGrid(const FString& Name, const int32 Cols, const int32 Rows, const float XIncrement, const float YIncrement, const float Z, const int32 Stride, const bool bCCW);
-
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -220,6 +217,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromUAV(UCompushadyUAV* UAV);
 
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromWorldSceneAccelerationStructure(UObject* WorldContextObject);

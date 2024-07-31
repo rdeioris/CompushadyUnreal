@@ -284,6 +284,94 @@ TArray<FVector> UCompushadyResource::ReadbackFloatsToVectorArraySync(const int32
 	return Vectors;
 }
 
+TArray<FVector2D> UCompushadyResource::ReadbackFloatsToVector2ArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+{
+	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
+	{
+		return {};
+	}
+
+	TArray<FVector2D> Vectors;
+	Vectors.AddUninitialized(Elements);
+
+	MapReadAndExecuteSync([this, Offset, Elements, Stride, &Vectors](const void* Data)
+		{
+			const int64 NumFloats = FMath::Min<int64>((GetBufferSize() - Offset) / Stride, Elements);
+			const uint8* SourcePtr = reinterpret_cast<const uint8*>(Data) + Offset;
+
+			for (int64 Index = 0; Index < NumFloats; Index++)
+			{
+				const float* Floats = reinterpret_cast<const float*>(SourcePtr);
+				Vectors[Index].X = Floats[0];
+				Vectors[Index].Y = Floats[1];
+
+				SourcePtr += Stride;
+			}
+		});
+
+	return Vectors;
+}
+
+TArray<FVector4> UCompushadyResource::ReadbackFloatsToVector4ArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+{
+	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
+	{
+		return {};
+	}
+
+	TArray<FVector4> Vectors;
+	Vectors.AddUninitialized(Elements);
+
+	MapReadAndExecuteSync([this, Offset, Elements, Stride, &Vectors](const void* Data)
+		{
+			const int64 NumFloats = FMath::Min<int64>((GetBufferSize() - Offset) / Stride, Elements);
+			const uint8* SourcePtr = reinterpret_cast<const uint8*>(Data) + Offset;
+
+			for (int64 Index = 0; Index < NumFloats; Index++)
+			{
+				const float* Floats = reinterpret_cast<const float*>(SourcePtr);
+				Vectors[Index].X = Floats[0];
+				Vectors[Index].Y = Floats[1];
+				Vectors[Index].Z = Floats[2];
+				Vectors[Index].W = Floats[3];
+
+				SourcePtr += Stride;
+			}
+		});
+
+	return Vectors;
+}
+
+TArray<FLinearColor> UCompushadyResource::ReadbackFloatsToLinearColorArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+{
+	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
+	{
+		return {};
+	}
+
+	TArray<FLinearColor> Vectors;
+	Vectors.AddUninitialized(Elements);
+
+	MapReadAndExecuteSync([this, Offset, Elements, Stride, &Vectors](const void* Data)
+		{
+			const int64 NumFloats = FMath::Min<int64>((GetBufferSize() - Offset) / Stride, Elements);
+			const uint8* SourcePtr = reinterpret_cast<const uint8*>(Data) + Offset;
+
+			for (int64 Index = 0; Index < NumFloats; Index++)
+			{
+				const float* Floats = reinterpret_cast<const float*>(SourcePtr);
+				Vectors[Index].R = Floats[0];
+				Vectors[Index].G = Floats[1];
+				Vectors[Index].B = Floats[2];
+				Vectors[Index].A = Floats[3];
+
+				SourcePtr += Stride;
+			}
+		});
+
+	return Vectors;
+}
+
 TArray<int32> UCompushadyResource::ReadbackIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
 {
 	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
@@ -302,7 +390,7 @@ TArray<int32> UCompushadyResource::ReadbackIntsToIntArraySync(const int32 Offset
 			for (int64 Index = 0; Index < NumFloats; Index++)
 			{
 				const int32* Ints = reinterpret_cast<const int32*>(SourcePtr);
-				Values[Index]= *Ints;
+				Values[Index] = *Ints;
 				SourcePtr += Stride;
 			}
 		});
@@ -840,7 +928,7 @@ namespace Compushady
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #endif
 				}
-		}
+			}
 
 			for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
 			{
@@ -854,7 +942,7 @@ namespace Compushady
 #else
 				RHICmdList.SetUAVParameter(Shader, ResourceBindings.UAVs[Index].SlotIndex, UAV);
 #endif
-	}
+			}
 
 			for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
 			{
@@ -868,7 +956,7 @@ namespace Compushady
 #else
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
 #endif
-}
+			}
 
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
@@ -958,8 +1046,8 @@ namespace Compushady
 					continue;
 				}
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
-			}
-		}
+	}
+}
 #endif
 
 		template<typename SHADER_TYPE>
@@ -997,7 +1085,7 @@ namespace Compushady
 				{
 					return ResourceArray.Samplers[Index]->GetRHI();
 				});
-			}
+		}
 		}
 		}
 

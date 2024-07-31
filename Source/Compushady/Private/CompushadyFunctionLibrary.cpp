@@ -258,76 +258,6 @@ UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyVSPSRasterize
 	return CompushadyRasterizer;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromQuad3DGrid(const FString& Name, const int32 Cols, const int32 Rows, const float XIncrement, const float YIncrement, const float Z, const int32 Stride, const bool bCCW)
-{
-	if (Cols <= 0 || Rows <= 0)
-	{
-		return nullptr;
-	}
-
-	TArray<float> Data;
-	Data.AddUninitialized(Cols * Rows * 3 * 6);
-
-	for (int32 Row = 0; Row < Rows; Row++)
-	{
-		for (int32 Col = 0; Col < Cols; Col++)
-		{
-			int32 Offset = (Row * Cols + Col) * 3 * 6;
-
-			Data[Offset++] = Col * XIncrement;
-			Data[Offset++] = Row * YIncrement;
-			Data[Offset++] = Z;
-
-			if (!bCCW)
-			{
-				Data[Offset++] = (Col + 1) * XIncrement;
-				Data[Offset++] = Row * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = Col * XIncrement;
-				Data[Offset++] = (Row + 1) * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = (Col + 1) * XIncrement;
-				Data[Offset++] = Row * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = (Col + 1) * XIncrement;
-				Data[Offset++] = (Row + 1) * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = Col * XIncrement;
-				Data[Offset++] = (Row + 1) * YIncrement;
-				Data[Offset++] = Z;
-			}
-			else
-			{
-				Data[Offset++] = Col * XIncrement;
-				Data[Offset++] = (Row + 1) * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = (Col + 1) * XIncrement;
-				Data[Offset++] = Row * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = (Col + 1) * XIncrement;
-				Data[Offset++] = Row * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = Col * XIncrement;
-				Data[Offset++] = (Row + 1) * YIncrement;
-				Data[Offset++] = Z;
-
-				Data[Offset++] = (Col + 1) * XIncrement;
-				Data[Offset++] = (Row + 1) * YIncrement;
-				Data[Offset++] = Z;
-			}
-		}
-	}
-
-	return CreateCompushadySRVStructuredBufferFromFloatArray(Name, Data, Stride);
-}
-
 UCompushadyRasterizer* UCompushadyFunctionLibrary::CreateCompushadyMSPSRasterizerFromHLSLString(const FString& MeshShaderSource, const FString& PixelShaderSource, const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages, const FString& MeshShaderEntryPoint, const FString& PixelShaderEntryPoint)
 {
 	UCompushadyRasterizer* CompushadyRasterizer = NewObject<UCompushadyRasterizer>();
@@ -1326,6 +1256,48 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(
 	{
 		return nullptr;
 	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompushadyUAV* UAV)
+{
+	if (!UAV)
+	{
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+
+	if (UAV->IsValidBuffer())
+	{
+		if (EnumHasAnyFlags(UAV->GetBufferRHI()->GetUsage(), EBufferUsageFlags::StructuredBuffer))
+		{
+			if (!CompushadySRV->InitializeFromStructuredBuffer(UAV->GetBufferRHI()))
+			{
+				return nullptr;
+			}
+		}
+		else
+		{
+			if (!CompushadySRV->InitializeFromBuffer(UAV->GetBufferRHI(), UAV->GetRHI()->GetDesc().Common.Format))
+			{
+				return nullptr;
+			}
+		}
+	}
+	else if (UAV->IsValidTexture())
+	{
+		if (!CompushadySRV->InitializeFromTexture(UAV->GetTextureRHI()))
+		{
+			return nullptr;
+		}
+	}
+	else
+	{
+		return nullptr;
+	}
+	
 
 	return CompushadySRV;
 }

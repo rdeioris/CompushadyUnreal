@@ -201,8 +201,6 @@ public:
 #if COMPUSHADY_UE_VERSION >= 53
 	FScreenPassTexture PostProcessAfterMotionBlur_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
 	{
-		FScreenPassTexture Output = InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
-
 		TArray<FCompushadyBlitterDrawable> CurrentDrawables;
 		{
 			FScopeLock DrawablesLock(&AfterMotionBlurDrawablesCriticalSection);
@@ -211,6 +209,12 @@ public:
 
 		if (CurrentDrawables.Num() > 0)
 		{
+			FScreenPassTexture SceneColor = InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
+
+			FScreenPassRenderTarget Output = FScreenPassRenderTarget::CreateFromInput(GraphBuilder, SceneColor, View.GetOverwriteLoadAction(), TEXT("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"));
+
+			AddCopyTexturePass(GraphBuilder, SceneColor.Texture, Output.Texture, FRHICopyTextureInfo());
+
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
 				ERDGPassFlags::None,
@@ -223,14 +227,16 @@ public:
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
 						});
 				});
+
+			return Output;
 		}
 
-		return Output;
+		return InOutInputs.ReturnUntouchedSceneColorForPostProcessing(GraphBuilder);
 	}
 
 	void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled) override
 	{
-		if (Pass == EPostProcessingPass::MotionBlur && bIsPassEnabled)
+		if (Pass == EPostProcessingPass::MotionBlur && bIsPassEnabled && AfterMotionBlurDrawables.Num() > 0)
 		{
 			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyBlitterViewExtension::PostProcessAfterMotionBlur_RenderThread));
 		}
@@ -258,13 +264,6 @@ public:
 		AfterMotionBlurDrawables.Add(Drawable);
 	}
 
-	void AddRasterizer(const FCompushadyBlitterRasterizer& Rasterizer)
-	{
-		FScopeLock RasterizersLock(&RasterizersCriticalSection);
-
-		Rasterizers.Add(Rasterizer);
-	}
-
 protected:
 	FCriticalSection DrawablesCriticalSection;
 	TArray<FCompushadyBlitterDrawable> Drawables;
@@ -274,11 +273,6 @@ protected:
 
 	FCriticalSection AfterMotionBlurDrawablesCriticalSection;
 	TArray<FCompushadyBlitterDrawable> AfterMotionBlurDrawables;
-
-	FCriticalSection RasterizersCriticalSection;
-	TArray<FCompushadyBlitterRasterizer> Rasterizers;
-	// reset at every frame
-	TArray<FCompushadyBlitterRasterizer> CurrentRasterizers;
 
 	FVertexShaderRHIRef VertexShaderRef;
 	FCompushadyResourceBindings VSResourceBindings;
@@ -377,6 +371,7 @@ void UCompushadyBlitterSubsystem::AddAfterMotionBlurDrawable(UCompushadyResource
 	ViewExtension->AddAfterMotionBlurDrawable(Drawable);
 }
 
+#if 0
 bool UCompushadyBlitterSubsystem::AddVSPSRasterizerFromHLSL(const FString& VertexShaderSource, const FString& PixelShaderSource, const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig, FGuid& Guid, FString& ErrorMessages, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint)
 {
 	if (!ViewExtension)
@@ -437,6 +432,7 @@ bool UCompushadyBlitterSubsystem::AddVSPSRasterizerFromHLSL(const FString& Verte
 
 	return true;
 }
+#endif
 
 // let's put them here to avoid circular includes
 void UCompushadyResource::Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)

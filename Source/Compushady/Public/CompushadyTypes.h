@@ -390,6 +390,15 @@ public:
 	TArray<FVector> ReadbackFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 12);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	TArray<FVector2D> ReadbackFloatsToVector2ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 8);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	TArray<FVector4> ReadbackFloatsToVector4ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	TArray<FLinearColor> ReadbackFloatsToLinearColorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	TArray<int32> ReadbackIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 4);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")

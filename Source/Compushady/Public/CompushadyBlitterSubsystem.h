@@ -47,9 +47,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool AddVSPSRasterizerFromHLSL(const FString& VertexShaderSource, const FString& PixelShaderSource, const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig, FGuid& Guid, FString& ErrorMessages, const FString& VertexShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main");
-
 protected:
 	TSharedPtr<class FCompushadyBlitterViewExtension, ESPMode::ThreadSafe> ViewExtension;
 };

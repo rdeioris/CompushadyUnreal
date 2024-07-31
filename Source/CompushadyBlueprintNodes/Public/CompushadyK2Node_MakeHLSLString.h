@@ -15,6 +15,7 @@ class COMPUSHADYBLUEPRINTNODES_API UCompushadyK2Node_MakeHLSLString : public UK2
 	GENERATED_BODY()
 
 public:
+
 	//K2Node implementation
 	virtual FText GetMenuCategory() const override;
 	virtual void GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
