@@ -33,6 +33,21 @@ Let's start with a glossary:
 * `Rasterizer`: A vertex + pixel shader or mesh + pixel shader (where supported) with a set of 0 or more RTV, CBV, SRV, UAV or samplers and 0 or 1 DSV. You use a Rasterizer for drawing triangles, lines and points using the GPU.
 * `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
 
+We can now write our first shader (we will use HLSL) to generate a simple texture with a color gradient
+
+As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
+
+
+```hlsl
+RWTexture2D<float4> OutputTexture;
+
+[numthreads(1, 1, 1)]
+void main()
+{
+}
+```
+
+
 ## Tutorials
 
 * PostProcessing
