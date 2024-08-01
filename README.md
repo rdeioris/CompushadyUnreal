@@ -15,7 +15,7 @@ Like the homonym python module (this plugin is a porting of its APIs), it makes 
 
 Join the Discord server for support: https://discord.gg/2WvdpkYXHW
 
-## Quickstart
+## Quickstart (HLSL)
 
 Let's start with a glossary:
 
@@ -91,13 +91,27 @@ Let's create it:
 
 Lot of new stuff here: we have created (with the ```CreateCompushadyUAVTexture2D``` node) a new Texture2D with the specified size (1024x1024) and pixel format (Float RGBA, means half precision float [16 bits] per channel) and mapped it to a new UAV (named UAV000 here). We gave a name to the new texture ("Example UAV Texture2D") to allow it to be recognizable in the various Unreal debug tools (like the "Render Resource Viewer"). Giving name to resources is totally optional but higly suggested.
 
+In addition to creating the new UAV/Texture2D we need to "bind" it to the shader when we run it. The ```CompushadyResourceArray``` is a structure for binding "Bindables" (CBV, SRV, UAV and Samplers) to a Pipeline.
+
+It is pretty simple to use but requires the user to specify the resources in the order they are defined in the shader. In this example we have a single resource (OutputTexture), so the task is easy, but we may have dozens of resources,
+and the various optimizers could even remove them from the code (if the yare not used), so it is way more handy to use names instead of indices:
+
+![image](Docs/Screenshots/README_004.png)
+
+The ```DispatchByMapSync``` node allows to bind resources by using the same name specified in the code instead of computing they position in an array.
+
 If we play the level we should not get errors anymore. But where is our texture?
 
+Textures resides in GPU memory. Showing them to your monitor (or using them in a material) is a different story. Lucky enough Compushady includes a ready to use subsystem for quickly (and easily) drawing stuff on the screen, called ```The Blitter```.
 
+![image](Docs/Screenshots/README_005.png)
 
+By using the ```Draw``` function over a Resource, you can draw it on the screen. The Quad structures allows you to define where to drw the texture in normalized coordinates (0,0 on top-left, 1,1 on bottom-right). The Horizontal flag allows to automatically adjust
+the height (the W here) based on the horizontal aspect ratio of the resource and the screen:
 
-![Test001](https://github.com/user-attachments/assets/ddeb9238-46d7-4d08-af52-fecaf5e1dea3)
+After playing the Level this will be the result:
 
+![image](Docs/Screenshots/README_005.png)
 
 
 ## Tutorials
