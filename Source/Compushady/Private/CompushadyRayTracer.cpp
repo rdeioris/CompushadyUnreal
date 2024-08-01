@@ -150,8 +150,10 @@ void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& Resource
 		return;
 	}
 
-	if (!CheckResourceBindings(ResourceArray, RayGenResourceBindings, OnSignaled))
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, RayGenResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 

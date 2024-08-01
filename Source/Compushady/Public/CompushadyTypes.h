@@ -375,7 +375,6 @@ public:
 	void UntrackResourcesAndUnmarkAsRunning();
 
 protected:
-	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled);
 
 	void TrackResource(UObject* InResource);
 	void TrackResources(const FCompushadyResourceArray& ResourceArray);
@@ -498,6 +497,7 @@ namespace Compushady
 	{
 		COMPUSHADY_API bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
 		COMPUSHADY_API bool ValidateResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
+		COMPUSHADY_API bool ValidateResourceBindingsMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FCompushadyResourceBindings& ResourceBindings, FCompushadyResourceArray& ResourceArray, FString& ErrorMessages);
 
 		COMPUSHADY_API FVertexShaderRHIRef CreateVertexShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FVertexShaderRHIRef CreateVertexShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
@@ -505,6 +505,7 @@ namespace Compushady
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromSPIRVBlob(const TArray<uint8>& ShaderByteCode, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 

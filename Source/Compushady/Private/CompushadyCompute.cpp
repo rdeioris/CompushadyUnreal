@@ -19,21 +19,8 @@ bool UCompushadyCompute::InitFromGLSL(const TArray<uint8>& ShaderCode, const FSt
 
 bool UCompushadyCompute::InitFromSPIRV(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
 {
-	if (RHIGetInterfaceType() != ERHIInterfaceType::Vulkan)
-	{
-		ErrorMessages = "SPIRV shaders are currently supported only on Vulkan";
-		return false;
-	}
-
-	TArray<uint8> ByteCode = ShaderCode;
-	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	SPIRV = ByteCode;
-	if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
-	{
-		return false;
-	}
-
-	return false;
+	ComputeShaderRef = Compushady::Utils::CreateComputeShaderFromSPIRVBlob(ShaderCode, ResourceBindings, ThreadGroupSize, ErrorMessages);
+	return ComputeShaderRef != nullptr;
 }
 
 bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& ErrorMessages)
@@ -46,7 +33,6 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 
 	TArray<uint8> ByteCode = ShaderCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	DXIL = ByteCode;
 
 	if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
@@ -56,17 +42,21 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 	return false;
 }
 
-bool UCompushadyCompute::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled)
-{
-	return ICompushadyPipeline::CheckResourceBindings(ResourceArray, ResourceBindings, OnSignaled);
-}
-
 void UCompushadyCompute::Dispatch_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, const FIntVector& XYZ)
 {
 	SetComputePipelineState(RHICmdList, ComputeShaderRef);
 	Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
 
 	RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
+}
+
+void UCompushadyCompute::DispatchIndirect_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, FBufferRHIRef BufferRHIRef, const int32 Offset)
+{
+	SetComputePipelineState(RHICmdList, ComputeShaderRef);
+	Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
+
+	RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
+	RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);
 }
 
 void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
@@ -83,8 +73,10 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		return;
 	}
 
-	if (!CheckResourceBindings(ResourceArray, OnSignaled))
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
@@ -125,79 +117,30 @@ bool UCompushadyCompute::DispatchSync(const FCompushadyResourceArray& ResourceAr
 	return true;
 }
 
-void UCompushadyCompute::DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled, const TMap<FString, UCompushadySampler*>& SamplerMap)
+void UCompushadyCompute::DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
 {
 	FCompushadyResourceArray ResourceArray;
+	FString ErrorMessages;
 
-	for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
+	if (!Compushady::Utils::ValidateResourceBindingsMap(ResourceMap, ResourceBindings, ResourceArray, ErrorMessages))
 	{
-		const FString& Name = ResourceBindings.CBVs[Index].Name;
-		if (!ResourceMap.Contains(Name))
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
-			return;
-		}
-		UCompushadyCBV* CBV = Cast<UCompushadyCBV>(ResourceMap[Name].GetObject());
-		if (!CBV)
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a CBV"), *Name));
-			return;
-		}
-		ResourceArray.CBVs.Add(CBV);
-	}
-
-	for (int32 Index = 0; Index < ResourceBindings.SRVs.Num(); Index++)
-	{
-		const FString& Name = ResourceBindings.SRVs[Index].Name;
-		if (!ResourceMap.Contains(Name))
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
-			return;
-		}
-		UCompushadySRV* SRV = Cast<UCompushadySRV>(ResourceMap[Name].GetObject());
-		if (!SRV)
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a SRV"), *Name));
-			return;
-		}
-		ResourceArray.SRVs.Add(SRV);
-	}
-
-	for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
-	{
-		const FString& Name = ResourceBindings.UAVs[Index].Name;
-		if (!ResourceMap.Contains(Name))
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name));
-			return;
-		}
-		UCompushadyUAV* UAV = Cast<UCompushadyUAV>(ResourceMap[Name].GetObject());
-		if (!UAV)
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be an UAV"), *Name));
-			return;
-		}
-		ResourceArray.UAVs.Add(UAV);
-	}
-
-	for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
-	{
-		const FString& Name = ResourceBindings.Samplers[Index].Name;
-		if (!ResourceMap.Contains(Name))
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Sampler \"%s\" not found in supplied map"), *Name));
-			return;
-		}
-		UCompushadySampler* Sampler = Cast<UCompushadySampler>(ResourceMap[Name].GetObject());
-		if (!Sampler)
-		{
-			OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Expected \"%s\" to be a Sampler"), *Name));
-			return;
-		}
-		ResourceArray.Samplers.Add(Sampler);
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
 	}
 
 	Dispatch(ResourceArray, XYZ, OnSignaled);
+}
+
+bool UCompushadyCompute::DispatchByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, FString& ErrorMessages)
+{
+	FCompushadyResourceArray ResourceArray;
+
+	if (!Compushady::Utils::ValidateResourceBindingsMap(ResourceMap, ResourceBindings, ResourceArray, ErrorMessages))
+	{
+		return false;
+	}
+
+	return DispatchSync(ResourceArray, XYZ, ErrorMessages);
 }
 
 void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadySignaled& OnSignaled)
@@ -221,8 +164,10 @@ void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& Resour
 		return;
 	}
 
-	if (!CheckResourceBindings(ResourceArray, OnSignaled))
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
@@ -231,27 +176,76 @@ void UCompushadyCompute::DispatchIndirect(const FCompushadyResourceArray& Resour
 	EnqueueToGPU(
 		[this, ResourceArray, BufferRHIRef, Offset](FRHICommandListImmediate& RHICmdList)
 		{
-			SetComputePipelineState(RHICmdList, ComputeShaderRef);
-			Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
-
-			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
-			RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);
+			DispatchIndirect_RenderThread(RHICmdList, ResourceArray, BufferRHIRef, Offset);
 		}, OnSignaled);
+}
+
+bool UCompushadyCompute::DispatchIndirectSync(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* CommandBuffer, const int32 Offset, FString& ErrorMessages)
+{
+	if (!CommandBuffer)
+	{
+		ErrorMessages = "CommandBuffer is NULL";
+		return false;
+	}
+
+	FBufferRHIRef BufferRHIRef = CommandBuffer->GetBufferRHI();
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
+	{
+		ErrorMessages = "Invalid Indirect Buffer";
+		return false;
+	}
+
+	if (BufferRHIRef->GetSize() < (sizeof(uint32) * 3))
+	{
+		ErrorMessages = "Invalid Indirect Buffer size (expected sizeof(uint32) * 3)";
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	TrackResources(ResourceArray);
+
+	EnqueueToGPUSync(
+		[this, ResourceArray, BufferRHIRef, Offset](FRHICommandListImmediate& RHICmdList)
+		{
+			DispatchIndirect_RenderThread(RHICmdList, ResourceArray, BufferRHIRef, Offset);
+		});
+
+	return true;
+}
+
+void UCompushadyCompute::DispatchIndirectByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadySignaled& OnSignaled)
+{
+	FCompushadyResourceArray ResourceArray;
+	FString ErrorMessages;
+
+	if (!Compushady::Utils::ValidateResourceBindingsMap(ResourceMap, ResourceBindings, ResourceArray, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
+	}
+
+	DispatchIndirect(ResourceArray, CommandBuffer, Offset, OnSignaled);
+}
+
+bool UCompushadyCompute::DispatchIndirectByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, UCompushadyResource* CommandBuffer, const int32 Offset, FString& ErrorMessages)
+{
+	FCompushadyResourceArray ResourceArray;
+
+	if (!Compushady::Utils::ValidateResourceBindingsMap(ResourceMap, ResourceBindings, ResourceArray, ErrorMessages))
+	{
+		return false;
+	}
+
+	return DispatchIndirectSync(ResourceArray, CommandBuffer, Offset, ErrorMessages);
 }
 
 bool UCompushadyCompute::IsRunning() const
 {
 	return ICompushadySignalable::IsRunning();
-}
-
-const TArray<uint8>& UCompushadyCompute::GetSPIRV() const
-{
-	return SPIRV;
-}
-
-const TArray<uint8>& UCompushadyCompute::GetDXIL() const
-{
-	return DXIL;
 }
 
 FIntVector UCompushadyCompute::GetThreadGroupSize() const

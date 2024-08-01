@@ -1046,8 +1046,8 @@ namespace Compushady
 					continue;
 				}
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
-	}
-}
+			}
+		}
 #endif
 
 		template<typename SHADER_TYPE>
@@ -1086,8 +1086,8 @@ namespace Compushady
 					return ResourceArray.Samplers[Index]->GetRHI();
 				});
 		}
-		}
-		}
+	}
+}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
 {
@@ -1271,13 +1271,74 @@ bool Compushady::Utils::ValidateResourceBindings(const FCompushadyResourceArray&
 	return true;
 }
 
-bool ICompushadyPipeline::CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySignaled& OnSignaled)
+bool Compushady::Utils::ValidateResourceBindingsMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FCompushadyResourceBindings& ResourceBindings, FCompushadyResourceArray& ResourceArray, FString& ErrorMessages)
 {
-	FString ErrorMessages;
-	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
+	for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
 	{
-		OnSignaled.ExecuteIfBound(false, ErrorMessages);
-		return false;
+		const FString& Name = ResourceBindings.CBVs[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			ErrorMessages = FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name);
+			return false;
+		}
+		UCompushadyCBV* CBV = Cast<UCompushadyCBV>(ResourceMap[Name].GetObject());
+		if (!CBV)
+		{
+			ErrorMessages = FString::Printf(TEXT("Expected \"%s\" to be a CBV"), *Name);
+			return false;
+		}
+		ResourceArray.CBVs.Add(CBV);
+	}
+
+	for (int32 Index = 0; Index < ResourceBindings.SRVs.Num(); Index++)
+	{
+		const FString& Name = ResourceBindings.SRVs[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			ErrorMessages = FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name);
+			return false;
+		}
+		UCompushadySRV* SRV = Cast<UCompushadySRV>(ResourceMap[Name].GetObject());
+		if (!SRV)
+		{
+			ErrorMessages = FString::Printf(TEXT("Expected \"%s\" to be a SRV"), *Name);
+			return false;
+		}
+		ResourceArray.SRVs.Add(SRV);
+	}
+
+	for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
+	{
+		const FString& Name = ResourceBindings.UAVs[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			ErrorMessages = FString::Printf(TEXT("Resource \"%s\" not found in supplied map"), *Name);
+			return false;
+		}
+		UCompushadyUAV* UAV = Cast<UCompushadyUAV>(ResourceMap[Name].GetObject());
+		if (!UAV)
+		{
+			ErrorMessages = FString::Printf(TEXT("Expected \"%s\" to be an UAV"), *Name);
+			return false;
+		}
+		ResourceArray.UAVs.Add(UAV);
+	}
+
+	for (int32 Index = 0; Index < ResourceBindings.Samplers.Num(); Index++)
+	{
+		const FString& Name = ResourceBindings.Samplers[Index].Name;
+		if (!ResourceMap.Contains(Name))
+		{
+			ErrorMessages = FString::Printf(TEXT("Sampler \"%s\" not found in supplied map"), *Name);
+			return false;
+		}
+		UCompushadySampler* Sampler = Cast<UCompushadySampler>(ResourceMap[Name].GetObject());
+		if (!Sampler)
+		{
+			ErrorMessages = FString::Printf(TEXT("Expected \"%s\" to be a Sampler"), *Name);
+			return false;
+		}
+		ResourceArray.Samplers.Add(Sampler);
 	}
 
 	return true;
@@ -1539,6 +1600,38 @@ FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromGLSL(const TArray
 	{
 		return nullptr;
 	}
+
+	if (!Compushady::Utils::FinalizeShader(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, true))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> CSByteCode;
+	FSHAHash CSHash;
+	if (!Compushady::ToUnrealShader(ComputeShaderByteCode, CSByteCode, ComputeShaderResourceBindings.CBVs.Num(), ComputeShaderResourceBindings.SRVs.Num(), ComputeShaderResourceBindings.UAVs.Num(), ComputeShaderResourceBindings.Samplers.Num(), CSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the compute shader";
+		return nullptr;
+	}
+
+	FComputeShaderRHIRef ComputeShaderRef = RHICreateComputeShader(CSByteCode, CSHash);
+	if (!ComputeShaderRef.IsValid() || !ComputeShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create Compute Shader";
+		return nullptr;
+	}
+
+	ComputeShaderRef->SetHash(CSHash);
+
+	return ComputeShaderRef;
+}
+
+FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromSPIRVBlob(const TArray<uint8>& ShaderByteCode, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	const FString TargetProfile = "cs_6_0";
+
+	TArray<uint8> ComputeShaderByteCode = ShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings ComputeShaderResourceBindings;
 
 	if (!Compushady::Utils::FinalizeShader(ComputeShaderByteCode, TargetProfile, ComputeShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{

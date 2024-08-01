@@ -170,13 +170,16 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 		return;
 	}
 
-	if (!CheckResourceBindings(VSResourceArray, VSResourceBindings, OnSignaled))
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(VSResourceArray, VSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
-	if (!CheckResourceBindings(PSResourceArray, PSResourceBindings, OnSignaled))
+	if (!Compushady::Utils::ValidateResourceBindings(PSResourceArray, PSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
@@ -228,13 +231,16 @@ void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResou
 		return;
 	}
 
-	if (!CheckResourceBindings(VSResourceArray, VSResourceBindings, OnSignaled))
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(VSResourceArray, VSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
-	if (!CheckResourceBindings(PSResourceArray, PSResourceBindings, OnSignaled))
+	if (!Compushady::Utils::ValidateResourceBindings(PSResourceArray, PSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
@@ -297,13 +303,16 @@ void UCompushadyRasterizer::DrawIndirect(const FCompushadyResourceArray& VSResou
 		return;
 	}
 
-	if (!CheckResourceBindings(VSResourceArray, VSResourceBindings, OnSignaled))
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(VSResourceArray, VSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
-	if (!CheckResourceBindings(PSResourceArray, PSResourceBindings, OnSignaled))
+	if (!Compushady::Utils::ValidateResourceBindings(PSResourceArray, PSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
@@ -444,13 +453,16 @@ void UCompushadyRasterizer::DispatchMesh(const FCompushadyResourceArray& MSResou
 		return;
 	}
 
-	if (!CheckResourceBindings(MSResourceArray, MSResourceBindings, OnSignaled))
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(MSResourceArray, MSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
-	if (!CheckResourceBindings(PSResourceArray, PSResourceBindings, OnSignaled))
+	if (!Compushady::Utils::ValidateResourceBindings(PSResourceArray, PSResourceBindings, ErrorMessages))
 	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
 		return;
 	}
 
@@ -491,24 +503,4 @@ void UCompushadyRasterizer::StoreLastSignal(bool bSuccess, const FString& ErrorM
 {
 	bLastSuccess = bSuccess;
 	LastErrorMessages = ErrorMessage;
-}
-
-const TArray<uint8>& UCompushadyRasterizer::GetVertexShaderSPIRV() const
-{
-	return VertexShaderSPIRV;
-}
-
-const TArray<uint8>& UCompushadyRasterizer::GetPixelShaderSPIRV() const
-{
-	return PixelShaderSPIRV;
-}
-
-const TArray<uint8>& UCompushadyRasterizer::GetVertexShaderDXIL() const
-{
-	return VertexShaderDXIL;
-}
-
-const TArray<uint8>& UCompushadyRasterizer::GetPixelShaderDXIL() const
-{
-	return PixelShaderDXIL;
 }

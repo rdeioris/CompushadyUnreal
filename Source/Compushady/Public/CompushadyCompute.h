@@ -31,26 +31,32 @@ public:
 	UFUNCTION(BlueprintCallable, meta=(AutoCreateRefTerm = "ResourceArray,OnSignaled"),Category="Compushady")
 	void Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray"), Category = "Compushady")
 	bool DispatchSync(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, FString& ErrorMessages);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap,OnSignaled,SamplerMap"), Category = "Compushady")
-	void DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled, const TMap<FString, UCompushadySampler*>& SamplerMap);
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap,OnSignaled"), Category = "Compushady")
+	void DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap"), Category = "Compushady")
+	bool DispatchByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
 	void DispatchIndirect(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray"), Category = "Compushady")
+	bool DispatchIndirectSync(const FCompushadyResourceArray& ResourceArray, UCompushadyResource* CommandBuffer, const int32 Offset, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
+	void DispatchIndirectByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray"), Category = "Compushady")
+	bool DispatchIndirectByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, UCompushadyResource* CommandBuffer, const int32 Offset, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	bool IsRunning() const;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FCompushadyResourceBindings ResourceBindings;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
-	const TArray<uint8>& GetSPIRV() const;
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
-	const TArray<uint8>& GetDXIL() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetThreadGroupSize() const;
@@ -60,8 +66,8 @@ public:
 		return ComputeShaderRef;
 	}
 
-	bool CheckResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadySignaled& OnSignaled);
 	void Dispatch_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, const FIntVector& XYZ);
+	void DispatchIndirect_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, FBufferRHIRef BufferRHIRef, const int32 Offset);
 
 	/* The following block is mainly used for unit testing */
 	UFUNCTION()
@@ -76,7 +82,4 @@ protected:
 	FComputeShaderRHIRef ComputeShaderRef;
 
 	FIntVector ThreadGroupSize;
-
-	TArray<uint8> SPIRV;
-	TArray<uint8> DXIL;
 };

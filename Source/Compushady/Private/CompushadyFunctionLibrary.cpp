@@ -89,14 +89,20 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromGLSLF
 
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRVFile(const FString& Filename, FString& ErrorMessages)
 {
-	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 	TArray<uint8> ShaderCode;
 	if (!FFileHelper::LoadFileToArray(ShaderCode, *Filename))
 	{
 		return nullptr;
 	}
 
-	if (!CompushadyCompute->InitFromSPIRV(ShaderCode, ErrorMessages))
+	return CreateCompushadyComputeFromSPIRVBlob(ShaderCode, ErrorMessages);
+}
+
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromSPIRVBlob(const TArray<uint8>& Blob, FString& ErrorMessages)
+{
+	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
+
+	if (!CompushadyCompute->InitFromSPIRV(Blob, ErrorMessages))
 	{
 		return nullptr;
 	}
@@ -191,11 +197,25 @@ bool UCompushadyFunctionLibrary::SPIRVBlobToHLSL(const TArray<uint8>& Blob, FStr
 	return true;
 }
 
-bool UCompushadyFunctionLibrary::HLSLToSPIRVBlob(const FString& HLSL, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& Blob, FString& ErrorMessages)
+bool UCompushadyFunctionLibrary::CompileHLSLToSPIRVBlob(const FString& HLSL, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& Blob, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 	TArray<uint8> HLSLShaderCode;
 	Compushady::StringToShaderCode(HLSL, HLSLShaderCode);
-	return Compushady::CompileHLSL(HLSLShaderCode, EntryPoint, TargetProfile, Blob, ErrorMessages, true);
+
+	if (!Compushady::CompileHLSL(HLSLShaderCode, EntryPoint, TargetProfile, Blob, ErrorMessages, true))
+	{
+		return false;
+	}
+
+	// we need a copy as we want the original spirv bytecode
+	TArray<uint8> BlobTempCopy = Blob;
+	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
+	if (!Compushady::FixupSPIRV(BlobTempCopy, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	{
+		return false;
+	}
+
+	return Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages);
 }
 
 bool UCompushadyFunctionLibrary::SPIRVBlobToGLSL(const TArray<uint8>& Blob, FString& GLSL, FString& ErrorMessages)
@@ -1406,8 +1426,10 @@ void UCompushadyFunctionLibrary::DispatchMultiPass(const TArray<FCompushadyCompu
 			return;
 		}
 
-		if (!ComputePass.Compute->CheckResourceBindings(ComputePass.ResourceArray, OnSignaled))
+		FString ErrorMessages;
+		if (!Compushady::Utils::ValidateResourceBindings(ComputePass.ResourceArray, ComputePass.Compute->ResourceBindings, ErrorMessages))
 		{
+			OnSignaled.ExecuteIfBound(false, ErrorMessages);
 			return;
 		}
 
