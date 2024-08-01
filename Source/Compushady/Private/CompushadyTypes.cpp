@@ -180,24 +180,30 @@ EPixelFormat UCompushadyResource::GetTexturePixelFormat() const
 	return EPixelFormat::PF_Unknown;
 }
 
-void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
+bool UCompushadyResource::ReadbackTextureToPNGFileSync(const FString& Filename, FString& ErrorMessages)
 {
 	if (!IsValidTexture())
 	{
-		OnSignaled.ExecuteIfBound(false, "The resource is not a valid Texture");
-		return;
+		ErrorMessages = "The resource is not a valid Texture";
+		return false;
 	}
 
-	auto PngWriter = [this, Filename](const void* Data)
+	if (GetTextureRHI()->GetDesc().Format != EPixelFormat::PF_B8G8R8A8 && GetTextureRHI()->GetDesc().Format != EPixelFormat::PF_R8G8B8A8)
+	{
+		ErrorMessages = "Only RGBA8 and BGRA8 textures are supported";
+		return false;
+	}
+
+	auto PngWriter = [this, Filename](const void* Data, const uint32 Stride)
 		{
-			FIntVector Size = GetTextureSize();
+			const FIntVector Size = GetTextureSize();
 			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
 
 			TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
 			if (ImageWrapper.IsValid())
 			{
-
-				if (ImageWrapper->SetRaw(Data, Size.X * Size.Y * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes, Size.X, Size.Y, ERGBFormat::BGRA, 8))
+				if (ImageWrapper->SetRaw(Data, Size.X * Size.Y * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes,
+					Size.X, Size.Y, GetTextureRHI()->GetDesc().Format == EPixelFormat::PF_B8G8R8A8 ? ERGBFormat::BGRA : ERGBFormat::RGBA, 8))
 				{
 
 					TArray64<uint8> CompressedBytes = ImageWrapper->GetCompressed();
@@ -206,7 +212,29 @@ void UCompushadyResource::ReadbackTextureToPngFile(const FString& Filename, cons
 			}
 		};
 
-	MapReadAndExecute(PngWriter, OnSignaled);
+	return MapTextureSliceAndExecuteSync(PngWriter, 0);
+}
+
+bool UCompushadyResource::ReadbackTextureToTIFFFileSync(const FString& Filename, const FString& ImageDescription, FString& ErrorMessages)
+{
+	if (!IsValidTexture())
+	{
+		ErrorMessages = "The resource is not a valid Texture";
+		return false;
+	}
+
+	auto TIFFWriter = [this, Filename, ImageDescription](const void* Data, const uint32 Stride)
+		{
+			const FIntVector Size = GetTextureSize();
+			const EPixelFormat PixelFormat = GetTextureRHI()->GetDesc().Format;
+			TArray<uint8> TIFF;
+			if (Compushady::Utils::GenerateTIFF(Data, Stride, Size.X, Size.Y, PixelFormat, ImageDescription, TIFF))
+			{
+				FFileHelper::SaveArrayToFile(TIFF, *Filename);
+			}
+		};
+
+	return MapTextureSliceAndExecuteSync(TIFFWriter, 0);
 }
 
 void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled)

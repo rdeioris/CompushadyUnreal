@@ -377,6 +377,12 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVStructuredBuffer(
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
 
@@ -406,6 +412,12 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVSharedTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV | ETextureCreateFlags::Shared);
 
@@ -435,6 +447,12 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVSharedTexture2D(c
 
 UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format, const FLinearColor ClearColor)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.ClearValue = FClearValueBinding(ClearColor);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::RenderTargetable);
@@ -464,6 +482,12 @@ UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const F
 
 UCompushadyDSV* UCompushadyFunctionLibrary::CreateCompushadyDSVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format, const float DepthClearValue, const int32 StencilClearValue)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	if (StencilClearValue < 0)
 	{
 		return nullptr;
@@ -503,6 +527,12 @@ UCompushadyDSV* UCompushadyFunctionLibrary::CreateCompushadyDSVTexture2D(const F
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create3D(*Name, Width, Height, Depth, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
 	FTextureRHIRef TextureRHIRef = nullptr;
@@ -531,6 +561,12 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(const F
 
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2DArray(const FString& Name, const int32 Width, const int32 Height, const int32 Slices, const EPixelFormat Format)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2DArray(*Name, Width, Height, Slices, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
 	FTextureRHIRef TextureRHIRef = nullptr;
@@ -559,6 +595,12 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2DArray(co
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create3D(*Name, Width, Height, Depth, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
 	FTextureRHIRef TextureRHIRef = nullptr;
@@ -587,6 +629,12 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3D(const F
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format)
 {
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		return nullptr;
+	}
+
 	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
 	FTextureRHIRef TextureRHIRef = nullptr;

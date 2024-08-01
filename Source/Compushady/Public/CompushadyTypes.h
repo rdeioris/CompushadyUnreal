@@ -414,8 +414,11 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
-	void ReadbackTextureToPngFile(const FString& Filename, const FCompushadySignaled& OnSignaled);
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool ReadbackTextureToPNGFileSync(const FString& Filename, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool ReadbackTextureToTIFFFileSync(const FString& Filename, const FString& ImageDescription, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
 	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
@@ -536,5 +539,7 @@ namespace Compushady
 		COMPUSHADY_API bool FinalizeShader(TArray<uint8>& ByteCode, const FString& TargetProfile, Compushady::FCompushadyShaderResourceBindings& ShaderResourceBindings, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const bool bIsSPIRV);
 
 		COMPUSHADY_API void FillRasterizerPipelineStateInitializer(FVertexShaderRHIRef VS, FMeshShaderRHIRef MS, FPixelShaderRHIRef PS, const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer);
+
+		COMPUSHADY_API bool GenerateTIFF(const void* Data, const int32 Stride, const uint32 Width, const uint32 Height, const EPixelFormat PixelFormat, const FString ImageDescription, TArray<uint8>& IFD);
 	}
 }
