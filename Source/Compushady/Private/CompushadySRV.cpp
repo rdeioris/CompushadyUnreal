@@ -35,6 +35,54 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	return true;
 }
 
+bool UCompushadySRV::InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRef, const int32 Slice, const int32 SlicesNum, const int32 MipLevel, const int32 MipsNum)
+{
+	if (!InTextureRHIRef)
+	{
+		return false;
+	}
+
+	if (Slice < 0 || Slice >= InTextureRHIRef->GetDesc().ArraySize || MipLevel < 0 || MipLevel >= InTextureRHIRef->GetDesc().NumMips)
+	{
+		return false;
+	}
+
+	if (Slice + SlicesNum > InTextureRHIRef->GetDesc().ArraySize || MipLevel + MipsNum > InTextureRHIRef->GetDesc().NumMips)
+	{
+		return false;
+	}
+
+	TextureRHIRef = InTextureRHIRef;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
+		[this, Slice, SlicesNum, MipLevel, MipsNum](FRHICommandListImmediate& RHICmdList)
+		{
+			FRHITextureSRVCreateInfo SRVCreateInfo;
+			SRVCreateInfo.Format = TextureRHIRef->GetDesc().Format;
+			SRVCreateInfo.FirstArraySlice = Slice;
+			SRVCreateInfo.NumArraySlices = SlicesNum;
+			SRVCreateInfo.MipLevel = MipLevel;
+			SRVCreateInfo.NumMipLevels = MipsNum;
+			SRVRHIRef = COMPUSHADY_CREATE_SRV(TextureRHIRef, SRVCreateInfo);
+		});
+
+	FlushRenderingCommands();
+
+	if (!SRVRHIRef)
+	{
+		return false;
+	}
+
+	if (InTextureRHIRef->GetOwnerName() == NAME_None)
+	{
+		InTextureRHIRef->SetOwnerName(*GetPathName());
+	}
+
+	RHITransitionInfo = FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::SRVMask);
+
+	return true;
+}
+
 bool UCompushadySRV::InitializeFromSceneTexture(const ECompushadySceneTexture InSceneTexture)
 {
 	if (InSceneTexture == ECompushadySceneTexture::None)

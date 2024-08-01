@@ -1,14 +1,17 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyBlitterSubsystem.h"
+#if COMPUSHADY_UE_VERSION >= 53
 #include "PostProcess/PostProcessMaterialInputs.h"
+#include "ScreenPass.h"
+#endif
 #include "RenderGraphBuilder.h"
 #include "SceneViewExtension.h"
-#include "ScreenPass.h"
 
 struct FCompushadyBlitterDrawable
 {
 	FTextureRHIRef Texture;
+	FShaderResourceViewRHIRef SRV;
 	FVector4 Quad;
 	ECompushadyKeepAspectRatio AspectRatio;
 };
@@ -111,7 +114,7 @@ public:
 				[&](const int32 Index) -> TPair<FShaderResourceViewRHIRef, FTextureRHIRef>
 				{
 					RHICmdList.Transition(FRHITransitionInfo(Drawable.Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
-					return { nullptr, Drawable.Texture };
+					return { Drawable.SRV, Drawable.SRV ? nullptr : Drawable.Texture };
 				},
 				[](const int32 Index)
 				{
@@ -130,7 +133,7 @@ public:
 				[&](const int32 Index) -> TPair<FShaderResourceViewRHIRef, FTextureRHIRef>
 				{
 					RHICmdList.Transition(FRHITransitionInfo(Drawable.Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
-					return { nullptr, Drawable.Texture };
+					return { Drawable.SRV, Drawable.SRV ? nullptr : Drawable.Texture };
 				},
 				[](const int32 Index)
 				{
@@ -346,6 +349,12 @@ void UCompushadyBlitterSubsystem::AddDrawable(UCompushadyResource* Resource, con
 
 	FCompushadyBlitterDrawable Drawable;
 	Drawable.Texture = Resource->GetTextureRHI();
+	Drawable.SRV = nullptr;
+	UCompushadySRV* SRV = Cast<UCompushadySRV>(Resource);
+	if (SRV)
+	{
+		Drawable.SRV = SRV->GetRHI();
+	}
 	Drawable.Quad = Quad;
 	Drawable.AspectRatio = KeepAspectRatio;
 
@@ -361,6 +370,12 @@ void UCompushadyBlitterSubsystem::AddBeforePostProcessingDrawable(UCompushadyRes
 
 	FCompushadyBlitterDrawable Drawable;
 	Drawable.Texture = Resource->GetTextureRHI();
+	Drawable.SRV = nullptr;
+	UCompushadySRV* SRV = Cast<UCompushadySRV>(Resource);
+	if (SRV)
+	{
+		Drawable.SRV = SRV->GetRHI();
+	}
 	Drawable.Quad = Quad;
 	Drawable.AspectRatio = KeepAspectRatio;
 
@@ -376,6 +391,12 @@ void UCompushadyBlitterSubsystem::AddAfterMotionBlurDrawable(UCompushadyResource
 
 	FCompushadyBlitterDrawable Drawable;
 	Drawable.Texture = Resource->GetTextureRHI();
+	Drawable.SRV = nullptr;
+	UCompushadySRV* SRV = Cast<UCompushadySRV>(Resource);
+	if (SRV)
+	{
+		Drawable.SRV = SRV->GetRHI();
+	}
 	Drawable.Quad = Quad;
 	Drawable.AspectRatio = KeepAspectRatio;
 

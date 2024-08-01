@@ -34,12 +34,12 @@ struct FCompushadyComputePass
 {
 	GENERATED_BODY();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Compushady")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	UCompushadyCompute* Compute = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	FCompushadyResourceArray ResourceArray;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	FIntVector XYZ = FIntVector::ZeroValue;
 };
@@ -222,7 +222,10 @@ public:
 	static UCompushadySRV* CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadySRV* CreateCompushadySRVFromUAV(UCompushadyUAV* UAV);
+	static UCompushadySRV* CreateCompushadySRVFromUAV(UCompushadyUAV* UAV, const int32 Slice, const int32 MipLevel, const int32 NumSlices = 1, const int32 NumMips = 1);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromSRV(UCompushadySRV* SRV, const int32 Slice, const int32 MipLevel, const int32 NumSlices = 1, const int32 NumMips = 1);
 
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromWorldSceneAccelerationStructure(UObject* WorldContextObject);

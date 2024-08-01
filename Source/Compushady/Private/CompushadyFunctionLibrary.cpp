@@ -1328,7 +1328,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(
 	return CompushadySRV;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompushadyUAV* UAV)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompushadyUAV* UAV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips)
 {
 	if (!UAV)
 	{
@@ -1348,7 +1348,9 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompusha
 		}
 		else
 		{
+#if COMPUSHADY_UE_VERSION >= 53
 			if (!CompushadySRV->InitializeFromBuffer(UAV->GetBufferRHI(), UAV->GetRHI()->GetDesc().Common.Format))
+#endif
 			{
 				return nullptr;
 			}
@@ -1356,7 +1358,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompusha
 	}
 	else if (UAV->IsValidTexture())
 	{
-		if (!CompushadySRV->InitializeFromTexture(UAV->GetTextureRHI()))
+		if (!CompushadySRV->InitializeFromTextureAdvanced(UAV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips))
 		{
 			return nullptr;
 		}
@@ -1534,4 +1536,48 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVAudioTexture2D(UO
 	}
 
 	return nullptr;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSRV(UCompushadySRV* SRV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips)
+{
+	if (!SRV)
+	{
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+
+	if (SRV->IsValidBuffer())
+	{
+		if (EnumHasAnyFlags(SRV->GetBufferRHI()->GetUsage(), EBufferUsageFlags::StructuredBuffer))
+		{
+			if (!CompushadySRV->InitializeFromStructuredBuffer(SRV->GetBufferRHI()))
+			{
+				return nullptr;
+			}
+		}
+		else
+		{
+#if COMPUSHADY_UE_VERSION >= 53
+			if (!CompushadySRV->InitializeFromBuffer(SRV->GetBufferRHI(), SRV->GetRHI()->GetDesc().Common.Format))
+#endif
+			{
+				return nullptr;
+			}
+		}
+	}
+	else if (SRV->IsValidTexture())
+	{
+		if (!CompushadySRV->InitializeFromTextureAdvanced(SRV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips))
+		{
+			return nullptr;
+		}
+	}
+	else
+	{
+		return nullptr;
+	}
+
+
+	return CompushadySRV;
 }

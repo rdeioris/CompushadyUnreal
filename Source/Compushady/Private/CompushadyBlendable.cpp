@@ -306,8 +306,12 @@ FPixelShaderRHIRef UCompushadyBlendable::GetPixelShader() const
 
 FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int32 Priority)
 {
+#if COMPUSHADY_UE_VERSION >= 53
 	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = FSceneViewExtensions::NewExtension<FCompushadyPostProcess>(PixelShaderRef, PSResourceBindings, PSResourceArray, PostProcessLocation);
 	FGuid Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension);
 	NewViewExtension->SetPriority(Priority);
 	return Guid;
+#else
+	return FGuid::NewGuid();
+#endif
 }

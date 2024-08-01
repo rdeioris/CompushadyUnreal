@@ -17,6 +17,7 @@ class COMPUSHADY_API UCompushadySRV : public UCompushadyResource
 
 public:
 	bool InitializeFromTexture(FTextureRHIRef InTextureRHIRef);
+	bool InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRef, const int32 Slice, const int32 SlicesNum, const int32 MipLevel, const int32 MipsNum);
 	bool InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EPixelFormat PixelFormat);
 	bool InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef);
 	bool InitializeFromSceneTexture(const ECompushadySceneTexture InSceneTexture);
