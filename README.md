@@ -75,7 +75,7 @@ so x=5, y=10, z=2 will run the shader 100 times (5 * 10 * 2) and the variable ma
 
 For running the Compute Shader, we will call the ```DispatchSync``` function with the number of XYZ iterations (1024, 1024, 1):
 
-![image](https://github.com/user-attachments/assets/6c8f5575-ea7d-48ac-97a4-3ecc9da8c790)
+![image](Docs/Screenshots/README_002.png)
 
 The ```Error Messages``` pin is connected to a ```Print String``` as we are going to get an error (just play the level):
 
@@ -87,9 +87,13 @@ An RWTexture2D describe a writable bidimensional texture, so (given the previous
 
 Let's create it:
 
+![image](Docs/Screenshots/README_003.png)
+
+Lot of new stuff here: we have created (with the ```CreateCompushadyUAVTexture2D``` node) a new Texture2D with the specified size (1024x1024) and pixel format (Float RGBA, means half precision float [16 bits] per channel) and mapped it to a new UAV (named UAV000 here). We gave a name to the new texture ("Example UAV Texture2D") to allow it to be recognizable in the various Unreal debug tools (like the "Render Resource Viewer"). Giving name to resources is totally optional but higly suggested.
+
+If we play the level we should not get errors anymore. But where is our texture?
 
 
-As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
 
 
 ![Test001](https://github.com/user-attachments/assets/ddeb9238-46d7-4d08-af52-fecaf5e1dea3)
