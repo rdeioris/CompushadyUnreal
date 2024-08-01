@@ -15,7 +15,7 @@ Like the homonym python module (this plugin is a porting of its APIs), it makes 
 
 Join the Discord server for support: https://discord.gg/2WvdpkYXHW
 
-## Quickstart (HLSL)
+## Quickstart (step0, Glossary)
 
 Let's start with a glossary:
 
@@ -34,6 +34,8 @@ Let's start with a glossary:
 * `RTV`: Render Target View, a texture to which the Rasterizer (see below) can write to
 * `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffer. The Rasterizer can optionally write to it.
 * `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
+
+## Quickstart (step1, Compute shader with HLSL)
 
 We can now write our first Compute Shader (we will use HLSL) to generate a simple texture with a color gradient.
 
@@ -111,8 +113,49 @@ the height (the W here) based on the horizontal aspect ratio of the resource and
 
 After playing the Level this will be the result:
 
-![image](Docs/Screenshots/README_005.png)
+![image](Docs/Screenshots/README_006.png)
 
+## Quickstart (step2, GLSL)
+
+The same example can be done using GLSL instead of HLSL:
+
+```glsl
+#version 450
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) uniform writeonly image2D OutputTexture;
+
+void main()
+{
+    const uvec3 tid = gl_GlobalInvocationID;
+    vec2 rg = tid.xy / vec2(1024, 1024);
+    float b = rg.r / rg.g ;
+    imageStore(OutputTexture,  ivec2(tid.xy), vec4(rg, b, 1.0));
+}
+```
+
+![image](Docs/Screenshots/README_007.png)
+
+GLSL has no semantics, instead it makes use of global variables (you recognize them by the gl_ prefix) like the ```gl_GlobalInvocationID```.
+
+It is required to specify the version of the language on the very top (```#version 450```).
+
+The ```layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;``` is the equivalent of HLSL ```[numthreads(1, 1, 1)]``` (check next section)
+
+Note: while the node allows to specify an entry point for the function name, the GLSL standard mandates that function to always be called "main".
+
+## Quickstart (step3, Defining the number of threads)
+
+## Quickstart (step4, Rendering to Unreal textures/materials)
+
+## Quickstart (step5, Saving to files)
+
+## Quickstart (step6, Configuration with CBVs)
+
+## Quickstart (step7, Samplers)
+
+## Quickstart (step8, Postprocessing Effects)
 
 ## Tutorials
 
