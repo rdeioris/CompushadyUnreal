@@ -77,10 +77,17 @@ For running the Compute Shader, we will call the ```DispatchSync``` function wit
 
 ![image](https://github.com/user-attachments/assets/6c8f5575-ea7d-48ac-97a4-3ecc9da8c790)
 
-
 The ```Error Messages``` pin is connected to a ```Print String``` as we are going to get an error (just play the level):
 
 ```Expected 1 UAVs got 0```
+
+Our shader requires to write to a texture (RWTexture2D<float4> OutputTexture), but we have not specified it!
+
+An RWTexture2D describe a writable bidimensional texture, so (given the previous Glossary) we need a UAV mapped to a 1024x1024 texture.
+
+Let's create it:
+
+
 
 As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
 
