@@ -52,7 +52,7 @@ void main(const uint3 tid : SV_DispatchThreadID)
 
 We can now use this shader code to create a new Compute Pipeline (you can do this in the Level Blueprint on a completely empty level):
 
-![image](https://github.com/user-attachments/assets/57fa7fc5-8eed-42a6-b781-850ffef1a1dd| width=100)
+![image](https://github.com/user-attachments/assets/57fa7fc5-8eed-42a6-b781-850ffef1a1dd| width=4096)
 
 The shader code in the screenshot has been brutally pasted in the "Shader Source" pin, but this is ugly and very hard to read and maintain. A very handy Blueprint node
 is the MakeHLSLString:
