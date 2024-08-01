@@ -8,6 +8,8 @@ Compushady is an Unreal Engine 5 plugin aimed at easily (and quickly) executing 
 The plugin exposes features like runtime shaders loading (from strings/bytearrays, files or assets), conversion and compilation (HLSL and GLSL are supported, but if you are brave enough you can assemble from SPIRV too), reflection, fast copies (for both Textures and Buffers) and integration with various Unreal features (from postprocessing to raytracing to video encoding) and assets (like MediaTextures, Curves, DataTables...).
 
 The common use case is to optimize highly parallelizable problems using compute shaders, but you can integrate runtime shaders programming to generate motion graphics and even audio (yes, you can pipe the the audio output to a shader or generate waveforms from a shader!). The shadertoy website is always a good source for amazing ideas: https://www.shadertoy.com/ (Note: if you are on this page because you want to run shadertoy shaders on unreal, you can jump to the relevant section: [ShaderToy](#ShaderToy-Integration))
+
+Another focus is on scientific data processing, so native support for the TIFF format (both reading and writing) is available.
  
 Currently Windows (D3D12 and Vulkan), Linux and Android (Vulkan) are supported. Mac and iOS (Metal) are currently in development.
 
@@ -150,6 +152,8 @@ Note: while the node allows to specify an entry point for the function name, the
 ## Quickstart (step4, Rendering to Unreal textures/materials)
 
 ## Quickstart (step5, Saving to files)
+
+
 
 ## Quickstart (step6, Configuration with CBVs)
 
