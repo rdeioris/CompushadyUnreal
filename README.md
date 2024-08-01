@@ -153,13 +153,13 @@ Note: while the node allows to specify an entry point for the function name, the
 
 ## Quickstart (step5, Saving to files)
 
-
-
 ## Quickstart (step6, Configuration with CBVs)
 
 ## Quickstart (step7, Samplers)
 
-## Quickstart (step8, Postprocessing Effects)
+## Quickstart (step8, C++)
+
+## Quickstart (step9, Postprocessing Effects)
 
 ## Tutorials
 
