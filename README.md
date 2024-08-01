@@ -35,7 +35,7 @@ Let's start with a glossary:
 * `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffer. The Rasterizer can optionally write to it.
 * `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
 
-We can now write our first shader (we will use HLSL) to generate a simple texture with a color gradient.
+We can now write our first Compute Shader (we will use HLSL) to generate a simple texture with a color gradient.
 
 ```hlsl
 RWTexture2D<float4> OutputTexture;
@@ -49,6 +49,19 @@ void main(const uint3 tid : SV_DispatchThreadID)
     OutputTexture[tid.xy] = float4(color, color.r/color.g, 1);
 }
 ```
+
+We can now use this shader code to create a new Compute Pipeline:
+
+![image](https://github.com/user-attachments/assets/57fa7fc5-8eed-42a6-b781-850ffef1a1dd)
+
+The shader code in the screenshot has been brutally pasted in the "Shader Source" pin, but this is ugly and very hard to read and maintain. A very handy Blueprint node
+is the MakeHLSLString:
+
+![image](https://github.com/user-attachments/assets/ec633c3e-7141-4b31-8d67-c1937792a29d)
+
+This node will provide you with a better editor and (more important) syntax highlighting.
+
+
 
 Let's ignore ```[numthreads(1, 1, 1)]``` for now. The goal is to run this code one time per pixel (the texture will be 1024x1024, so the shader will run 1048576 times).
 
