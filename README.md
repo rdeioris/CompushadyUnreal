@@ -5,9 +5,9 @@ Compushady for Unreal Engine 5
 
 Compushady is an Unreal Engine 5 plugin aimed at easily (and quickly) executing GPU shaders. 
 
-The plugin exposes features like runtime shaders loading (from strings, files or assets), conversion and compilation (HLSL and GLSL are supported, but if you are brave you can assemble from SPIRV too), reflection, fast copies (for both Textures and Buffers) and integration with various Unreal features (from postprocessing to raytracing) and assets (like MediaTextures, Curves, DataTables...).
+The plugin exposes features like runtime shaders loading (from strings/bytearrays, files or assets), conversion and compilation (HLSL and GLSL are supported, but if you are brave enough you can assemble from SPIRV too), reflection, fast copies (for both Textures and Buffers) and integration with various Unreal features (from postprocessing to raytracing to video encoding) and assets (like MediaTextures, Curves, DataTables...).
 
-The common use case is to optimize highly parallelizable problems using compute shaders, but you can integrate runtime shaders programming to generate motion graphics and even audio (yes, you can pipe the the audio output to a shader or generate waveforms from a shader!). The shadertoy website is always a good source for amazing idea: https://www.shadertoy.com/
+The common use case is to optimize highly parallelizable problems using compute shaders, but you can integrate runtime shaders programming to generate motion graphics and even audio (yes, you can pipe the the audio output to a shader or generate waveforms from a shader!). The shadertoy website is always a good source for amazing ideas: https://www.shadertoy.com/ (Note: if you are on this page because you want to run shadertoy shaders on unreal, you can jump to the relevant section: [ShaderToy](#ShaderToy-Integration))
  
 Currently Windows (D3D12 and Vulkan), Linux and Android (Vulkan) are supported. Mac and iOS (Metal) are currently in development.
 
@@ -19,35 +19,81 @@ Join the Discord server for support: https://discord.gg/2WvdpkYXHW
 
 Let's start with a glossary:
 
-* `HLSL`: a high level shading language from microsoft (you can write your shaders in this language)
+* `Shader`: a program (that you can write in various specific languages) that can be executed by the GPU
+* `HLSL`: a high level shading language from Microsoft (you can write your shaders in this language)
 * `GLSL`: a high level shading language from Khronos (you can write your shaders in this language)
-* `SPIRV`: a low level shading language from Khronos (you can write your shaders in this language but it is very unpractical, higher level languages can compile to SPIRV)
-* `DXIL`: a low level shading language from Microsoft (limited support on Compushady, higher level languages can compile to DXIL)
-* `CPU memory`: your system RAM, both your programm and the GPU can access it (slower access from the GPU)
-* `GPU memory`: the memory directly installed on the GPU (if available, very quick access) or a portion of the system ram dedcated to it (in this case the access will be slower)
-* `CBV`: Constant Buffer View, it represents a tiny block (generally no more than 4096 bytes) of constantly changing data accessible by a shader. Those blocks are generally mapped to the CPU memory.
+* `SPIRV`: a low level shading language from Khronos (you can write your shaders in this language/assembly but it is very unpractical, higher level languages can compile to SPIRV)
+* `DXIL`: a low level shading language from Microsoft (limited support on Compushady, some higher level languages, mostly HLSL, can compile to DXIL)
+* `Bindable`: a "view" over a "resource" (buffers, textures, ...) that can be accessed by a shader. CBV, SRV, UAV and Samplers are all Bindables. 
+* `CBV`: Constant Buffer View, it represents a tiny block (generally no more than 4096 bytes) of constantly changing data (like per-frame if you are genrating graphics) accessible by a shader.
 * `SRV`: Shader Resource View, it represents potentially big readonly data in the form of buffers (raw bytes) or textures.
 * `UAV`: Unordered Access View, it represents potentially big read/write data in the form of buffers (raw bytes) or textures.
 * `Samplers`: blocks of configuration defining the filtering and addressing mode when reading pixels from textures.
+* `Compute`: A compute shader, composed by a shader and a set of 0 or more CBV, SRV, UAV or samplers. You use Compute for running generic task on a GPU
+* `Rasterizer`: A vertex + pixel shader or mesh + pixel shader (where supported) with a set of 0 or more RTV (see below), CBV, SRV, UAV or samplers and 0 or 1 DSV (see below). You use a Rasterizer for drawing triangles, lines and points using the GPU.
 * `RTV`: Render Target View, a texture to which the Rasterizer (see below) can write to
 * `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffer. The Rasterizer can optionally write to it.
-* `Compute`: A compute shader, composed by a shader and a set of 0 or more CBV, SRV, UAV or samplers. You use Compute for running generic task on a GPU
-* `Rasterizer`: A vertex + pixel shader or mesh + pixel shader (where supported) with a set of 0 or more RTV, CBV, SRV, UAV or samplers and 0 or 1 DSV. You use a Rasterizer for drawing triangles, lines and points using the GPU.
 * `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
 
-We can now write our first shader (we will use HLSL) to generate a simple texture with a color gradient
-
-As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
-
+We can now write our first Compute Shader (we will use HLSL) to generate a simple texture with a color gradient.
 
 ```hlsl
 RWTexture2D<float4> OutputTexture;
 
 [numthreads(1, 1, 1)]
-void main()
+void main(const uint3 tid : SV_DispatchThreadID)
 {
+    // generate Red and Green based on the pixel position we are drawing
+    float2 color = tid.xy / float2(1024, 1024);
+    // write to texture, the Blue channel will be the ratio between Red and Green, Alpha is 1
+    OutputTexture[tid.xy] = float4(color, color.r/color.g, 1);
 }
 ```
+
+We can now use this shader code to create a new Compute Pipeline (you can do this in the Level Blueprint on a completely empty level):
+
+![image](https://github.com/user-attachments/assets/57fa7fc5-8eed-42a6-b781-850ffef1a1dd)
+
+The shader code in the screenshot has been brutally pasted in the "Shader Source" pin, but this is ugly and very hard to read and maintain. A very handy Blueprint node
+is the MakeHLSLString:
+
+![image](https://github.com/user-attachments/assets/ec633c3e-7141-4b31-8d67-c1937792a29d)
+
+This node will provide you with a better editor and (more important) syntax highlighting.
+
+The ```ComputeExample``` variable now contains the Compute Pipeline ready to execute.
+
+Before running it, it is worthy to analyze the code:
+
+Let's ignore ```[numthreads(1, 1, 1)]``` for now. The goal is to run this code one time per pixel (the texture will be 1024x1024, so the shader will run 1048576 times).
+
+How do we know in the code which pixel (x and y) we are processing?
+
+This is the job of variables marked with ```semantics``` (attributes that intruct the GPU on how to fill those special variables). In this case the ```SV_DispatchThreadID``` semantic is setting the x, y, z of the pixel
+we are currently processing in the ```tid``` constant ```uint3``` (a vector of 3 unsigned integers in HLSL). Why 3 values? This is how compute shaders work, you specify how much iterations to run in the form of a 3-dimensional space,
+so x=5, y=10, z=2 will run the shader 100 times (5 * 10 * 2) and the variable marked as ```SV_DispatchThreadID``` will always contains the current iteration (x, y, z) values.
+
+For running the Compute Shader, we will call the ```DispatchSync``` function with the number of XYZ iterations (1024, 1024, 1):
+
+![image](https://github.com/user-attachments/assets/6c8f5575-ea7d-48ac-97a4-3ecc9da8c790)
+
+The ```Error Messages``` pin is connected to a ```Print String``` as we are going to get an error (just play the level):
+
+```Expected 1 UAVs got 0```
+
+Our shader requires to write to a texture (RWTexture2D<float4> OutputTexture), but we have not specified it!
+
+An RWTexture2D describe a writable bidimensional texture, so (given the previous Glossary) we need a UAV mapped to a 1024x1024 texture.
+
+Let's create it:
+
+
+
+As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
+
+
+![Test001](https://github.com/user-attachments/assets/ddeb9238-46d7-4d08-af52-fecaf5e1dea3)
+
 
 
 ## Tutorials
@@ -55,5 +101,7 @@ void main()
 * PostProcessing
 
 ## The Blitter
+
+## ShaderToy integration
 
 ## API
