@@ -50,7 +50,7 @@ void main(const uint3 tid : SV_DispatchThreadID)
 }
 ```
 
-We can now use this shader code to create a new Compute Pipeline:
+We can now use this shader code to create a new Compute Pipeline (you can do this in the Level Blueprint on a completely empty level):
 
 ![image](https://github.com/user-attachments/assets/57fa7fc5-8eed-42a6-b781-850ffef1a1dd)
 
@@ -61,14 +61,26 @@ is the MakeHLSLString:
 
 This node will provide you with a better editor and (more important) syntax highlighting.
 
+The ```ComputeExample``` variable now contains the Compute Pipeline ready to execute.
 
+Before running it, it is worthy to analyze the code:
 
 Let's ignore ```[numthreads(1, 1, 1)]``` for now. The goal is to run this code one time per pixel (the texture will be 1024x1024, so the shader will run 1048576 times).
 
 How do we know in the code which pixel (x and y) we are processing?
 
 This is the job of variables marked with ```semantics``` (attributes that intruct the GPU on how to fill those special variables). In this case the ```SV_DispatchThreadID``` semantic is setting the x, y, z of the pixel
-we are currently processing in the ```tid``` constant ```uint3``` (a vector of 3 unsigned integers in HLSL)
+we are currently processing in the ```tid``` constant ```uint3``` (a vector of 3 unsigned integers in HLSL). Why 3 values? This is how compute shaders work, you specify how much iterations to run in the form of a 3-dimensional space,
+so x=5, y=10, z=2 will run the shader 100 times (5 * 10 * 2) and the variable marked as ```SV_DispatchThreadID``` will always contains the current iteration (x, y, z) values.
+
+For running the Compute Shader, we will call the ```DispatchSync``` function with the number of XYZ iterations (1024, 1024, 1):
+
+![image](https://github.com/user-attachments/assets/6c8f5575-ea7d-48ac-97a4-3ecc9da8c790)
+
+
+The ```Error Messages``` pin is connected to a ```Print String``` as we are going to get an error (just play the level):
+
+```Expected 1 UAVs got 0```
 
 As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
 
