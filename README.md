@@ -35,7 +35,7 @@ Let's start with a glossary:
 * `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffer. The Rasterizer can optionally write to it.
 * `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
 
-## Quickstart (step1, Compute shader with HLSL)
+## Quickstart (step1, Compute Shader with HLSL)
 
 We can now write our first Compute Shader (we will use HLSL) to generate a simple texture with a color gradient.
 
