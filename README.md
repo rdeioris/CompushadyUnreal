@@ -92,6 +92,7 @@ Let's create it:
 As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
 
 
+![Test001](https://github.com/user-attachments/assets/ddeb9238-46d7-4d08-af52-fecaf5e1dea3)
 
 
 
