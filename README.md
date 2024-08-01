@@ -19,35 +19,48 @@ Join the Discord server for support: https://discord.gg/2WvdpkYXHW
 
 Let's start with a glossary:
 
-* `HLSL`: a high level shading language from microsoft (you can write your shaders in this language)
+* `Shader`: a program (that you can write in various specific languages) that can be executed by the GPU
+* `HLSL`: a high level shading language from Microsoft (you can write your shaders in this language)
 * `GLSL`: a high level shading language from Khronos (you can write your shaders in this language)
-* `SPIRV`: a low level shading language from Khronos (you can write your shaders in this language but it is very unpractical, higher level languages can compile to SPIRV)
-* `DXIL`: a low level shading language from Microsoft (limited support on Compushady, higher level languages can compile to DXIL)
-* `CPU memory`: your system RAM, both your programm and the GPU can access it (slower access from the GPU)
-* `GPU memory`: the memory directly installed on the GPU (if available, very quick access) or a portion of the system ram dedcated to it (in this case the access will be slower)
-* `CBV`: Constant Buffer View, it represents a tiny block (generally no more than 4096 bytes) of constantly changing data accessible by a shader. Those blocks are generally mapped to the CPU memory.
+* `SPIRV`: a low level shading language from Khronos (you can write your shaders in this language/assembly but it is very unpractical, higher level languages can compile to SPIRV)
+* `DXIL`: a low level shading language from Microsoft (limited support on Compushady, some higher level languages, mostly HLSL, can compile to DXIL)
+* `Bindable`: a "view" over a "resource" (buffers, textures, ...) that can be accessed by a shader. CBV, SRV, UAV and Samplers are all Bindables. 
+* `CBV`: Constant Buffer View, it represents a tiny block (generally no more than 4096 bytes) of constantly changing data (like per-frame if you are genrating graphics) accessible by a shader.
 * `SRV`: Shader Resource View, it represents potentially big readonly data in the form of buffers (raw bytes) or textures.
 * `UAV`: Unordered Access View, it represents potentially big read/write data in the form of buffers (raw bytes) or textures.
 * `Samplers`: blocks of configuration defining the filtering and addressing mode when reading pixels from textures.
+* `Compute`: A compute shader, composed by a shader and a set of 0 or more CBV, SRV, UAV or samplers. You use Compute for running generic task on a GPU
+* `Rasterizer`: A vertex + pixel shader or mesh + pixel shader (where supported) with a set of 0 or more RTV (see below), CBV, SRV, UAV or samplers and 0 or 1 DSV (see below). You use a Rasterizer for drawing triangles, lines and points using the GPU.
 * `RTV`: Render Target View, a texture to which the Rasterizer (see below) can write to
 * `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffer. The Rasterizer can optionally write to it.
-* `Compute`: A compute shader, composed by a shader and a set of 0 or more CBV, SRV, UAV or samplers. You use Compute for running generic task on a GPU
-* `Rasterizer`: A vertex + pixel shader or mesh + pixel shader (where supported) with a set of 0 or more RTV, CBV, SRV, UAV or samplers and 0 or 1 DSV. You use a Rasterizer for drawing triangles, lines and points using the GPU.
 * `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
 
-We can now write our first shader (we will use HLSL) to generate a simple texture with a color gradient
-
-As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
-
+We can now write our first shader (we will use HLSL) to generate a simple texture with a color gradient.
 
 ```hlsl
 RWTexture2D<float4> OutputTexture;
 
 [numthreads(1, 1, 1)]
-void main()
+void main(const uint3 tid : SV_DispatchThreadID)
 {
+    // generate Red and Green based on the pixel position we are drawing
+    float2 color = tid.xy / float2(1024, 1024);
+    // write to texture, the Blue channel will be the ratio between Red and Green, Alpha is 1
+    OutputTexture[tid.xy] = float4(color, color.r/color.g, 1);
 }
 ```
+
+Let's ignore ```[numthreads(1, 1, 1)]``` for now. The goal is to run this code one time per pixel (the texture will be 1024x1024, so the shader will run 1048576 times).
+
+How do we know in the code which pixel (x and y) we are processing?
+
+This is the job of variables marked with ```semantics``` (attributes that intruct the GPU on how to fill those special variables). In this case the ```SV_DispatchThreadID``` semantic is setting the x, y, z of the pixel
+we are currently processing in the ```tid``` constant ```uint3``` (a vector of 3 unsigned integers in HLSL)
+
+As we need to write to a texture, our shader will require access to the UAV representing the texture (we can create UAVs from blueprints or C++)
+
+
+
 
 
 ## Tutorials
