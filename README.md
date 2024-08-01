@@ -30,9 +30,9 @@ Let's start with a glossary:
 * `UAV`: Unordered Access View, it represents potentially big read/write data in the form of buffers (raw bytes) or textures.
 * `Samplers`: blocks of configuration defining the filtering and addressing mode when reading pixels from textures.
 * `Compute`: A compute shader, composed by a shader and a set of 0 or more CBV, SRV, UAV or samplers. You use Compute for running generic task on a GPU
-* `Rasterizer`: A vertex + pixel shader or mesh + pixel shader (where supported) with a set of 0 or more RTV (see below), CBV, SRV, UAV or samplers and 0 or 1 DSV (see below). You use a Rasterizer for drawing triangles, lines and points using the GPU.
+* `Rasterizer`: A Vertex + Pixel/Fragment Shader or Mesh + Pixel/Fragment Shader (where supported) with a set of 0 or more RTV (see below), CBV, SRV, UAV or Samplers and 0 or 1 DSV (see below). You use a Rasterizer for drawing triangles, lines and points using the GPU.
 * `RTV`: Render Target View, a texture to which the Rasterizer (see below) can write to
-* `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffer. The Rasterizer can optionally write to it.
+* `DSV`: Depth Stencil View, a texture containing the depth and the stencil buffers. The Rasterizer can optionally write to it.
 * `Blitter`: a Compushady subsystem for quickly drawing textures on the screen or applying post processing effects
 
 ## Quickstart (step1, Compute Shader with HLSL)
