@@ -96,6 +96,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool SetViewMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose = false, const bool bInverse = false);
 
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	bool SetProjectionMatrixFromViewport(UObject* WorldContextObject, const int64 Offset, const bool bTranspose = false, const bool bInverse = false);
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	bool SetViewMatrixFromViewport(UObject* WorldContextObject, const int64 Offset, const bool bTranspose = false, const bool bInverse = false);
+
 	bool IsValidOffset(const int64 Offset, const int64 Size) const;
 
 	bool SetScriptStruct(const int64 Offset, UScriptStruct* ScriptStruct, const uint8* Data);

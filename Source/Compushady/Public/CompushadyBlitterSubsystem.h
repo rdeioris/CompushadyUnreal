@@ -53,6 +53,12 @@ public:
 
 	FGuid AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const FMatrix& GetViewMatrix() const;
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const FMatrix& GetProjectionMatrix() const;
+
 protected:
 	TSharedPtr<class FCompushadyBlitterViewExtension, ESPMode::ThreadSafe> ViewExtension;
 

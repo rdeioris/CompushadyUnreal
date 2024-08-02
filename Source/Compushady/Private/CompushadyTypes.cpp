@@ -1104,7 +1104,7 @@ namespace Compushady
 						{
 							RHICmdList.Transition(FRHITransitionInfo(SRVOrTexture.Value, ERHIAccess::Unknown, ERHIAccess::SRVMask));
 						}
-						else
+						else if (SRVOrTexture.Key)
 						{
 							FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
 							//RHICmdList.Transition(FRHITransitionInfo(TextureToTransition, ERHIAccess::Unknown, ERHIAccess::SRVMask));

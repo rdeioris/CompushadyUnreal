@@ -36,7 +36,13 @@ public:
 	}
 
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
-	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {}
+
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override
+	{
+		CurrentViewMatrix = InView.ViewMatrices.GetViewMatrix();
+		CurrentProjectionMatrix = InView.ViewMatrices.GetProjectionMatrix();
+	}
+
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override {}
 
 	void DrawDrawables_RenderThread(FRHICommandList& RHICmdList, FTextureRHIRef RenderTarget, const TArray<FCompushadyBlitterDrawable>& CurrentDrawables)
@@ -273,6 +279,16 @@ public:
 		AfterMotionBlurDrawables.Add(Drawable);
 	}
 
+	const FMatrix& GetViewMatrix() const
+	{
+		return CurrentViewMatrix;
+	}
+
+	const FMatrix& GetProjectionMatrix() const
+	{
+		return CurrentProjectionMatrix;
+	}
+
 protected:
 	FCriticalSection DrawablesCriticalSection;
 	TArray<FCompushadyBlitterDrawable> Drawables;
@@ -292,11 +308,19 @@ protected:
 	FUniformBufferLayoutRHIRef UniformBufferLayoutRef;
 	FUniformBufferRHIRef UniformBufferRef;
 	FSamplerStateRHIRef SamplerStateRef;
+
+	FMatrix CurrentViewMatrix;
+	FMatrix CurrentProjectionMatrix;
 };
 
 bool UCompushadyBlitterSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
-	return (RHIGetInterfaceType() == ERHIInterfaceType::D3D12 || RHIGetInterfaceType() == ERHIInterfaceType::Vulkan);
+	UWorld* CurrentWorld = Cast<UWorld>(Outer);
+	if (CurrentWorld && (CurrentWorld->WorldType == EWorldType::Game || CurrentWorld->WorldType == EWorldType::PIE || CurrentWorld->WorldType == EWorldType::GamePreview))
+	{
+		return (RHIGetInterfaceType() == ERHIInterfaceType::D3D12 || RHIGetInterfaceType() == ERHIInterfaceType::Vulkan);
+	}
+	return false;
 }
 
 void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -473,6 +497,26 @@ FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<FSceneViewExtensi
 	return FGuid::NewGuid();
 }
 
+const FMatrix& UCompushadyBlitterSubsystem::GetViewMatrix() const
+{
+	if (!ViewExtension)
+	{
+		return FMatrix::Identity;
+	}
+
+	return ViewExtension->GetViewMatrix();
+}
+
+const FMatrix& UCompushadyBlitterSubsystem::GetProjectionMatrix() const
+{
+	if (!ViewExtension)
+	{
+		return FMatrix::Identity;
+	}
+
+	return ViewExtension->GetProjectionMatrix();
+}
+
 // let's put them here to avoid circular includes
 void UCompushadyResource::Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
@@ -487,4 +531,36 @@ void UCompushadyResource::DrawBeforePostProcessing(UObject* WorldContextObject, 
 void UCompushadyResource::DrawAfterMotionBlur(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
 	WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddAfterMotionBlurDrawable(this, Quad, KeepAspectRatio);
+}
+
+bool UCompushadyCBV::SetProjectionMatrixFromViewport(UObject* WorldContextObject, const int64 Offset, const bool bTranspose, const bool bInverse)
+{
+	if (IsValidOffset(Offset, 16 * sizeof(float)))
+	{
+		FMatrix44f Matrix = FMatrix44f(WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->GetProjectionMatrix());
+		if (bInverse)
+		{
+			Matrix = Matrix.Inverse();
+		}
+		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
+		bBufferDataDirty = true;
+		return true;
+	}
+	return false;
+}
+
+bool UCompushadyCBV::SetViewMatrixFromViewport(UObject* WorldContextObject, const int64 Offset, const bool bTranspose, const bool bInverse)
+{
+	if (IsValidOffset(Offset, 16 * sizeof(float)))
+	{
+		FMatrix44f Matrix = FMatrix44f(WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->GetViewMatrix());
+		if (bInverse)
+		{
+			Matrix = Matrix.Inverse();
+		}
+		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
+		bBufferDataDirty = true;
+		return true;
+	}
+	return false;
 }

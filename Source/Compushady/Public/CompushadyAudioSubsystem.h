@@ -23,6 +23,8 @@ public:
 	void RegisterAudioTexture(UCompushadyResource* InResource, Audio::FPatchOutputStrongPtr InPatchOutputStrongPtr);
 	bool IsTickable() const override { return RegisteredAudioTextures.Num() > 0; }
 
+	bool ShouldCreateSubsystem(UObject* Outer) const override;
+
 protected:
 	TMap<TWeakObjectPtr<UCompushadyResource>, Audio::FPatchOutputStrongPtr> RegisteredAudioTextures;
 };

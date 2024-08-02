@@ -241,6 +241,9 @@ bool UCompushadyCBV::SetProjectionMatrixFromPlayerCameraManager(const int64 Offs
 	{
 		return false;
 	}
+	FVector OutLocation;
+	FRotator OutRotation;
+	PlayerCameraManager->PCOwner->GetPlayerViewPoint(OutLocation, OutRotation);
 	return SetProjectionMatrixFromMinimalViewInfo(Offset, PlayerCameraManager->GetCameraCacheView(), bTranspose, bInverse);
 }
 

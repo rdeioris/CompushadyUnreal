@@ -5,6 +5,16 @@
 #include "AudioDeviceManager.h"
 #include "AudioMixerDevice.h"
 
+bool UCompushadyAudioSubsystem::ShouldCreateSubsystem(UObject* Outer) const
+{
+	UWorld* CurrentWorld = Cast<UWorld>(Outer);
+	if (CurrentWorld && (CurrentWorld->WorldType == EWorldType::Game || CurrentWorld->WorldType == EWorldType::PIE || CurrentWorld->WorldType == EWorldType::GamePreview))
+	{
+		return (RHIGetInterfaceType() == ERHIInterfaceType::D3D12 || RHIGetInterfaceType() == ERHIInterfaceType::Vulkan);
+	}
+	return false;
+}
+
 void UCompushadyAudioSubsystem::Tick(float DeltaTime)
 {
 	// first check for dead textures
