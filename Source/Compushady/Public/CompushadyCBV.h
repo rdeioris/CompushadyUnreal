@@ -52,13 +52,13 @@ public:
 	bool SetIntArray(const int64 Offset, const TArray<int32>& Values);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
-	bool SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose = false);
+	bool SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
-	bool SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose = false);
+	bool SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = true, const bool bTranspose = false);
+	bool SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = true, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool SetRotationFloat2(const int64 Offset, const float Radians);
@@ -82,19 +82,19 @@ public:
 	bool GetUInt(const int64 Offset, uint32& Value);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose = false);
+	bool SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetProjectionMatrixFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose = false);
+	bool SetProjectionMatrixFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetProjectionMatrixFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose = false);
+	bool SetProjectionMatrixFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetProjectionMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose = false);
+	bool SetProjectionMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetViewMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose = false);
+	bool SetViewMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose = false, const bool bInverse = false);
 
 	bool IsValidOffset(const int64 Offset, const int64 Size) const;
 

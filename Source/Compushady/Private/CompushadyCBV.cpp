@@ -103,11 +103,15 @@ bool UCompushadyCBV::SetIntArray(const int64 Offset, const TArray<int32>& Values
 	return SetArrayValue(Offset, Values);
 }
 
-bool UCompushadyCBV::SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose)
+bool UCompushadyCBV::SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose, const bool bInverse)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
 		FMatrix44f Matrix(Transform.ToMatrixWithScale());
+		if (bInverse)
+		{
+			Matrix = Matrix.Inverse();
+		}
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
 		return true;
@@ -115,11 +119,15 @@ bool UCompushadyCBV::SetTransformFloat(const int64 Offset, const FTransform& Tra
 	return false;
 }
 
-bool UCompushadyCBV::SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose)
+bool UCompushadyCBV::SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose, const bool bInverse)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(double)))
 	{
 		FMatrix44d Matrix(Transform.ToMatrixWithScale());
+		if (bInverse)
+		{
+			Matrix = Matrix.Inverse();
+		}
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(double));
 		bBufferDataDirty = true;
 		return true;
@@ -127,16 +135,20 @@ bool UCompushadyCBV::SetTransformDouble(const int64 Offset, const FTransform& Tr
 	return false;
 }
 
-bool UCompushadyCBV::SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose)
+bool UCompushadyCBV::SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose, const bool bInverse)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
-		FPerspectiveMatrix44f Matrix(FMath::DegreesToRadians(HalfFOV), Width, Height, ZNear, ZFar);
+		FMatrix44f  Matrix = FPerspectiveMatrix44f(FMath::DegreesToRadians(HalfFOV), Width, Height, ZNear, ZFar);
 		if (bRightHanded)
 		{
 			Matrix.M[2][2] = ((ZNear == ZFar) ? 0.0f : ZFar / (ZNear - ZFar));
 			Matrix.M[2][3] *= -1;
 			Matrix.M[3][2] = ((ZNear == ZFar) ? 0.0f : ZNear * ZFar / (ZNear - ZFar));
+		}
+		if (bInverse)
+		{
+			Matrix = Matrix.Inverse();
 		}
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
@@ -203,7 +215,7 @@ bool UCompushadyCBV::IsValidOffset(const int64 Offset, const int64 Size) const
 	return Offset >= 0 && (Offset + Size <= BufferData.Num());
 }
 
-bool UCompushadyCBV::SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose)
+bool UCompushadyCBV::SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, const FMinimalViewInfo& MinimalViewInfo, const bool bTranspose, const bool bInverse)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
@@ -212,6 +224,10 @@ bool UCompushadyCBV::SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, 
 		FMatrix ViewProjectionMatrix;
 		UGameplayStatics::GetViewProjectionMatrix(MinimalViewInfo, ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
 		FMatrix44f Matrix = FMatrix44f(ProjectionMatrix);
+		if (bInverse)
+		{
+			Matrix = Matrix.Inverse();
+		}
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
 		return true;
@@ -219,16 +235,16 @@ bool UCompushadyCBV::SetProjectionMatrixFromMinimalViewInfo(const int64 Offset, 
 	return false;
 }
 
-bool UCompushadyCBV::SetProjectionMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose)
+bool UCompushadyCBV::SetProjectionMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose, const bool bInverse)
 {
 	if (!PlayerCameraManager)
 	{
 		return false;
 	}
-	return SetProjectionMatrixFromMinimalViewInfo(Offset, PlayerCameraManager->GetCameraCacheView(), bTranspose);
+	return SetProjectionMatrixFromMinimalViewInfo(Offset, PlayerCameraManager->GetCameraCacheView(), bTranspose, bInverse);
 }
 
-bool UCompushadyCBV::SetViewMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose)
+bool UCompushadyCBV::SetViewMatrixFromPlayerCameraManager(const int64 Offset, APlayerCameraManager* PlayerCameraManager, const bool bTranspose, const bool bInverse)
 {
 	if (!PlayerCameraManager)
 	{
@@ -243,6 +259,10 @@ bool UCompushadyCBV::SetViewMatrixFromPlayerCameraManager(const int64 Offset, AP
 		FMatrix ViewProjectionMatrix;
 		UGameplayStatics::GetViewProjectionMatrix(MinimalViewInfo, ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
 		FMatrix44f Matrix = FMatrix44f(ViewMatrix);
+		if (bInverse)
+		{
+			Matrix = Matrix.Inverse();
+		}
 		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? Matrix.GetTransposed().M : Matrix.M, 16 * sizeof(float));
 		bBufferDataDirty = true;
 		return true;
@@ -251,7 +271,7 @@ bool UCompushadyCBV::SetViewMatrixFromPlayerCameraManager(const int64 Offset, AP
 	return false;
 }
 
-bool UCompushadyCBV::SetProjectionMatrixFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose)
+bool UCompushadyCBV::SetProjectionMatrixFromCameraComponent(const int64 Offset, UCameraComponent* CameraComponent, const bool bTranspose, const bool bInverse)
 {
 	if (!CameraComponent)
 	{
@@ -260,10 +280,10 @@ bool UCompushadyCBV::SetProjectionMatrixFromCameraComponent(const int64 Offset, 
 
 	FMinimalViewInfo MinimalViewInfo;
 	CameraComponent->GetCameraView(0, MinimalViewInfo);
-	return SetProjectionMatrixFromMinimalViewInfo(Offset, MinimalViewInfo, bTranspose);
+	return SetProjectionMatrixFromMinimalViewInfo(Offset, MinimalViewInfo, bTranspose, bInverse);
 }
 
-bool UCompushadyCBV::SetProjectionMatrixFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose)
+bool UCompushadyCBV::SetProjectionMatrixFromSceneCaptureComponent2D(const int64 Offset, USceneCaptureComponent2D* SceneCaptureComponent, const bool bTranspose, const bool bInverse)
 {
 	if (!SceneCaptureComponent)
 	{
@@ -272,7 +292,7 @@ bool UCompushadyCBV::SetProjectionMatrixFromSceneCaptureComponent2D(const int64 
 
 	FMinimalViewInfo MinimalViewInfo;
 	SceneCaptureComponent->GetCameraView(0, MinimalViewInfo);
-	return SetProjectionMatrixFromMinimalViewInfo(Offset, MinimalViewInfo, bTranspose);
+	return SetProjectionMatrixFromMinimalViewInfo(Offset, MinimalViewInfo, bTranspose, bInverse);
 }
 
 bool UCompushadyCBV::SetBufferData(const uint8* Data, const int32 Size)

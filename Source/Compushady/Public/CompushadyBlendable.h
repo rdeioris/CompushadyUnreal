@@ -28,6 +28,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResources(const FCompushadyResourceArray& InPSResourceArray, FString& ErrorMessages);
 
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool UpdateResourcesByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages);
+
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	FGuid AddToBlitter(UObject* WorldContextObject, const int32 Priority = 0);
 

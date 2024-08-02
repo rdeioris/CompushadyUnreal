@@ -297,6 +297,17 @@ bool UCompushadyBlendable::UpdateResources(const FCompushadyResourceArray& InPSR
 	return true;
 }
 
+bool UCompushadyBlendable::UpdateResourcesByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages)
+{
+	FCompushadyResourceArray InPSResourceArray;
+	if (!Compushady::Utils::ValidateResourceBindingsMap(PSResourceMap, PSResourceBindings, InPSResourceArray, ErrorMessages))
+	{
+		return false;
+	}
+
+	return UpdateResources(InPSResourceArray, ErrorMessages);
+}
+
 FPixelShaderRHIRef UCompushadyBlendable::GetPixelShader() const
 {
 	return PixelShaderRef;
