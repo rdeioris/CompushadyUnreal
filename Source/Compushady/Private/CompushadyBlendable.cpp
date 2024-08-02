@@ -28,6 +28,34 @@ protected:
 	{
 	}
 
+	void FillSceneTextures(FCompushadySceneTextures& SceneTextures, FRHICommandList& RHICmdList, FTextureRHIRef SceneColorInput, const FSceneTextureUniformParameters* Contents)
+	{
+		SceneTextures.SetTexture(ECompushadySceneTexture::SceneColorInput, SceneColorInput);
+
+		SceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, Contents->SceneColorTexture->GetRHI());
+
+		FRHIViewDesc::FTextureSRV::FInitializer SRVViewDesc = FRHIViewDesc::CreateTextureSRV();
+		SRVViewDesc.SetDimensionFromTexture(Contents->SceneDepthTexture->GetRHI());
+
+		SRVViewDesc.SetPlane(ERHITexturePlane::Depth);
+		FShaderResourceViewRHIRef DepthSRV = COMPUSHADY_CREATE_SRV(Contents->SceneDepthTexture->GetRHI(), SRVViewDesc);
+		SceneTextures.SetSRV(ECompushadySceneTexture::Depth, DepthSRV);
+
+		SRVViewDesc.SetPlane(ERHITexturePlane::Stencil);
+		FShaderResourceViewRHIRef StencilSRV = COMPUSHADY_CREATE_SRV(Contents->SceneDepthTexture->GetRHI(), SRVViewDesc);
+		SceneTextures.SetSRV(ECompushadySceneTexture::Stencil, StencilSRV);
+
+		SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, Contents->CustomDepthTexture->GetRHI());
+		SceneTextures.SetSRV(ECompushadySceneTexture::CustomStencil, Contents->CustomStencilTexture->GetRHI());
+		SceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, Contents->GBufferATexture->GetRHI());
+		SceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, Contents->GBufferBTexture->GetRHI());
+		SceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, Contents->GBufferCTexture->GetRHI());
+		SceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, Contents->GBufferDTexture->GetRHI());
+		SceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, Contents->GBufferETexture->GetRHI());
+		SceneTextures.SetTexture(ECompushadySceneTexture::GBufferF, Contents->GBufferFTexture->GetRHI());
+		SceneTextures.SetTexture(ECompushadySceneTexture::Velocity, Contents->GBufferVelocityTexture->GetRHI());
+	}
+
 	FScreenPassTexture PostProcessCallback_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
 	{
 #if COMPUSHADY_UE_VERSION >= 54
@@ -52,20 +80,10 @@ protected:
 			ERDGPassFlags::None,
 			[this, VertexShader, Output, SceneColorInput, InOutInputs](FRHICommandList& RHICmdList)
 			{
-				FTexture2DRHIRef RenderTarget = Output.Texture->GetRHI();
+				FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
 
 				FCompushadySceneTextures SceneTextures = {};
-				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColorInput, SceneColorInput.Texture->GetRHI());
-
-				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneColorTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::Depth, InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, InOutInputs.SceneTextures.SceneTextures->GetContents()->CustomDepthTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferATexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferBTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferCTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferDTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferETexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferF, InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferFTexture->GetRHI());
+				FillSceneTextures(SceneTextures, RHICmdList, SceneColorInput.Texture->GetRHI(), InOutInputs.SceneTextures.SceneTextures->GetContents());
 
 				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
@@ -139,20 +157,10 @@ public:
 			ERDGPassFlags::None,
 			[this, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
 			{
-				FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
+				FTextureRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 
 				FCompushadySceneTextures SceneTextures = {};
-				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColorInput, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
-
-				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::Depth, InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, InputSceneTextures->GetContents()->CustomDepthTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, InputSceneTextures->GetContents()->GBufferATexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, InputSceneTextures->GetContents()->GBufferBTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, InputSceneTextures->GetContents()->GBufferCTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, InputSceneTextures->GetContents()->GBufferDTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, InputSceneTextures->GetContents()->GBufferETexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferF, InputSceneTextures->GetContents()->GBufferFTexture->GetRHI());
+				FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
 
 				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
@@ -229,17 +237,7 @@ public:
 				FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 
 				FCompushadySceneTextures SceneTextures = {};
-				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColorInput, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
-
-				SceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::Depth, InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, InputSceneTextures->GetContents()->CustomDepthTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, InputSceneTextures->GetContents()->GBufferATexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, InputSceneTextures->GetContents()->GBufferBTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, InputSceneTextures->GetContents()->GBufferCTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, InputSceneTextures->GetContents()->GBufferDTexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, InputSceneTextures->GetContents()->GBufferETexture->GetRHI());
-				SceneTextures.SetTexture(ECompushadySceneTexture::GBufferF, InputSceneTextures->GetContents()->GBufferFTexture->GetRHI());
+				FillSceneTextures(SceneTextures, RHICmdList, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI(), InputSceneTextures->GetContents());
 
 				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()

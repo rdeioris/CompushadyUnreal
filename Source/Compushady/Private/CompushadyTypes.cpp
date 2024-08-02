@@ -1099,9 +1099,17 @@ namespace Compushady
 					}
 					else
 					{
-						FTextureRHIRef Texture = ResourceArray.SRVs[Index]->GetRHI(SceneTextures);
-						RHICmdList.Transition(FRHITransitionInfo(Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
-						return { nullptr, Texture };
+						TPair<FShaderResourceViewRHIRef, FTextureRHIRef> SRVOrTexture = ResourceArray.SRVs[Index]->GetRHI(SceneTextures);
+						if (SRVOrTexture.Value)
+						{
+							RHICmdList.Transition(FRHITransitionInfo(SRVOrTexture.Value, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+						}
+						else
+						{
+							FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
+							//RHICmdList.Transition(FRHITransitionInfo(TextureToTransition, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+						}
+						return SRVOrTexture;
 					}
 				},
 				[&](const int32 Index) // UAV

@@ -1328,7 +1328,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(
 	return CompushadySRV;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompushadyUAV* UAV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompushadyUAV* UAV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips, const EPixelFormat PixelFormat)
 {
 	if (!UAV)
 	{
@@ -1358,7 +1358,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompusha
 	}
 	else if (UAV->IsValidTexture())
 	{
-		if (!CompushadySRV->InitializeFromTextureAdvanced(UAV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips))
+		if (!CompushadySRV->InitializeFromTextureAdvanced(UAV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips, PixelFormat))
 		{
 			return nullptr;
 		}
@@ -1538,7 +1538,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVAudioTexture2D(UO
 	return nullptr;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSRV(UCompushadySRV* SRV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSRV(UCompushadySRV* SRV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips, const EPixelFormat PixelFormat)
 {
 	if (!SRV)
 	{
@@ -1568,7 +1568,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSRV(UCompusha
 	}
 	else if (SRV->IsValidTexture())
 	{
-		if (!CompushadySRV->InitializeFromTextureAdvanced(SRV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips))
+		if (!CompushadySRV->InitializeFromTextureAdvanced(SRV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips, PixelFormat))
 		{
 			return nullptr;
 		}

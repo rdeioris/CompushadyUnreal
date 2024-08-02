@@ -212,7 +212,10 @@ enum class ECompushadySceneTexture : uint8
 	GBufferF,
 	SceneColor,
 	Depth,
+	Stencil,
 	CustomDepth,
+	CustomStencil,
+	Velocity,
 	Max
 };
 
@@ -228,11 +231,16 @@ enum class ECompushadyShaderLanguage : uint8
 
 struct FCompushadySceneTextures
 {
-	TStaticArray<FTextureRHIRef, (uint32)ECompushadySceneTexture::Max> Textures;
+	TStaticArray<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>, (uint32)ECompushadySceneTexture::Max> Textures;
 
 	void SetTexture(const ECompushadySceneTexture SceneTexture, FTextureRHIRef Texture)
 	{
-		Textures[(uint32)SceneTexture] = Texture;
+		Textures[(uint32)SceneTexture] = { nullptr, Texture };
+	}
+
+	void SetSRV(const ECompushadySceneTexture SceneTexture, FShaderResourceViewRHIRef SRV)
+	{
+		Textures[(uint32)SceneTexture] = { SRV, nullptr };
 	}
 };
 

@@ -35,9 +35,14 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	return true;
 }
 
-bool UCompushadySRV::InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRef, const int32 Slice, const int32 SlicesNum, const int32 MipLevel, const int32 MipsNum)
+bool UCompushadySRV::InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRef, const int32 Slice, const int32 SlicesNum, const int32 MipLevel, const int32 MipsNum, const EPixelFormat PixelFormat)
 {
 	if (!InTextureRHIRef)
+	{
+		return false;
+	}
+
+	if (PixelFormat != EPixelFormat::PF_Unknown && !GPixelFormats[PixelFormat].Supported)
 	{
 		return false;
 	}
@@ -55,10 +60,10 @@ bool UCompushadySRV::InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRe
 	TextureRHIRef = InTextureRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
-		[this, Slice, SlicesNum, MipLevel, MipsNum](FRHICommandListImmediate& RHICmdList)
+		[this, Slice, SlicesNum, MipLevel, MipsNum, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHITextureSRVCreateInfo SRVCreateInfo;
-			SRVCreateInfo.Format = TextureRHIRef->GetDesc().Format;
+			SRVCreateInfo.Format = PixelFormat;
 			SRVCreateInfo.FirstArraySlice = Slice;
 			SRVCreateInfo.NumArraySlices = SlicesNum;
 			SRVCreateInfo.MipLevel = MipLevel;
@@ -197,7 +202,7 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 	return true;
 }
 
-FTextureRHIRef UCompushadySRV::GetRHI(const FCompushadySceneTextures& SceneTextures) const
+TPair<FShaderResourceViewRHIRef, FTextureRHIRef> UCompushadySRV::GetRHI(const FCompushadySceneTextures& SceneTextures) const
 {
 	return SceneTextures.Textures[(uint32)SceneTexture];
 }
