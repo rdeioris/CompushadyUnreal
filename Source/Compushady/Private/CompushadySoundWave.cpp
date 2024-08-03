@@ -23,3 +23,25 @@ void UCompushadySoundWave::UpdateSamples()
 
 	QueueAudio(TempData.GetData(), TempData.Num());
 }
+
+int32 UCompushadySoundWave::GetSampleRate() const
+{
+	return SampleRate;
+}
+int32 UCompushadySoundWave::GetNumChanels() const
+{
+	return NumChannels;
+}
+float UCompushadySoundWave::GetDuration() const
+{
+	return Duration;
+}
+int32 UCompushadySoundWave::GetSamples() const
+{
+	return Duration * SampleRate;
+}
+
+int32 UCompushadySoundWave::GetTotalSamples() const
+{
+	return Duration * SampleRate * NumChannels;
+}

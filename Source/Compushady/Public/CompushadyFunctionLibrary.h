@@ -102,6 +102,9 @@ public:
 	static UCompushadyUAV* CreateCompushadyUAVTexture2DArray(const FString& Name, const int32 Width, const int32 Height, const int32 Slices, const EPixelFormat Format);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyUAV* CreateCompushadyUAVTextureRenderTarget2D(const int32 Width, const int32 Height, const EPixelFormat Format, UTextureRenderTarget2D*& RenderTarget, const FLinearColor ClearColor = FLinearColor::Black, const float Gamma = 2.2, const bool bLinearGamma = false);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")

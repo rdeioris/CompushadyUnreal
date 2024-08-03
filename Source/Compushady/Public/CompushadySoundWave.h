@@ -24,6 +24,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void UpdateSamples();
 
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	int32 GetSampleRate() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	int32 GetNumChanels() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	float GetDuration() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	int32 GetSamples() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	int32 GetTotalSamples() const;
 protected:
 	TArray<uint8> TempData;
 };

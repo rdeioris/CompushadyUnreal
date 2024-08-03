@@ -985,6 +985,17 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2
 	return CompushadyUAV;
 }
 
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTextureRenderTarget2D(const int32 Width, const int32 Height, const EPixelFormat Format, UTextureRenderTarget2D*& RenderTarget, const FLinearColor ClearColor, const float Gamma, const bool bLinearGamma)
+{
+	RenderTarget = NewObject<UTextureRenderTarget2D>();
+	RenderTarget->TargetGamma = Gamma;
+	RenderTarget->ClearColor = ClearColor;
+	RenderTarget->bCanCreateUAV = true;
+	RenderTarget->InitCustomFormat(Width, Height, Format, bLinearGamma);
+
+	return CreateCompushadyUAVFromRenderTarget2D(RenderTarget);
+}
+
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray)
 {
 	if (!RenderTargetArray)
@@ -1218,7 +1229,7 @@ UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadyUAVSoundWave(c
 	CompushadySoundWave->Duration = Duration;
 	CompushadySoundWave->SetSampleRate(SampleRate);
 	CompushadySoundWave->NumChannels = NumChannels;
-	CompushadySoundWave->bLooping = true;
+	CompushadySoundWave->bLooping = false;
 
 	CompushadySoundWave->UAV = CreateCompushadyUAVBuffer(Name, SampleRate * Duration * NumChannels * sizeof(float), EPixelFormat::PF_R32_FLOAT);
 
@@ -1389,9 +1400,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompusha
 		}
 		else
 		{
-#if COMPUSHADY_UE_VERSION >= 53
-			if (!CompushadySRV->InitializeFromBuffer(UAV->GetBufferRHI(), UAV->GetRHI()->GetDesc().Common.Format))
-#endif
+			if (!CompushadySRV->InitializeFromBuffer(UAV->GetBufferRHI(), PixelFormat))
 			{
 				return nullptr;
 			}
@@ -1599,9 +1608,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSRV(UCompusha
 		}
 		else
 		{
-#if COMPUSHADY_UE_VERSION >= 53
-			if (!CompushadySRV->InitializeFromBuffer(SRV->GetBufferRHI(), SRV->GetRHI()->GetDesc().Common.Format))
-#endif
+			if (!CompushadySRV->InitializeFromBuffer(SRV->GetBufferRHI(), PixelFormat))
 			{
 				return nullptr;
 			}

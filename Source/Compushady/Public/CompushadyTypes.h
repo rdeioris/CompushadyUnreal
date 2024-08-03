@@ -229,6 +229,15 @@ enum class ECompushadyShaderLanguage : uint8
 	MSL
 };
 
+UENUM(BlueprintType)
+enum class ECompushadyWAVFormat : uint8
+{
+	PCM16,
+	PCM32,
+	PCM8,
+	Float
+};
+
 struct FCompushadySceneTextures
 {
 	TStaticArray<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>, (uint32)ECompushadySceneTexture::Max> Textures;
@@ -427,6 +436,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool ReadbackTextureToTIFFFileSync(const FString& Filename, const FString& ImageDescription, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool ReadbackBufferToWAVFileSync(const FString& Filename, const int64 Offset, const int64 Size, const int32 SampleRate, const int32 NumChannels, const EPixelFormat PixelFormat, const ECompushadyWAVFormat WAVFormat, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
 	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
