@@ -150,6 +150,27 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(const FCompushadyRaster
 	return true;
 }
 
+void UCompushadyRasterizer::DrawByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled)
+{
+	FString ErrorMessages;
+
+	FCompushadyResourceArray VSResourceArray;
+	if (!Compushady::Utils::ValidateResourceBindingsMap(VSResourceMap, VSResourceBindings, VSResourceArray, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
+	}
+
+	FCompushadyResourceArray PSResourceArray;
+	if (!Compushady::Utils::ValidateResourceBindingsMap(PSResourceMap, PSResourceBindings, PSResourceArray, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
+	}
+
+	return Draw(VSResourceArray, PSResourceArray, RTVs, DSV, NumVertices, NumInstances, RasterizeConfig, OnSignaled);
+}
+
 void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled)
 {
 	if (IsRunning())
@@ -270,6 +291,104 @@ void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResou
 				RHICmdList.EndRenderPass();
 			}
 		}, OnSignaled);
+}
+
+bool UCompushadyRasterizer::ClearAndDrawSync(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, FString& ErrorMessages)
+{
+	if (IsRunning())
+	{
+		ErrorMessages = "The Rasterizer is already running";
+		return false;
+	}
+
+	if (NumVertices <= 0)
+	{
+		ErrorMessages = FString::Printf(TEXT("Invalid number of vertices %d"), NumVertices);
+		return false;
+	}
+
+	if (NumInstances <= 0)
+	{
+		ErrorMessages = FString::Printf(TEXT("Invalid number of instances %d"), NumInstances);
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(VSResourceArray, VSResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(PSResourceArray, PSResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	TStaticArray<FRHITexture*, 8> RenderTargets = {};
+	int32 RenderTargetsEnabled = 0;
+	FRHITexture* DepthStencilTexture = nullptr;
+	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+
+	TrackResources(VSResourceArray);
+	TrackResources(PSResourceArray);
+
+	EnqueueToGPUSync(
+		[this, NumVertices, NumInstances, VSResourceArray, PSResourceArray, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, RasterizeConfig](FRHICommandListImmediate& RHICmdList)
+		{
+			uint32 Width = 0;
+			uint32 Height = 0;
+
+			if (BeginRenderPass_RenderThread(TEXT("UCompushadyRasterizer::ClearAndDrawSync"), RHICmdList, RenderTargets, RenderTargetsEnabled, DepthStencilTexture, ERenderTargetActions::Clear_Store, EDepthStencilTargetActions::ClearDepthStencil_StoreDepthStencil, Width, Height))
+			{
+				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
+
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+
+				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+
+				RHICmdList.EndRenderPass();
+			}
+		});
+
+	return true;
+}
+
+void UCompushadyRasterizer::ClearAndDrawByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled)
+{
+	FString ErrorMessages;
+
+	FCompushadyResourceArray VSResourceArray;
+	if (!Compushady::Utils::ValidateResourceBindingsMap(VSResourceMap, VSResourceBindings, VSResourceArray, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
+	}
+
+	FCompushadyResourceArray PSResourceArray;
+	if (!Compushady::Utils::ValidateResourceBindingsMap(PSResourceMap, PSResourceBindings, PSResourceArray, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
+	}
+
+	return ClearAndDraw(VSResourceArray, PSResourceArray, RTVs, DSV, NumVertices, NumInstances, RasterizeConfig, OnSignaled);
+}
+
+bool UCompushadyRasterizer::ClearAndDrawByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, FString& ErrorMessages)
+{
+	FCompushadyResourceArray VSResourceArray;
+	if (!Compushady::Utils::ValidateResourceBindingsMap(VSResourceMap, VSResourceBindings, VSResourceArray, ErrorMessages))
+	{
+		return false;
+	}
+
+	FCompushadyResourceArray PSResourceArray;
+	if (!Compushady::Utils::ValidateResourceBindingsMap(PSResourceMap, PSResourceBindings, PSResourceArray, ErrorMessages))
+	{
+		return false;
+	}
+
+	return ClearAndDrawSync(VSResourceArray, PSResourceArray, RTVs, DSV, NumVertices, NumInstances, RasterizeConfig, ErrorMessages);
 }
 
 void UCompushadyRasterizer::SetupRasterization_RenderThread(FRHICommandListImmediate& RHICmdList, const FCompushadyRasterizeConfig& RasterizeConfig, const int32 Width, const int32 Height)

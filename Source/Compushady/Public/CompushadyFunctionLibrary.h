@@ -105,6 +105,9 @@ public:
 	static UCompushadyUAV* CreateCompushadyUAVTextureRenderTarget2D(const int32 Width, const int32 Height, const EPixelFormat Format, UTextureRenderTarget2D*& RenderTarget, const FLinearColor ClearColor = FLinearColor::Black, const float Gamma = 2.2, const bool bLinearGamma = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadyRTV* CreateCompushadyRTVTextureRenderTarget2D(const int32 Width, const int32 Height, const EPixelFormat Format, UTextureRenderTarget2D*& RenderTarget, const FLinearColor ClearColor = FLinearColor::Black, const float Gamma = 2.2, const bool bLinearGamma = false);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVTexture2D(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -195,6 +198,9 @@ public:
 	static bool CompileHLSLToSPIRVBlob(const FString& HLSL, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& Blob, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static bool CompileGLSLToSPIRVBlob(const FString& GLSL, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& Blob, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromGLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main");
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -231,10 +237,7 @@ public:
 	static UCompushadySRV* CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadySRV* CreateCompushadySRVFromUAV(UCompushadyUAV* UAV, const int32 Slice, const int32 MipLevel, const int32 NumSlices = 1, const int32 NumMips = 1, const EPixelFormat PixelFormat = EPixelFormat::PF_Unknown);
-
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadySRV* CreateCompushadySRVFromSRV(UCompushadySRV* SRV, const int32 Slice, const int32 MipLevel, const int32 NumSlices = 1, const int32 NumMips = 1, const EPixelFormat PixelFormat = EPixelFormat::PF_Unknown);
+	static UCompushadySRV* CreateCompushadySRVFromResource(UCompushadyResource* Resource, const int32 Slice, const int32 MipLevel, const int32 NumSlices = 1, const int32 NumMips = 1, const EPixelFormat PixelFormat = EPixelFormat::PF_Unknown);
 
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVFromWorldSceneAccelerationStructure(UObject* WorldContextObject);

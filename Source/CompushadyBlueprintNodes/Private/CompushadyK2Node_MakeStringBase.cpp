@@ -80,7 +80,7 @@ TSharedPtr<SGraphNode> UCompushadyK2Node_MakeStringBase::CreateVisualWidget()
 			LeftNodeBox->AddSlot()
 				.AutoHeight()
 				[
-					SNew(SBox).MinDesiredWidth(500).HeightOverride(700).MaxDesiredWidth(1000)
+					SNew(SBox).MinDesiredWidth(500).MinDesiredHeight(350).MaxDesiredWidth(1000).MaxDesiredHeight(700)
 						[
 							SAssignNew(MakeString->ShaderEditorWidget, SMultiLineEditableTextBox).Marshaller(MakeString->GetSyntaxHighlighter())
 								.Text(FText::FromString(MakeString->GetShaderString()))

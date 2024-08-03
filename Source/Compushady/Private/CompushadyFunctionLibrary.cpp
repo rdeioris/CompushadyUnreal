@@ -218,6 +218,27 @@ bool UCompushadyFunctionLibrary::CompileHLSLToSPIRVBlob(const FString& HLSL, con
 	return Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages);
 }
 
+bool UCompushadyFunctionLibrary::CompileGLSLToSPIRVBlob(const FString& HLSL, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& Blob, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+{
+	TArray<uint8> HLSLShaderCode;
+	Compushady::StringToShaderCode(HLSL, HLSLShaderCode);
+
+	if (!Compushady::CompileGLSL(HLSLShaderCode, EntryPoint, TargetProfile, Blob, ErrorMessages))
+	{
+		return false;
+	}
+
+	// we need a copy as we want the original spirv bytecode
+	TArray<uint8> BlobTempCopy = Blob;
+	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
+	if (!Compushady::FixupSPIRV(BlobTempCopy, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	{
+		return false;
+	}
+
+	return Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages);
+}
+
 bool UCompushadyFunctionLibrary::SPIRVBlobToGLSL(const TArray<uint8>& Blob, FString& GLSL, FString& ErrorMessages)
 {
 	TArray<uint8> GLSLBytes;
@@ -996,6 +1017,17 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTextureRenderTarg
 	return CreateCompushadyUAVFromRenderTarget2D(RenderTarget);
 }
 
+UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTextureRenderTarget2D(const int32 Width, const int32 Height, const EPixelFormat Format, UTextureRenderTarget2D*& RenderTarget, const FLinearColor ClearColor, const float Gamma, const bool bLinearGamma)
+{
+	RenderTarget = NewObject<UTextureRenderTarget2D>();
+	RenderTarget->TargetGamma = Gamma;
+	RenderTarget->ClearColor = ClearColor;
+	RenderTarget->bCanCreateUAV = true;
+	RenderTarget->InitCustomFormat(Width, Height, Format, bLinearGamma);
+
+	return CreateCompushadyRTVFromRenderTarget2D(RenderTarget);
+}
+
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray)
 {
 	if (!RenderTargetArray)
@@ -1380,35 +1412,35 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(
 	return CompushadySRV;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromUAV(UCompushadyUAV* UAV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips, const EPixelFormat PixelFormat)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromResource(UCompushadyResource* Resource, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips, const EPixelFormat PixelFormat)
 {
-	if (!UAV)
+	if (!Resource)
 	{
 		return nullptr;
 	}
 
 	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
 
-	if (UAV->IsValidBuffer())
+	if (Resource->IsValidBuffer())
 	{
-		if (EnumHasAnyFlags(UAV->GetBufferRHI()->GetUsage(), EBufferUsageFlags::StructuredBuffer))
+		if (EnumHasAnyFlags(Resource->GetBufferRHI()->GetUsage(), EBufferUsageFlags::StructuredBuffer))
 		{
-			if (!CompushadySRV->InitializeFromStructuredBuffer(UAV->GetBufferRHI()))
+			if (!CompushadySRV->InitializeFromStructuredBuffer(Resource->GetBufferRHI()))
 			{
 				return nullptr;
 			}
 		}
 		else
 		{
-			if (!CompushadySRV->InitializeFromBuffer(UAV->GetBufferRHI(), PixelFormat))
+			if (!CompushadySRV->InitializeFromBuffer(Resource->GetBufferRHI(), PixelFormat))
 			{
 				return nullptr;
 			}
 		}
 	}
-	else if (UAV->IsValidTexture())
+	else if (Resource->IsValidTexture())
 	{
-		if (!CompushadySRV->InitializeFromTextureAdvanced(UAV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips, PixelFormat))
+		if (!CompushadySRV->InitializeFromTextureAdvanced(Resource->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips, PixelFormat))
 		{
 			return nullptr;
 		}
@@ -1586,46 +1618,4 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVAudioTexture2D(UO
 	}
 
 	return nullptr;
-}
-
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSRV(UCompushadySRV* SRV, const int32 Slice, const int32 MipLevel, const int32 NumSlices, const int32 NumMips, const EPixelFormat PixelFormat)
-{
-	if (!SRV)
-	{
-		return nullptr;
-	}
-
-	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
-
-	if (SRV->IsValidBuffer())
-	{
-		if (EnumHasAnyFlags(SRV->GetBufferRHI()->GetUsage(), EBufferUsageFlags::StructuredBuffer))
-		{
-			if (!CompushadySRV->InitializeFromStructuredBuffer(SRV->GetBufferRHI()))
-			{
-				return nullptr;
-			}
-		}
-		else
-		{
-			if (!CompushadySRV->InitializeFromBuffer(SRV->GetBufferRHI(), PixelFormat))
-			{
-				return nullptr;
-			}
-		}
-	}
-	else if (SRV->IsValidTexture())
-	{
-		if (!CompushadySRV->InitializeFromTextureAdvanced(SRV->GetTextureRHI(), Slice, NumSlices, MipLevel, NumMips, PixelFormat))
-		{
-			return nullptr;
-		}
-	}
-	else
-	{
-		return nullptr;
-	}
-
-
-	return CompushadySRV;
 }

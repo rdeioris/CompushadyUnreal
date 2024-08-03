@@ -27,8 +27,21 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceArray,PSResourceArray,RTVs,RasterizeConfig,OnSignaled"), Category = "Compushady")
 	void Draw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled);
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceMap,PSResourceMap,RTVs,RasterizeConfig,OnSignaled"), Category = "Compushady")
+	void DrawByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled);
+
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceArray,PSResourceArray,RTVs,RasterizeConfig,OnSignaled"), Category = "Compushady")
 	void ClearAndDraw(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceArray,PSResourceArray,RTVs,RasterizeConfig"), Category = "Compushady")
+	bool ClearAndDrawSync(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, FString& ErrorMessages);
+
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceMap,PSResourceMap,RTVs,RasterizeConfig,OnSignaled"), Category = "Compushady")
+	void ClearAndDrawByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceMap,PSResourceMap,RTVs,RasterizeConfig"), Category = "Compushady")
+	bool ClearAndDrawByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizeConfig& RasterizeConfig, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceArray,PSResourceArray,RTVs,RasterizeConfig,OnSignaled"), Category = "Compushady")
 	void DrawIndirect(const FCompushadyResourceArray& VSResourceArray, const FCompushadyResourceArray& PSResourceArray, const TArray<UCompushadyRTV*> RTVs, UCompushadyDSV* DSV, UCompushadyResource* CommandBuffer, const int32 Offset, const FCompushadyRasterizeConfig& RasterizeConfig, const FCompushadySignaled& OnSignaled);
