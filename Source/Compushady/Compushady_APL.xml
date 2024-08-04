@@ -1,22 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root xmlns:android="http://schemas.android.com/apk/res/android">
-        <init>
-                <log text="Compushady"/>
-                <setBool result="bSupported" value="false"/>
-                <isArch arch="arm64-v8a">
-                        <setBool result="bSupported" value="true"/>
-                </isArch>
-        </init>
+  <init>
+    <log text="Compushady"/>
+    <setBool result="bSupported" value="false"/>
+    <isArch arch="arm64-v8a">
+      <setBool result="bSupported" value="true"/>
+    </isArch>
+  </init>
 
-        <resourceCopies>
-                <isArch arch="arm64-v8a">
-                        <log text="Copying libdxcompiler.so"/>
-                        <copyFile src="$S(PluginDir)/../ThirdParty/dxc_2023_03_01_android/lib/libdxcompiler.so"
-                                                          dst="$S(BuildDir)/libs/$S(Architecture)/libdxcompiler.so" />
-                        <log text="Copying libcompushady_khr.so"/>
-                        <copyFile src="$S(PluginDir)/../ThirdParty/compushady_khr/libcompushady_khr_android_arm64.so"
-                                                          dst="$S(BuildDir)/libs/$S(Architecture)/libcompushady_khr.so" />
-                </isArch>
-        </resourceCopies>
+  <resourceCopies>
+    <isArch arch="arm64-v8a">
+      <log text="Copying libdxcompiler.so"/>
+      <copyFile src="$S(PluginDir)/../ThirdParty/dxc_2024_07_31/android/lib/libdxcompiler.so"
+                                        dst="$S(BuildDir)/libs/$S(Architecture)/libdxcompiler.so" />
+      <log text="Copying libcompushady_khr.so"/>
+      <copyFile src="$S(PluginDir)/../ThirdParty/compushady_khr/libcompushady_khr_android_arm64.so"
+                                        dst="$S(BuildDir)/libs/$S(Architecture)/libcompushady_khr.so" />
+      <copyFile src="$S(PluginDir)/../ThirdParty/compushady_khr/libc++_shared_android_arm64.so"
+                                        dst="$S(BuildDir)/libs/$S(Architecture)/libc++_shared.so" />
+    </isArch>
+  </resourceCopies>
 </root>
 
