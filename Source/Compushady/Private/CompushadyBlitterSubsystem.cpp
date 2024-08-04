@@ -166,6 +166,11 @@ public:
 		{
 			FTexture2DRHIRef RenderTarget = InView.Family->RenderTarget->GetRenderTargetTexture();
 
+			if (!InView.Family->RenderTarget->GetRenderTargetTexture().IsValid())
+			{
+				return;
+			}
+
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
 				ERDGPassFlags::None,

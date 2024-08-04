@@ -13,6 +13,9 @@
                         <log text="Copying libdxcompiler.so"/>
                         <copyFile src="$S(PluginDir)/../ThirdParty/dxc_2023_03_01_android/lib/libdxcompiler.so"
                                                           dst="$S(BuildDir)/libs/$S(Architecture)/libdxcompiler.so" />
+                        <log text="Copying libcompushady_khr.so"/>
+                        <copyFile src="$S(PluginDir)/../ThirdParty/compushady_khr/libcompushady_khr_android_arm64.so"
+                                                          dst="$S(BuildDir)/libs/$S(Architecture)/libcompushady_khr.so" />
                 </isArch>
         </resourceCopies>
 </root>

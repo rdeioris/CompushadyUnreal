@@ -39,7 +39,7 @@ namespace Compushady
 				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Linux/libcompushady_khr.so")));
 #endif
 #elif PLATFORM_ANDROID
-				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Android/libcompushady_khr.so")));
+				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libcompushady_khr.so"));
 #endif
 				if (!LibHandle)
 				{
