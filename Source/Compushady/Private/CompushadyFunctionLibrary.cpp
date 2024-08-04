@@ -1400,6 +1400,49 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableByMap
 	return CompushadyBlendable;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPositionBuffer(UStaticMesh* StaticMesh, const int32 LOD, const EPixelFormat PixelFormat)
+{
+	if (!StaticMesh)
+	{
+		return nullptr;
+	}
+
+	FStaticMeshRenderData* RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		StaticMesh->InitResources();
+		FlushRenderingCommands();
+	}
+
+	RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("No RenderData for StaticMesh"));
+		return nullptr;
+	}
+
+	if (!RenderData->LODResources.IsValidIndex(LOD))
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Invalid LOD index for StaticMesh"));
+		return nullptr;
+	}
+
+	const FStaticMeshLODResources& Resources = RenderData->LODResources[LOD];
+
+	if (!Resources.VertexBuffers.PositionVertexBuffer.IsInitialized())
+	{
+		UE_LOG(LogCompushady, Error, TEXT("PositionVertexBuffer is not initialized"));
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromBuffer(Resources.VertexBuffers.PositionVertexBuffer.GetRHI(), PixelFormat))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromSceneTexture(const ECompushadySceneTexture SceneTexture)
 {

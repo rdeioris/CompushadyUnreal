@@ -243,6 +243,9 @@ public:
 	static UCompushadySRV* CreateCompushadySRVFromWorldSceneAccelerationStructure(UObject* WorldContextObject);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromStaticMeshPositionBuffer(UStaticMesh* StaticMesh, const int32 LOD = 0, const EPixelFormat PixelFormat = EPixelFormat::PF_R32_FLOAT);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromGLSLString(const FString& ShaderSource, FString& ErrorMessages, const FString& EntryPoint = "main");
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "RasterizerConfig"), Category = "Compushady")
