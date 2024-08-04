@@ -163,6 +163,16 @@ Note: while the node allows to specify an entry point for the function name, the
 
 ## Quickstart (step10, Postprocessing Effects)
 
+## Docs
+
+* Compute shaders
+
+* Rasterizer
+
+* Audio
+
+* Postprocessing
+
 ## Tutorials
 
 * PostProcessing
