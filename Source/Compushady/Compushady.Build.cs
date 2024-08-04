@@ -56,6 +56,8 @@ public class Compushady : ModuleRules
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryWin64, "inc");
             RuntimeDependencies.Add("$(BinaryOutputDir)/dxcompiler.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64Libs, "dxcompiler.dll"));
             RuntimeDependencies.Add("$(BinaryOutputDir)/dxil.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64Libs, "dxil.dll"));
+            ThirdPartyDirectoryWin64Libs = System.IO.Path.Combine(ThirdPartyDirectory, "compushady_khr");
+            RuntimeDependencies.Add("$(BinaryOutputDir)/compushady_khr.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64Libs, "compushady_khr.dll"));
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
@@ -67,6 +69,8 @@ public class Compushady : ModuleRules
             string ThirdPartyDirectoryLinuxLibs = System.IO.Path.Combine(ThirdPartyDirectoryLinux, "lib");
             ThirdPartyDirectoryIncludePath = System.IO.Path.Combine(ThirdPartyDirectoryLinux, "include", "dxc");
             RuntimeDependencies.Add("$(BinaryOutputDir)/libdxcompiler.so", System.IO.Path.Combine(ThirdPartyDirectoryLinuxLibs, "libdxcompiler.so"));
+            ThirdPartyDirectoryLinuxLibs = System.IO.Path.Combine(ThirdPartyDirectory, "compushady_khr");
+            RuntimeDependencies.Add("$(BinaryOutputDir)/libcompushady_khr.so", System.IO.Path.Combine(ThirdPartyDirectoryLinuxLibs, "libcompushady_khr_linux_x64.so"));
         }
         else if (Target.Platform == UnrealTargetPlatform.Android)
         {
@@ -88,12 +92,5 @@ public class Compushady : ModuleRules
         }
 
         PrivateIncludePaths.Add(ThirdPartyDirectoryIncludePath);
-
-        // compushady_khr
-        if (Target.Platform == UnrealTargetPlatform.Win64)
-        {
-            string ThirdPartyDirectoryWin64 = System.IO.Path.Combine(ThirdPartyDirectory, "compushady_khr");
-            RuntimeDependencies.Add("$(BinaryOutputDir)/compushady_khr.dll", System.IO.Path.Combine(ThirdPartyDirectoryWin64, "compushady_khr.dll"));
-        }
     }
 }

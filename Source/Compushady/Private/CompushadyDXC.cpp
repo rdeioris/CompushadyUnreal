@@ -120,7 +120,13 @@ namespace Compushady
 #else
 				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Win64/dxcompiler.dll")));
 #endif
-#elif PLATFORM_LINUX || PLATFORM_ANDROID
+#elif PLATFORM_LINUX
+#if WITH_EDITOR
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("Compushady"))->GetBaseDir(), TEXT("Binaries/Linux/libdxcompiler.so"))));
+#else
+				LibHandle = FPlatformProcess::GetDllHandle(*(FPaths::ProjectDir() / TEXT("Binaries/Linux/libdxcompiler.so")));
+#endif
+#elif PLATFORM_ANDROID
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.so"));
 #elif PLATFORM_MAC
 				LibHandle = FPlatformProcess::GetDllHandle(TEXT("libdxcompiler.dylib"));
