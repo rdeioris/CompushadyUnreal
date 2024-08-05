@@ -52,13 +52,22 @@ public:
 	bool SetIntArray(const int64 Offset, const TArray<int32>& Values);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
+	bool SetMatrixFloat(const int64 Offset, const FMatrix& Matrix, const bool bTranspose = false, const bool bInverse = false);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
+	bool SetCameraMatrixFloat(const int64 Offset, const FVector Location, const FRotator Rotation, const bool bTranspose = false, const bool bInverse = false);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
+	bool SetMatrixDouble(const int64 Offset, const FMatrix& Matrix, const bool bTranspose = false, const bool bInverse = false);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
 	bool SetTransformFloat(const int64 Offset, const FTransform& Transform, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Transform"), Category = "Compushady")
 	bool SetTransformDouble(const int64 Offset, const FTransform& Transform, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = true, const bool bTranspose = false, const bool bInverse = false);
+	bool SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded = false, const bool bTranspose = false, const bool bInverse = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool SetRotationFloat2(const int64 Offset, const float Radians);

@@ -57,12 +57,21 @@ bool UCompushadySRV::InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRe
 		return false;
 	}
 
+	if (PixelFormat != EPixelFormat::PF_Unknown)
+	{
+		if (GPixelFormats[InTextureRHIRef->GetDesc().Format].BlockBytes != GPixelFormats[PixelFormat].BlockBytes)
+		{
+			return false;
+		}
+	}
+
 	TextureRHIRef = InTextureRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
 		[this, Slice, SlicesNum, MipLevel, MipsNum, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHITextureSRVCreateInfo SRVCreateInfo;
+			SRVCreateInfo.DimensionOverride = TextureRHIRef->GetDesc().Dimension;
 			SRVCreateInfo.Format = PixelFormat;
 			SRVCreateInfo.FirstArraySlice = Slice;
 			SRVCreateInfo.NumArraySlices = SlicesNum;

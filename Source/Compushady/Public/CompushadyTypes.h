@@ -304,6 +304,15 @@ struct COMPUSHADY_API FCompushadyRasterizeConfig
 
 };
 
+UENUM()
+enum ECompushadySamplerAddressMode : uint8
+{
+	Wrap,
+	Clamp,
+	Mirror,
+	Border
+};
+
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
 
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatPayload, bool, bSuccess, float&, Payload, const FString&, ErrorMessage);

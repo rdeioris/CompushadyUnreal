@@ -207,7 +207,11 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
 	int32 RenderTargetsEnabled = 0;
 	FRHITexture* DepthStencilTexture = nullptr;
-	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+	if (!SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture))
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid RTVs");
+		return;
+	}
 
 	TrackResources(VSResourceArray);
 	TrackResources(PSResourceArray);
@@ -268,7 +272,11 @@ void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResou
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
 	int32 RenderTargetsEnabled = 0;
 	FRHITexture* DepthStencilTexture = nullptr;
-	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+	if (!SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture))
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid RTVs");
+		return;
+	}
 
 	TrackResources(VSResourceArray);
 	TrackResources(PSResourceArray);
@@ -326,7 +334,11 @@ bool UCompushadyRasterizer::ClearAndDrawSync(const FCompushadyResourceArray& VSR
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
 	int32 RenderTargetsEnabled = 0;
 	FRHITexture* DepthStencilTexture = nullptr;
-	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+	if (!SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture))
+	{
+		ErrorMessages= "Invalid RTVs";
+		return false;
+	}
 
 	TrackResources(VSResourceArray);
 	TrackResources(PSResourceArray);
@@ -438,7 +450,11 @@ void UCompushadyRasterizer::DrawIndirect(const FCompushadyResourceArray& VSResou
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
 	int32 RenderTargetsEnabled = 0;
 	FRHITexture* DepthStencilTexture = nullptr;
-	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+	if (!SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture))
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid RTVs");
+		return;
+	}
 
 	TrackResources(VSResourceArray);
 	TrackResources(PSResourceArray);
@@ -466,10 +482,14 @@ void UCompushadyRasterizer::DrawIndirect(const FCompushadyResourceArray& VSResou
 		}, OnSignaled);
 }
 
-void UCompushadyRasterizer::SetupRenderTargets(const TArray<UCompushadyRTV*>& RTVs, UCompushadyDSV* DSV, TStaticArray<FRHITexture*, 8>& RenderTargets, int32& RenderTargetsEnabled, FRHITexture*& DepthStencilTexture)
+bool UCompushadyRasterizer::SetupRenderTargets(const TArray<UCompushadyRTV*>& RTVs, UCompushadyDSV* DSV, TStaticArray<FRHITexture*, 8>& RenderTargets, int32& RenderTargetsEnabled, FRHITexture*& DepthStencilTexture)
 {
 	for (int32 Index = 0; Index < RTVs.Num(); Index++)
 	{
+		if (!RTVs[Index])
+		{
+			return false;
+		}
 		RenderTargets[Index] = RTVs[Index]->GetTextureRHI();
 		RenderTargetsEnabled++;
 		TrackResource(RTVs[Index]);
@@ -480,6 +500,8 @@ void UCompushadyRasterizer::SetupRenderTargets(const TArray<UCompushadyRTV*>& RT
 		DepthStencilTexture = DSV->GetTextureRHI();
 		TrackResource(DSV);
 	}
+
+	return true;
 }
 
 bool UCompushadyRasterizer::BeginRenderPass_RenderThread(const TCHAR* Name, FRHICommandListImmediate& RHICmdList, const TStaticArray<FRHITexture*, 8>& RenderTargets, const int32 RenderTargetsEnabled, FRHITexture* DepthStencilTexture, const ERenderTargetActions ColorAction, const EDepthStencilTargetActions DepthStencilAction, uint32& Width, uint32& Height)
@@ -543,7 +565,11 @@ void UCompushadyRasterizer::Clear(const TArray<UCompushadyRTV*>& RTVs, UCompusha
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
 	int32 RenderTargetsEnabled = 0;
 	FRHITexture* DepthStencilTexture = nullptr;
-	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+	if (!SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture))
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid RTVs");
+		return;
+	}
 
 	EnqueueToGPU(
 		[RenderTargets, RenderTargetsEnabled, DepthStencilTexture](FRHICommandListImmediate& RHICmdList)
@@ -588,7 +614,11 @@ void UCompushadyRasterizer::DispatchMesh(const FCompushadyResourceArray& MSResou
 	TStaticArray<FRHITexture*, 8> RenderTargets = {};
 	int32 RenderTargetsEnabled = 0;
 	FRHITexture* DepthStencilTexture = nullptr;
-	SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture);
+	if (!SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture))
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid RTVs");
+		return;
+	}
 
 	TrackResources(MSResourceArray);
 	TrackResources(PSResourceArray);

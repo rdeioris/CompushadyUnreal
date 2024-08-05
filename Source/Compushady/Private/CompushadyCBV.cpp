@@ -135,17 +135,63 @@ bool UCompushadyCBV::SetTransformDouble(const int64 Offset, const FTransform& Tr
 	return false;
 }
 
+bool UCompushadyCBV::SetMatrixFloat(const int64 Offset, const FMatrix& Matrix, const bool bTranspose, const bool bInverse)
+{
+	if (IsValidOffset(Offset, 16 * sizeof(float)))
+	{
+		FMatrix44f OutMatrix(Matrix);
+		if (bInverse)
+		{
+			OutMatrix = OutMatrix.Inverse();
+		}
+		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? OutMatrix.GetTransposed().M : OutMatrix.M, 16 * sizeof(float));
+		bBufferDataDirty = true;
+		return true;
+	}
+	return false;
+}
+
+bool UCompushadyCBV::SetCameraMatrixFloat(const int64 Offset, const FVector Location, const FRotator Rotation, const bool bTranspose, const bool bInverse)
+{
+	FMatrix ViewRotationMatrix = FInverseRotationMatrix(Rotation) * FMatrix(
+		FPlane(0, 0, 1, 0),
+		FPlane(1, 0, 0, 0),
+		FPlane(0, 1, 0, 0),
+		FPlane(0, 0, 0, 1));
+
+	return SetMatrixFloat(Offset, FTranslationMatrix(-Location) * ViewRotationMatrix, bTranspose, bInverse);
+}
+
+bool UCompushadyCBV::SetMatrixDouble(const int64 Offset, const FMatrix& Matrix, const bool bTranspose, const bool bInverse)
+{
+	if (IsValidOffset(Offset, 16 * sizeof(double)))
+	{
+		FMatrix44d OutMatrix(Matrix);
+		if (bInverse)
+		{
+			OutMatrix = OutMatrix.Inverse();
+		}
+		FMemory::Memcpy(BufferData.GetData() + Offset, bTranspose ? OutMatrix.GetTransposed().M : OutMatrix.M, 16 * sizeof(double));
+		bBufferDataDirty = true;
+		return true;
+	}
+	return false;
+}
+
 bool UCompushadyCBV::SetPerspectiveFloat(const int64 Offset, const float HalfFOV, const int32 Width, const int32 Height, const float ZNear, const float ZFar, const bool bRightHanded, const bool bTranspose, const bool bInverse)
 {
 	if (IsValidOffset(Offset, 16 * sizeof(float)))
 	{
-		FMatrix44f  Matrix = FPerspectiveMatrix44f(FMath::DegreesToRadians(HalfFOV), Width, Height, ZNear, ZFar);
+		FMatrix PerspectiveMatrix = AdjustProjectionMatrixForRHI(FPerspectiveMatrix(FMath::DegreesToRadians(HalfFOV), Width, Height, ZNear, ZFar));
+		FMatrix44f Matrix = FMatrix44f(PerspectiveMatrix);
+
 		if (bRightHanded)
 		{
 			Matrix.M[2][2] = ((ZNear == ZFar) ? 0.0f : ZFar / (ZNear - ZFar));
 			Matrix.M[2][3] *= -1;
 			Matrix.M[3][2] = ((ZNear == ZFar) ? 0.0f : ZNear * ZFar / (ZNear - ZFar));
 		}
+
 		if (bInverse)
 		{
 			Matrix = Matrix.Inverse();

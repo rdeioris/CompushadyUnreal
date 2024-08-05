@@ -78,7 +78,6 @@ bool UCompushadyResource::UpdateTextureSliceSyncWithFunction(const uint8* Ptr, c
 				if (Data)
 				{
 					InFunction(RHICmdList, Data, RowPitch, DestStride);
-					CopyTextureData2D(Ptr, Data, TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat(), RowPitch, DestStride);
 					RHICmdList.UnlockTexture2D(TextureRHIRef, 0, false);
 				}
 			}
@@ -88,7 +87,7 @@ bool UCompushadyResource::UpdateTextureSliceSyncWithFunction(const uint8* Ptr, c
 				void* Data = RHICmdList.LockTexture2DArray(TextureRHIRef, Slice, 0, EResourceLockMode::RLM_WriteOnly, DestStride, false);
 				if (Data)
 				{
-					CopyTextureData2D(Ptr, Data, TextureRHIRef->GetSizeY(), TextureRHIRef->GetFormat(), RowPitch, DestStride);
+					InFunction(RHICmdList, Data, RowPitch, DestStride);
 					RHICmdList.UnlockTexture2DArray(TextureRHIRef, Slice, 0, false);
 				}
 			}
@@ -122,11 +121,7 @@ bool UCompushadyResource::UpdateTextureSliceSync(const uint8* Ptr, const int64 S
 			}
 			else if (Dimension == ETextureDimension::Texture3D)
 			{
-				FUpdateTextureRegion3D UpdateRegion(0, 0, Slice, 0, 0, 0,
-					TextureRHIRef->GetSizeX(),
-					TextureRHIRef->GetSizeY(),
-					1);
-				RHICmdList.UpdateTexture3D(TextureRHIRef, 0, UpdateRegion, SourcePitch, SourcePitch * TextureRHIRef->GetSizeY(), Ptr);
+				// no need to copy here, as we are using the RHICmdList.UpdateTexture3D
 			}
 		});
 }
@@ -1020,8 +1015,8 @@ namespace Compushady
 #else
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #endif
-				}
-			}
+		}
+	}
 
 			for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
 			{
@@ -1049,7 +1044,7 @@ namespace Compushady
 #else
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
 #endif
-			}
+}
 
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
