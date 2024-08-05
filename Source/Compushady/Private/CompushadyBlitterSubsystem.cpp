@@ -496,10 +496,12 @@ bool UCompushadyBlitterSubsystem::AddVSPSRasterizerFromHLSL(const FString& Verte
 #endif
 
 
-FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension)
+FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack)
 {
 	AdditionalViewExtensions.Add(InViewExtension);
-	return FGuid::NewGuid();
+	FGuid NewGuid = FGuid::NewGuid();
+	TrackedBlendables.Add(NewGuid, BlendableToTrack);
+	return NewGuid;
 }
 
 const FMatrix& UCompushadyBlitterSubsystem::GetViewMatrix() const

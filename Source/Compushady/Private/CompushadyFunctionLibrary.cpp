@@ -1546,6 +1546,29 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromH
 	return CompushadyBlendable;
 }
 
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyAdvancedBlendableFromHLSLString(const FString& VertexShaderSource, const FCompushadyResourceArray& VSResourceArray, const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const int32 NumVertices, const int32 NumInstances, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
+{
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
+
+	TArray<uint8> VertexShaderCode;
+	Compushady::StringToShaderCode(VertexShaderSource, VertexShaderCode);
+
+	TArray<uint8> PixelShaderCode;
+	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
+
+	if (!CompushadyBlendable->InitFromHLSLAdvanced(VertexShaderCode, VertexShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyBlendable->UpdateResourcesAdvanced(VSResourceArray, PSResourceArray, NumVertices, NumInstances, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyBlendable;
+}
+
 UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
 {
 	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
@@ -1606,7 +1629,7 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableByMap
 	return CompushadyBlendable;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPositionBuffer(UStaticMesh* StaticMesh, const int32 LOD, const EPixelFormat PixelFormat)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPositionBuffer(UStaticMesh* StaticMesh, int32& NumVertices, const int32 LOD)
 {
 	if (!StaticMesh)
 	{
@@ -1641,8 +1664,62 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPos
 		return nullptr;
 	}
 
+	NumVertices = Resources.VertexBuffers.PositionVertexBuffer.GetNumVertices();
+
 	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
-	if (!CompushadySRV->InitializeFromBuffer(Resources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI, PixelFormat))
+	if (!CompushadySRV->InitializeFromBuffer(Resources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI, EPixelFormat::PF_R32_FLOAT))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshIndexBuffer(UStaticMesh* StaticMesh, int32& NumIndices, const int32 LOD)
+{
+	if (!StaticMesh)
+	{
+		return nullptr;
+	}
+
+	FStaticMeshRenderData* RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		StaticMesh->InitResources();
+		FlushRenderingCommands();
+	}
+
+	RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("No RenderData for StaticMesh"));
+		return nullptr;
+	}
+
+	if (!RenderData->LODResources.IsValidIndex(LOD))
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Invalid LOD index for StaticMesh"));
+		return nullptr;
+	}
+
+	const FStaticMeshLODResources& Resources = RenderData->LODResources[LOD];
+
+	if (!Resources.IndexBuffer.IsInitialized())
+	{
+		UE_LOG(LogCompushady, Error, TEXT("IndexBuffer is not initialized"));
+		return nullptr;
+	}
+
+	EPixelFormat PixelFormat = EPixelFormat::PF_R16_UINT;
+	if (Resources.IndexBuffer.Is32Bit())
+	{
+		PixelFormat = EPixelFormat::PF_R32_UINT;
+	}
+
+	NumIndices = Resources.IndexBuffer.GetNumIndices();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromBuffer(Resources.IndexBuffer.IndexBufferRHI, PixelFormat))
 	{
 		return nullptr;
 	}

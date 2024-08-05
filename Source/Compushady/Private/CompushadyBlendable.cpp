@@ -21,10 +21,15 @@ public:
 
 protected:
 
-	ICompushadyViewExtension(FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray) :
+	ICompushadyViewExtension(FVertexShaderRHIRef InVertexShaderRef, const FCompushadyResourceBindings& InVSResourceBindings, const FCompushadyResourceArray& InVSResourceArray, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray, const int32 InNumVertices, const int32 InNumInstances) :
 		PixelShaderRef(InPixelShaderRef),
 		PSResourceBindings(InPSResourceBindings),
-		PSResourceArray(InPSResourceArray)
+		PSResourceArray(InPSResourceArray),
+		VertexShaderRef(InVertexShaderRef),
+		VSResourceBindings(InVSResourceBindings),
+		VSResourceArray(InVSResourceArray),
+		NumVertices(InNumVertices),
+		NumInstances(InNumInstances)
 	{
 	}
 
@@ -104,6 +109,14 @@ protected:
 	FPixelShaderRHIRef PixelShaderRef;
 	FCompushadyResourceBindings PSResourceBindings;
 	FCompushadyResourceArray PSResourceArray;
+
+	FVertexShaderRHIRef VertexShaderRef = nullptr;
+	FCompushadyResourceBindings VSResourceBindings;
+	FCompushadyResourceArray VSResourceArray;
+
+	int32 NumVertices = 0;
+	int32 NumInstances = 0;
+
 	int32 CompushadyPriority = 0;
 };
 
@@ -111,7 +124,7 @@ class FCompushadyViewExtension : public ISceneViewExtension, public TSharedFromT
 {
 public:
 	FCompushadyViewExtension(FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray, const ECompushadyPostProcessLocation PostProcessLocation) :
-		ICompushadyViewExtension(InPixelShaderRef, InPSResourceBindings, InPSResourceArray)
+		ICompushadyViewExtension(nullptr, {}, {}, InPixelShaderRef, InPSResourceBindings, InPSResourceArray, 0, 0)
 	{
 		switch (PostProcessLocation)
 		{
@@ -186,9 +199,9 @@ protected:
 class FCompushadyPostProcess : public FSceneViewExtensionBase, public ICompushadyViewExtension
 {
 public:
-	FCompushadyPostProcess(const FAutoRegister& AutoRegister, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray, const ECompushadyPostProcessLocation PostProcessLocation) :
+	FCompushadyPostProcess(const FAutoRegister& AutoRegister, FVertexShaderRHIRef InVertexShaderRef, const FCompushadyResourceBindings& InVSResourceBindings, const FCompushadyResourceArray& InVSResourceArray, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray, const ECompushadyPostProcessLocation PostProcessLocation, const int32 InNumVertices, const int32 InNumInstances) :
 		FSceneViewExtensionBase(AutoRegister),
-		ICompushadyViewExtension(InPixelShaderRef, InPSResourceBindings, InPSResourceArray)
+		ICompushadyViewExtension(InVertexShaderRef, InVSResourceBindings, InVSResourceArray, InPixelShaderRef, InPSResourceBindings, InPSResourceArray, InNumVertices, InNumInstances)
 	{
 		switch (PostProcessLocation)
 		{
@@ -226,31 +239,64 @@ public:
 
 		TRDGUniformBufferRef<FSceneTextureUniformParameters> InputSceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
 
-		FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
-		TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
+		if (!VertexShaderRef)
+		{
+			FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
+			TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
 
-		GraphBuilder.AddPass(
-			RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
-			ERDGPassFlags::None,
-			[this, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
-			{
-				FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
+				ERDGPassFlags::None,
+				[this, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
+				{
+					FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 
-				FCompushadySceneTextures SceneTextures = {};
-				FillSceneTextures(SceneTextures, RHICmdList, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI(), InputSceneTextures->GetContents());
+					FCompushadySceneTextures SceneTextures = {};
+					FillSceneTextures(SceneTextures, RHICmdList, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI(), InputSceneTextures->GetContents());
 
-				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
-					{
-						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
-						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
-							0, 0, 1, 1,
-							RenderTarget->GetSizeXY(),
-							FIntPoint(1, 1),
-							INDEX_NONE,
-							false, EDRF_UseTriangleOptimization);
-					});
-			});
+					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
+						RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
+						{
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
+								0, 0, 1, 1,
+								RenderTarget->GetSizeXY(),
+								FIntPoint(1, 1),
+								INDEX_NONE,
+								false, EDRF_UseTriangleOptimization);
+						});
+				});
+		}
+		else
+		{
+			FMatrix ViewMatrix = View.ViewMatrices.GetViewMatrix();
+			FMatrix ProjectionMatrix = View.ViewMatrices.GetProjectionMatrix();
+
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
+				ERDGPassFlags::None,
+				[this, InputSceneTextures, ViewMatrix, ProjectionMatrix](FRHICommandList& RHICmdList)
+				{
+					FTextureRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
+					FTextureRHIRef DepthStencil = InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI();
+
+					FCompushadySceneTextures SceneTextures = {};
+					FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
+
+					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
+						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
+						{
+							if (VSResourceArray.CBVs.Num() > 0 && VSResourceArray.CBVs[0]->GetBufferSize() >= (sizeof(float) * 16 * 2))
+							{
+								VSResourceArray.CBVs[0]->SetMatrixFloat(0, ViewMatrix, false, false);
+								VSResourceArray.CBVs[0]->SetMatrixFloat(64, ProjectionMatrix, false, false);
+							}
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+						});
+				});
+		}
 	}
 
 	virtual int32 GetPriority() const override { return CompushadyPriority; }
@@ -265,6 +311,19 @@ bool UCompushadyBlendable::InitFromHLSL(const TArray<uint8>& ShaderCode, const F
 {
 	PostProcessLocation = InPostProcessLocation;
 	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(ShaderCode, EntryPoint, PSResourceBindings, ErrorMessages);
+	return PixelShaderRef.IsValid();
+}
+
+bool UCompushadyBlendable::InitFromHLSLAdvanced(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages)
+{
+	PostProcessLocation = InPostProcessLocation;
+	VertexShaderRef = Compushady::Utils::CreateVertexShaderFromHLSL(VertexShaderCode, VertexShaderEntryPoint, VSResourceBindings, ErrorMessages);
+	if (!VertexShaderRef.IsValid())
+	{
+		return false;
+	}
+
+	PixelShaderRef = Compushady::Utils::CreatePixelShaderFromHLSL(PixelShaderCode, PixelShaderEntryPoint, PSResourceBindings, ErrorMessages);
 	return PixelShaderRef.IsValid();
 }
 
@@ -297,6 +356,35 @@ bool UCompushadyBlendable::UpdateResources(const FCompushadyResourceArray& InPSR
 	return true;
 }
 
+bool UCompushadyBlendable::UpdateResourcesAdvanced(const FCompushadyResourceArray& InVSResourceArray, const FCompushadyResourceArray& InPSResourceArray, const int32 InNumVertices, const int32 InNumInstances, FString& ErrorMessages)
+{
+	if (InNumVertices <= 0 || InNumInstances <= 0)
+	{
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(InVSResourceArray, VSResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	if (!Compushady::Utils::ValidateResourceBindings(InPSResourceArray, PSResourceBindings, ErrorMessages))
+	{
+		return false;
+	}
+
+	NumVertices = InNumVertices;
+	NumInstances = InNumInstances;
+
+	UntrackResources();
+	VSResourceArray = InVSResourceArray;
+	PSResourceArray = InPSResourceArray;
+	TrackResources(VSResourceArray);
+	TrackResources(PSResourceArray);
+
+	return true;
+}
+
 bool UCompushadyBlendable::UpdateResourcesByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages)
 {
 	FCompushadyResourceArray InPSResourceArray;
@@ -316,8 +404,8 @@ FPixelShaderRHIRef UCompushadyBlendable::GetPixelShader() const
 FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int32 Priority)
 {
 #if COMPUSHADY_UE_VERSION >= 53
-	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = FSceneViewExtensions::NewExtension<FCompushadyPostProcess>(PixelShaderRef, PSResourceBindings, PSResourceArray, PostProcessLocation);
-	FGuid Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension);
+	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = FSceneViewExtensions::NewExtension<FCompushadyPostProcess>(VertexShaderRef, VSResourceBindings, VSResourceArray, PixelShaderRef, PSResourceBindings, PSResourceArray, PostProcessLocation, NumVertices, NumInstances);
+	FGuid Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension, this);
 	NewViewExtension->SetPriority(Priority);
 	return Guid;
 #else

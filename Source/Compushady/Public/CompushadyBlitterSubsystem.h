@@ -51,7 +51,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
-	FGuid AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension);
+	FGuid AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	const FMatrix& GetViewMatrix() const;
@@ -63,4 +63,7 @@ protected:
 	TSharedPtr<class FCompushadyBlitterViewExtension, ESPMode::ThreadSafe> ViewExtension;
 
 	TArray<TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe>> AdditionalViewExtensions;
+
+	UPROPERTY()
+	TMap<FGuid, TScriptInterface<IBlendableInterface>> TrackedBlendables;
 };

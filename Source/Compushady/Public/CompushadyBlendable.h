@@ -21,12 +21,17 @@ public:
 	bool InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
 	bool InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
 
+	bool InitFromHLSLAdvanced(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
+
 	/* IBlendableInterface implementation */
 	virtual void OverrideBlendableSettings(class FSceneView& View, float Weight) const override;
 	/* IBlendableInterface implementation */
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResources(const FCompushadyResourceArray& InPSResourceArray, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool UpdateResourcesAdvanced(const FCompushadyResourceArray& InVSResourceArray, const FCompushadyResourceArray& InPSResourceArray, const int32 InNumVertices, const int32 InNumInstances, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResourcesByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages);
@@ -37,7 +42,7 @@ public:
 	FPixelShaderRHIRef GetPixelShader() const;
 
 protected:
-	FPixelShaderRHIRef PixelShaderRef;
+	FPixelShaderRHIRef PixelShaderRef = nullptr;
 
 	UPROPERTY()
 	FCompushadyResourceBindings PSResourceBindings;
@@ -45,5 +50,16 @@ protected:
 	UPROPERTY()
 	FCompushadyResourceArray PSResourceArray;
 
+	FVertexShaderRHIRef VertexShaderRef = nullptr;
+
+	UPROPERTY()
+	FCompushadyResourceBindings VSResourceBindings;
+
+	UPROPERTY()
+	FCompushadyResourceArray VSResourceArray;
+
 	ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping;
+
+	int32 NumVertices = 0;
+	int32 NumInstances = 0;
 };

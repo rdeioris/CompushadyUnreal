@@ -1921,7 +1921,17 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const FString& Sha
 
 void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction)
 {
+	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, nullptr, InFunction);
+}
+
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction)
+{
 	FRHIRenderPassInfo PassInfo(RenderTarget, ERenderTargetActions::Load_Store);
+	if (DepthStencil)
+	{
+		PassInfo = FRHIRenderPassInfo(RenderTarget, ERenderTargetActions::Load_Store, DepthStencil, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil);
+	}
+
 	RHICmdList.BeginRenderPass(PassInfo, PassName);
 
 	RHICmdList.SetViewport(0, 0, 0.0f, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(), 1.0f);
@@ -1930,7 +1940,14 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 	RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
 	GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
 	GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
-	GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+	if (DepthStencil)
+	{
+		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual>::GetRHI();
+	}
+	else
+	{
+		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+	}
 	GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
 	GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShaderRef;
 	GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShaderRef;
