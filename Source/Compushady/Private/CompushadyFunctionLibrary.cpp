@@ -1436,7 +1436,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPos
 	}
 
 	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
-	if (!CompushadySRV->InitializeFromBuffer(Resources.VertexBuffers.PositionVertexBuffer.GetRHI(), PixelFormat))
+	if (!CompushadySRV->InitializeFromBuffer(Resources.VertexBuffers.PositionVertexBuffer.VertexBufferRHI, PixelFormat))
 	{
 		return nullptr;
 	}
