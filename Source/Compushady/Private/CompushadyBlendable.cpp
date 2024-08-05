@@ -77,31 +77,65 @@ protected:
 
 		GraphBuilder.ConvertToExternalTexture(Output.Texture);
 
-		FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
-		TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
+		if (!VertexShaderRef)
+		{
+			FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
+			TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
 
-		GraphBuilder.AddPass(
-			RDG_EVENT_NAME("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-			ERDGPassFlags::None,
-			[this, VertexShader, Output, SceneColorInput, InOutInputs](FRHICommandList& RHICmdList)
-			{
-				FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
+				ERDGPassFlags::None,
+				[this, VertexShader, Output, SceneColorInput, InOutInputs](FRHICommandList& RHICmdList)
+				{
+					FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
 
-				FCompushadySceneTextures SceneTextures = {};
-				FillSceneTextures(SceneTextures, RHICmdList, SceneColorInput.Texture->GetRHI(), InOutInputs.SceneTextures.SceneTextures->GetContents());
+					FCompushadySceneTextures SceneTextures = {};
+					FillSceneTextures(SceneTextures, RHICmdList, SceneColorInput.Texture->GetRHI(), InOutInputs.SceneTextures.SceneTextures->GetContents());
 
-				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
-					{
-						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
-						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
-							0, 0, 1, 1,
-							RenderTarget->GetSizeXY(),
-							FIntPoint(1, 1),
-							INDEX_NONE,
-							false, EDRF_UseTriangleOptimization);
-					});
-			});
+					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
+						RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
+						{
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
+								0, 0, 1, 1,
+								RenderTarget->GetSizeXY(),
+								FIntPoint(1, 1),
+								INDEX_NONE,
+								false, EDRF_UseTriangleOptimization);
+						});
+				});
+		}
+		else
+		{
+			FMatrix ViewMatrix = View.ViewMatrices.GetViewMatrix();
+			FMatrix ProjectionMatrix = View.ViewMatrices.GetProjectionMatrix();
+
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
+				ERDGPassFlags::None,
+				[this, SceneColorInput, Output, ViewMatrix, ProjectionMatrix, InOutInputs](FRHICommandList& RHICmdList)
+				{
+					FCompushadySceneTextures SceneTextures = {};
+					FillSceneTextures(SceneTextures, RHICmdList, SceneColorInput.Texture->GetRHI(), InOutInputs.SceneTextures.SceneTextures->GetContents());
+
+					FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
+					FTextureRHIRef DepthStencil = InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture->GetRHI();
+
+
+					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
+						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
+						{
+							if (VSResourceArray.CBVs.Num() > 0 && VSResourceArray.CBVs[0]->GetBufferSize() >= (sizeof(float) * 16 * 2))
+							{
+								VSResourceArray.CBVs[0]->SetMatrixFloat(0, ViewMatrix, false, false);
+								VSResourceArray.CBVs[0]->SetMatrixFloat(64, ProjectionMatrix, false, false);
+							}
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+						});
+				});
+		}
 
 		return Output;
 	}
