@@ -1545,6 +1545,54 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPos
 	return CompushadySRV;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshTangentBuffer(UStaticMesh* StaticMesh, int32& NumTangents, const int32 LOD)
+{
+	if (!StaticMesh)
+	{
+		return nullptr;
+	}
+
+	FStaticMeshRenderData* RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		StaticMesh->InitResources();
+		FlushRenderingCommands();
+	}
+
+	RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("No RenderData for StaticMesh"));
+		return nullptr;
+	}
+
+	if (!RenderData->LODResources.IsValidIndex(LOD))
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Invalid LOD index for StaticMesh"));
+		return nullptr;
+	}
+
+	const FStaticMeshLODResources& Resources = RenderData->LODResources[LOD];
+
+	if (!Resources.VertexBuffers.StaticMeshVertexBuffer.TangentsVertexBuffer.IsInitialized())
+	{
+		UE_LOG(LogCompushady, Error, TEXT("TangentsVertexBuffer is not initialized"));
+		return nullptr;
+	}
+
+	const EPixelFormat PixelFormat = Resources.VertexBuffers.StaticMeshVertexBuffer.GetUseHighPrecisionTangentBasis() ? PF_R16G16B16A16_SNORM : PF_R8G8B8A8_SNORM;
+
+	NumTangents = Resources.VertexBuffers.StaticMeshVertexBuffer.GetNumVertices();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromBuffer(Resources.VertexBuffers.StaticMeshVertexBuffer.TangentsVertexBuffer.VertexBufferRHI, PixelFormat))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshIndexBuffer(UStaticMesh* StaticMesh, int32& NumIndices, const int32 LOD)
 {
 	if (!StaticMesh)
