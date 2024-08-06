@@ -88,6 +88,7 @@ bool FCompushadyHLSLTest_RWBuffer::RunTest(const FString& Parameters)
 			UAV->MapReadAndExecuteSync([&Output](const void* Data)
 				{
 					FMemory::Memcpy(Output.GetData(), Data, 8 * sizeof(uint32));
+					return true;
 				});
 
 			TestEqual(TEXT("Output[0]"), Output[0], 0xdead0000);

@@ -18,6 +18,7 @@ bool FCompushadyUAVTest_Buffer::RunTest(const FString& Parameters)
 			{
 				Ptr[Index] = Index;
 			}
+			return true;
 		});
 
 
@@ -28,6 +29,7 @@ bool FCompushadyUAVTest_Buffer::RunTest(const FString& Parameters)
 		{
 			const uint32* Ptr = reinterpret_cast<const uint32*>(Data);
 			FMemory::Memcpy(Output.GetData(), Data, Output.Num() * sizeof(uint32));
+			return true;
 		});
 
 
@@ -56,6 +58,7 @@ bool FCompushadyUAVTest_StructuredBuffer::RunTest(const FString& Parameters)
 			{
 				Ptr[Index] = Index;
 			}
+			return true;
 		});
 
 
@@ -66,6 +69,7 @@ bool FCompushadyUAVTest_StructuredBuffer::RunTest(const FString& Parameters)
 		{
 			const uint32* Ptr = reinterpret_cast<const uint32*>(Data);
 			FMemory::Memcpy(Output.GetData(), Data, Output.Num() * sizeof(uint32));
+			return true;
 		});
 
 
@@ -90,6 +94,7 @@ bool FCompushadyUAVTest_MapTextureRead::RunTest(const FString& Parameters)
 	const bool bSuccess = UAV->MapReadAndExecuteSync([](const void* Data)
 		{
 			// nop
+			return true;
 		});
 
 
@@ -107,6 +112,7 @@ bool FCompushadyUAVTest_MapTextureWrite::RunTest(const FString& Parameters)
 	const bool bSuccess = UAV->MapWriteAndExecuteSync([](void* Data)
 		{
 			// nop
+			return true;
 		});
 
 

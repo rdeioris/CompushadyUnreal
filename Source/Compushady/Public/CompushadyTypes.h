@@ -417,28 +417,34 @@ class COMPUSHADY_API UCompushadyResource : public UObject, public ICompushadyBin
 public:
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
-	void ReadbackToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
+	void ReadbackBufferToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	TArray<FVector> ReadbackFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 12);
+	bool ReadbackBufferToFloatArraySync(const int64 Offset, const int64 Elements, TArray<float>& Floats, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	TArray<FVector2D> ReadbackFloatsToVector2ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 8);
+	bool ReadbackBufferToByteArraySync(const int64 Offset, const int64 Size, TArray<uint8>& Bytes, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	TArray<FVector4> ReadbackFloatsToVector4ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
+	TArray<FVector> ReadbackBufferFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 12);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	TArray<FLinearColor> ReadbackFloatsToLinearColorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
+	TArray<FVector2D> ReadbackBufferFloatsToVector2ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 8);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	TArray<int32> ReadbackIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 4);
+	TArray<FVector4> ReadbackBufferFloatsToVector4ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	TArray<FLinearColor> ReadbackBufferFloatsToLinearColorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	TArray<int32> ReadbackBufferIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 4);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
-	void ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
+	void ReadbackBufferToFile(const FString& Filename, const int64 Offset, const int64 Size, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
-	void ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled);
+	bool ReadbackBufferToFileSync(const FString& Filename, const int64 Offset, const int64 Size, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool ReadbackTextureToPNGFileSync(const FString& Filename, FString& ErrorMessages);
@@ -498,11 +504,11 @@ public:
 
 	void MapReadAndExecute(TFunction<void(const void*)> InFunction, const FCompushadySignaled& OnSignaled);
 	void MapReadAndExecuteInGameThread(TFunction<void(const void*)> InFunction, const FCompushadySignaled& OnSignaled);
-	bool MapReadAndExecuteSync(TFunction<void(const void*)> InFunction);
+	bool MapReadAndExecuteSync(TFunction<bool(const void*)> InFunction);
 
 	void MapWriteAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
 	void MapWriteAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
-	bool MapWriteAndExecuteSync(TFunction<void(void*)> InFunction);
+	bool MapWriteAndExecuteSync(TFunction<bool(void*)> InFunction);
 
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "UpdateInfo", AutoCreateRefTerm = "UpdateInfo"), Category = "Compushady")
 	bool UpdateTextureSliceSync(const TArray<uint8>& Pixels, const int32 Slice);

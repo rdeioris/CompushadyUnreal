@@ -19,6 +19,7 @@ void UCompushadySoundWave::UpdateSamples()
 	UAV->MapReadAndExecuteSync([this](const void* Data)
 		{
 			FMemory::Memcpy(TempData.GetData(), Data, UAV->GetBufferSize());
+			return true;
 		});
 
 	QueueAudio(TempData.GetData(), TempData.Num());

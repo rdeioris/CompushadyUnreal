@@ -131,30 +131,6 @@ bool UCompushadyResource::UpdateTextureSliceSync(const TArray<uint8>& Pixels, co
 	return UpdateTextureSliceSync(Pixels.GetData(), Pixels.Num(), Slice);
 }
 
-void UCompushadyResource::ReadbackAllToFloatArray(const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
-{
-	if (IsRunning())
-	{
-		TArray<float> Values;
-		OnSignaled.ExecuteIfBound(false, Values, "The Resource is already being processed by another task");
-		return;
-	}
-
-	EnqueueToGPU(
-		[this](FRHICommandListImmediate& RHICmdList)
-		{
-			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
-			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-			WaitForGPU(RHICmdList);
-			uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-			const uint32 FloatBufferSize = BufferRHIRef->GetSize() / sizeof(float);
-			ReadbackCacheFloats.Empty(FloatBufferSize);
-			ReadbackCacheFloats.Append(reinterpret_cast<const float*>(Data), FloatBufferSize);
-			RHICmdList.UnlockStagingBuffer(StagingBuffer);
-		}, OnSignaled, ReadbackCacheFloats);
-}
-
 bool UCompushadyResource::IsValidTexture() const
 {
 	return TextureRHIRef.IsValid() && TextureRHIRef->IsValid();
@@ -289,6 +265,8 @@ bool UCompushadyResource::ReadbackBufferToWAVFileSync(const FString& Filename, c
 				WAV.Append(reinterpret_cast<const uint8*>(Data) + Offset, WantedSize);
 
 				FFileHelper::SaveArrayToFile(WAV, *Filename);
+
+				return true;
 			};
 		return MapReadAndExecuteSync(WAVWriter);
 	}
@@ -297,22 +275,22 @@ bool UCompushadyResource::ReadbackBufferToWAVFileSync(const FString& Filename, c
 	return false;
 }
 
-void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FCompushadySignaled& OnSignaled)
+void UCompushadyResource::ReadbackBufferToFile(const FString& Filename, const int64 Offset, const int64 Size, const FCompushadySignaled& OnSignaled)
 {
-	auto FileWriter = [this, Filename](const void* Data)
+	auto FileWriter = [this, Filename, Size, Offset](const void* Data)
 		{
-			int32 Size = 0;
-			if (IsValidBuffer())
-			{
-				Size = GetBufferSize();
-			}
-			else if (IsValidTexture())
-			{
-				Size = TextureRHIRef->GetDesc().CalcMemorySizeEstimate();
-			}
+			int32 RequiredSize = GetBufferSize();
 			if (Size > 0)
 			{
-				TArrayView<const uint8> ArrayView = TArrayView<const uint8>(reinterpret_cast<const uint8*>(Data), Size);
+				RequiredSize = FMath::Min<int64>(Size, RequiredSize);
+			}
+			if (Offset + RequiredSize >= GetBufferSize())
+			{
+				return;
+			}
+			if (RequiredSize > 0)
+			{
+				TArrayView<const uint8> ArrayView = TArrayView<const uint8>(reinterpret_cast<const uint8*>(Data) + Offset, RequiredSize);
 				FFileHelper::SaveArrayToFile(ArrayView, *Filename);
 			}
 		};
@@ -320,7 +298,31 @@ void UCompushadyResource::ReadbackAllToFile(const FString& Filename, const FComp
 	MapReadAndExecute(FileWriter, OnSignaled);
 }
 
-void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
+bool UCompushadyResource::ReadbackBufferToFileSync(const FString& Filename, const int64 Offset, const int64 Size, FString& ErrorMessages)
+{
+	auto FileWriter = [this, Filename, Size, Offset](const void* Data)
+		{
+			int32 RequiredSize = GetBufferSize();
+			if (Size > 0)
+			{
+				RequiredSize = FMath::Min<int64>(Size, RequiredSize);
+			}
+			if (Offset + RequiredSize >= GetBufferSize())
+			{
+				return false;
+			}
+			if (RequiredSize > 0)
+			{
+				TArrayView<const uint8> ArrayView = TArrayView<const uint8>(reinterpret_cast<const uint8*>(Data) + Offset, RequiredSize);
+				return FFileHelper::SaveArrayToFile(ArrayView, *Filename);
+			}
+			return false;
+		};
+
+	return MapReadAndExecuteSync(FileWriter);
+}
+
+void UCompushadyResource::ReadbackBufferToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled)
 {
 	if (IsRunning())
 	{
@@ -343,7 +345,65 @@ void UCompushadyResource::ReadbackToFloatArray(const int32 Offset, const int32 E
 		}, OnSignaled, ReadbackCacheFloats);
 }
 
-TArray<FVector> UCompushadyResource::ReadbackFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+bool UCompushadyResource::ReadbackBufferToFloatArraySync(const int64 Offset, const int64 Elements, TArray<float>& Floats, FString& ErrorMessages)
+{
+	if (IsRunning())
+	{
+		ErrorMessages = "The Resource is already being processed by another task";
+		return false;
+	}
+
+	auto ToFloatArray = [this, Offset, Elements, &Floats, &ErrorMessages](const void* Data)
+		{
+			int64 NumElements = GetBufferSize() / sizeof(float);
+			if (Elements > 0)
+			{
+				NumElements = FMath::Min<int64>(Elements, NumElements);
+			}
+			if ((Offset + static_cast<int64>(NumElements * sizeof(float))) >= GetBufferSize())
+			{
+				ErrorMessages = "Invalid Offset and Size";
+				return false;
+			}
+			Floats.AddUninitialized(NumElements);
+			FMemory::Memcpy(Floats.GetData(), reinterpret_cast<const uint8*>(Data) + Offset, NumElements * sizeof(float));
+
+			return true;
+		};
+
+	return MapReadAndExecuteSync(ToFloatArray);
+}
+
+bool UCompushadyResource::ReadbackBufferToByteArraySync(const int64 Offset, const int64 Size, TArray<uint8>& Bytes, FString& ErrorMessages)
+{
+	if (IsRunning())
+	{
+		ErrorMessages = "The Resource is already being processed by another task";
+		return false;
+	}
+
+	auto ToFloatArray = [this, Offset, Size, &Bytes, &ErrorMessages](const void* Data)
+		{
+			int64 RequestedSize = GetBufferSize();
+			if (Size > 0)
+			{
+				RequestedSize = FMath::Min<int64>(Size, RequestedSize);
+			}
+			if ((Offset + RequestedSize) >= GetBufferSize())
+			{
+				ErrorMessages = "Invalid Offset and Size";
+				return false;
+			}
+			Bytes.AddUninitialized(RequestedSize);
+			FMemory::Memcpy(Bytes.GetData(), reinterpret_cast<const uint8*>(Data) + Offset, RequestedSize);
+
+			return true;
+		};
+
+	return MapReadAndExecuteSync(ToFloatArray);
+}
+
+TArray<FVector> UCompushadyResource::ReadbackBufferFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
 {
 	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
 	{
@@ -367,12 +427,14 @@ TArray<FVector> UCompushadyResource::ReadbackFloatsToVectorArraySync(const int32
 
 				SourcePtr += Stride;
 			}
+
+			return true;
 		});
 
 	return Vectors;
 }
 
-TArray<FVector2D> UCompushadyResource::ReadbackFloatsToVector2ArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+TArray<FVector2D> UCompushadyResource::ReadbackBufferFloatsToVector2ArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
 {
 	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
 	{
@@ -395,12 +457,14 @@ TArray<FVector2D> UCompushadyResource::ReadbackFloatsToVector2ArraySync(const in
 
 				SourcePtr += Stride;
 			}
+
+			return true;
 		});
 
 	return Vectors;
 }
 
-TArray<FVector4> UCompushadyResource::ReadbackFloatsToVector4ArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+TArray<FVector4> UCompushadyResource::ReadbackBufferFloatsToVector4ArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
 {
 	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
 	{
@@ -425,12 +489,13 @@ TArray<FVector4> UCompushadyResource::ReadbackFloatsToVector4ArraySync(const int
 
 				SourcePtr += Stride;
 			}
+			return true;
 		});
 
 	return Vectors;
 }
 
-TArray<FLinearColor> UCompushadyResource::ReadbackFloatsToLinearColorArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+TArray<FLinearColor> UCompushadyResource::ReadbackBufferFloatsToLinearColorArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
 {
 	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
 	{
@@ -455,12 +520,14 @@ TArray<FLinearColor> UCompushadyResource::ReadbackFloatsToLinearColorArraySync(c
 
 				SourcePtr += Stride;
 			}
+
+			return true;
 		});
 
 	return Vectors;
 }
 
-TArray<int32> UCompushadyResource::ReadbackIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
+TArray<int32> UCompushadyResource::ReadbackBufferIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride)
 {
 	if (Offset >= GetBufferSize() || Stride <= 0 || Elements <= 0)
 	{
@@ -481,6 +548,8 @@ TArray<int32> UCompushadyResource::ReadbackIntsToIntArraySync(const int32 Offset
 				Values[Index] = *Ints;
 				SourcePtr += Stride;
 			}
+
+			return true;
 		});
 
 	return Values;
@@ -836,7 +905,7 @@ void UCompushadyResource::MapWriteAndExecute(TFunction<void(void*)> InFunction, 
 	}
 }
 
-bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InFunction)
+bool UCompushadyResource::MapReadAndExecuteSync(TFunction<bool(const void*)> InFunction)
 {
 	if (IsRunning())
 	{
@@ -848,8 +917,10 @@ bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InF
 		return false;
 	}
 
+	bool bSuccess = false;
+
 	EnqueueToGPUSync(
-		[this, InFunction](FRHICommandListImmediate& RHICmdList)
+		[this, InFunction, &bSuccess](FRHICommandListImmediate& RHICmdList)
 		{
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
@@ -858,15 +929,15 @@ bool UCompushadyResource::MapReadAndExecuteSync(TFunction<void(const void*)> InF
 			void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
 			if (Data)
 			{
-				InFunction(Data);
+				bSuccess = InFunction(Data);
 				RHICmdList.UnlockStagingBuffer(StagingBuffer);
 			}
 		});
 
-	return true;
+	return bSuccess;
 }
 
-bool UCompushadyResource::MapWriteAndExecuteSync(TFunction<void(void*)> InFunction)
+bool UCompushadyResource::MapWriteAndExecuteSync(TFunction<bool(void*)> InFunction)
 {
 	if (IsRunning())
 	{
@@ -1015,8 +1086,8 @@ namespace Compushady
 #else
 					RHICmdList.SetShaderTexture(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Value);
 #endif
-		}
-	}
+				}
+			}
 
 			for (int32 Index = 0; Index < ResourceBindings.UAVs.Num(); Index++)
 			{
@@ -1044,7 +1115,7 @@ namespace Compushady
 #else
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
 #endif
-}
+			}
 
 #if COMPUSHADY_UE_VERSION >= 53
 			RHICmdList.SetBatchedShaderParameters(Shader, BatchedParameters);
