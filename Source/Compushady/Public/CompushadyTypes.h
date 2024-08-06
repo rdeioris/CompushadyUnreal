@@ -571,5 +571,6 @@ namespace Compushady
 		COMPUSHADY_API void FillRasterizerPipelineStateInitializer(FVertexShaderRHIRef VS, FMeshShaderRHIRef MS, FPixelShaderRHIRef PS, const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer);
 
 		COMPUSHADY_API bool GenerateTIFF(const void* Data, const int32 Stride, const uint32 Width, const uint32 Height, const EPixelFormat PixelFormat, const FString ImageDescription, TArray<uint8>& IFD);
+		COMPUSHADY_API bool LoadNRRD(const FString& Filename, TArray64<uint8>& SlicesData, int64& Offset, uint32& Width, uint32& Height, uint32& Depth, EPixelFormat PixelFormat);
 	}
 }

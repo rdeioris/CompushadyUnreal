@@ -9,6 +9,42 @@
 #include "CompushadyShader.h"
 #include "CompushadyBlendable.generated.h"
 
+USTRUCT(BlueprintType)
+struct COMPUSHADY_API FCompushadyBlendableRasterizerConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FCompushadyRasterizerConfig RasterizerConfig;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	bool bCheckDepth = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 ViewMatrixOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 ProjectionMatrixOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 InverseViewMatrixOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 InverseProjectionMatrixOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 ScreenSizeFloat2Offset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 ViewProjectionMatrixOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 InverseViewProjectionMatrixOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 ViewOriginFloat4Offset = -1;
+};
+
 /**
  *
  */
@@ -31,10 +67,13 @@ public:
 	bool UpdateResources(const FCompushadyResourceArray& InPSResourceArray, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool UpdateResourcesAdvanced(const FCompushadyResourceArray& InVSResourceArray, const FCompushadyResourceArray& InPSResourceArray, const int32 InNumVertices, const int32 InNumInstances, FString& ErrorMessages);
+	bool UpdateResourcesAdvanced(const FCompushadyResourceArray& InVSResourceArray, const FCompushadyResourceArray& InPSResourceArray, const int32 InNumVertices, const int32 InNumInstances, const FCompushadyBlendableRasterizerConfig& InBlendableRasterizerConfig, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResourcesByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool UpdateResourcesByMapAdvanced(const TMap<FString, TScriptInterface<ICompushadyBindable>>& InVSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& InPSResourceMap, const int32 InNumVertices, const int32 InNumInstances, const FCompushadyBlendableRasterizerConfig& InBlendableRasterizerConfig, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	FGuid AddToBlitter(UObject* WorldContextObject, const int32 Priority = 0);
@@ -62,4 +101,6 @@ protected:
 
 	int32 NumVertices = 0;
 	int32 NumInstances = 0;
+
+	FCompushadyBlendableRasterizerConfig RasterizerConfig;
 };
