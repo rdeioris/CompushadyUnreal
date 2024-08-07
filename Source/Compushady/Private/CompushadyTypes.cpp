@@ -1043,7 +1043,7 @@ namespace Compushady
 	namespace Pipeline
 	{
 		template<typename SHADER_TYPE>
-		void SetupParametersRHI(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+		void SetupParametersRHI(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 		{
 #if COMPUSHADY_UE_VERSION >= 53
 			FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
@@ -1210,12 +1210,12 @@ namespace Compushady
 #endif
 
 		template<typename SHADER_TYPE>
-		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures)
+		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures, const bool bSyncCBV)
 		{
 			SetupParametersRHI(RHICmdList, Shader, ResourceBindings,
 				[&](const int32 Index) // CBV
 				{
-					if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
+					if (bSyncCBV && ResourceArray.CBVs[Index]->BufferDataIsDirty())
 					{
 						ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
 					}
@@ -1251,37 +1251,37 @@ namespace Compushady
 				[&](const int32 Index) // SamplerState
 				{
 					return ResourceArray.Samplers[Index]->GetRHI();
-				});
+				}, bSyncCBV);
 		}
 	}
 }
 
-void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {});
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {}, bSyncCBV);
 }
 
-void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {});
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {}, bSyncCBV);
 }
 
-void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {});
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, {}, bSyncCBV);
 }
 
-void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, SceneTextures);
+	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, SceneTextures, bSyncCBV);
 }
-void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings)
+void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const bool bSyncCBV)
 {
 	FRayTracingShaderBindingsWriter GlobalResources;
 
 	for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
 	{
-		if (ResourceArray.CBVs[Index]->BufferDataIsDirty())
+		if (bSyncCBV && ResourceArray.CBVs[Index]->BufferDataIsDirty())
 		{
 			ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
 		}
@@ -1302,24 +1302,24 @@ void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FRa
 	}
 }
 
-void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction, bSyncCBV);
 }
 
-void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction, bSyncCBV);
 }
 
-void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction, bSyncCBV);
 }
 
-void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FPixelShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 {
-	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction);
+	Compushady::Pipeline::SetupParametersRHI(RHICmdList, Shader, ResourceBindings, CBVFunction, SRVFunction, UAVFunction, SamplerFunction, bSyncCBV);
 }
 
 void ICompushadyPipeline::TrackResource(UObject* InResource)
@@ -1990,12 +1990,12 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const FString& Sha
 	return CreateMeshShaderFromGLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
 }
 
-void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction)
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
 {
-	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, nullptr, InFunction);
+	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, nullptr, InFunction, RasterizerConfig);
 }
 
-void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction)
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
 {
 	FRHIRenderPassInfo PassInfo(RenderTarget, ERenderTargetActions::Load_Store);
 	if (DepthStencil)
@@ -2009,8 +2009,9 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 
 	FGraphicsPipelineStateInitializer GraphicsPSOInit;
 	RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+
+	FillRasterizerPipelineStateInitializer(RasterizerConfig, GraphicsPSOInit);
 	GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
-	GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
 	if (DepthStencil)
 	{
 		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual>::GetRHI();
@@ -2096,7 +2097,7 @@ bool Compushady::Utils::FinalizeShader(TArray<uint8>& ByteCode, const FString& T
 	return Compushady::Utils::CreateResourceBindings(ShaderResourceBindings, ResourceBindings, ErrorMessages);
 }
 
-void Compushady::Utils::FillRasterizerPipelineStateInitializer(FVertexShaderRHIRef VS, FMeshShaderRHIRef MS, FPixelShaderRHIRef PS, const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer)
+void Compushady::Utils::FillRasterizerPipelineStateInitializer(const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer)
 {
 	if (RasterizerConfig.FillMode == ECompushadyRasterizerFillMode::Solid)
 	{
@@ -2128,21 +2129,4 @@ void Compushady::Utils::FillRasterizerPipelineStateInitializer(FVertexShaderRHIR
 			break;
 		}
 	}
-
-	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_LessEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
-	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
-	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
-
-	if (VS)
-	{
-		PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = GEmptyVertexDeclaration.VertexDeclarationRHI;
-		PipelineStateInitializer.BoundShaderState.VertexShaderRHI = VS;
-	}
-	else if (MS)
-	{
-		PipelineStateInitializer.BoundShaderState.VertexDeclarationRHI = nullptr;
-		PipelineStateInitializer.BoundShaderState.SetMeshShader(MS);
-	}
-
-	PipelineStateInitializer.BoundShaderState.PixelShaderRHI = PS;
 }

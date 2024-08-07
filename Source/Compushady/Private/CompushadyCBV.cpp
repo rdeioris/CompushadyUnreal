@@ -59,6 +59,12 @@ void UCompushadyCBV::SyncBufferData(FRHICommandList& RHICmdList)
 	bBufferDataDirty = false;
 }
 
+void UCompushadyCBV::SyncBufferDataWithData(FRHICommandList& RHICmdList, const TArray<uint8> InData)
+{
+	RHICmdList.UpdateUniformBuffer(UniformBufferRHIRef, InData.GetData());
+	bBufferDataDirty = false;
+}
+
 bool UCompushadyCBV::SetFloat(const int64 Offset, const float Value)
 {
 	return SetValue(Offset, Value);

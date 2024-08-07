@@ -87,36 +87,7 @@ bool UCompushadyRasterizer::CreateVSPSRasterizerPipeline(const FCompushadyRaster
 
 void UCompushadyRasterizer::FillPipelineStateInitializer(const FCompushadyRasterizerConfig& RasterizerConfig)
 {
-	if (RasterizerConfig.FillMode == ECompushadyRasterizerFillMode::Solid)
-	{
-		switch (RasterizerConfig.CullMode)
-		{
-		case(ECompushadyRasterizerCullMode::None):
-			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
-			break;
-		case(ECompushadyRasterizerCullMode::ClockWise):
-			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CW>::GetRHI();
-			break;
-		case(ECompushadyRasterizerCullMode::CounterClockWise):
-			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CCW>::GetRHI();
-			break;
-		}
-	}
-	else if (RasterizerConfig.FillMode == ECompushadyRasterizerFillMode::Wireframe)
-	{
-		switch (RasterizerConfig.CullMode)
-		{
-		case(ECompushadyRasterizerCullMode::None):
-			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_None>::GetRHI();
-			break;
-		case(ECompushadyRasterizerCullMode::ClockWise):
-			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_CW>::GetRHI();
-			break;
-		case(ECompushadyRasterizerCullMode::CounterClockWise):
-			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_CCW>::GetRHI();
-			break;
-		}
-	}
+	Compushady::Utils::FillRasterizerPipelineStateInitializer(RasterizerConfig, PipelineStateInitializer);
 
 	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_LessEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
 	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
@@ -226,8 +197,8 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 			{
 				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, true);
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
 				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
 
@@ -291,8 +262,8 @@ void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResou
 			{
 				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, true);
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
 				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
 
@@ -336,7 +307,7 @@ bool UCompushadyRasterizer::ClearAndDrawSync(const FCompushadyResourceArray& VSR
 	FRHITexture* DepthStencilTexture = nullptr;
 	if (!SetupRenderTargets(RTVs, DSV, RenderTargets, RenderTargetsEnabled, DepthStencilTexture))
 	{
-		ErrorMessages= "Invalid RTVs";
+		ErrorMessages = "Invalid RTVs";
 		return false;
 	}
 
@@ -353,8 +324,8 @@ bool UCompushadyRasterizer::ClearAndDrawSync(const FCompushadyResourceArray& VSR
 			{
 				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, true);
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
 				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
 
@@ -471,8 +442,8 @@ void UCompushadyRasterizer::DrawIndirect(const FCompushadyResourceArray& VSResou
 			{
 				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, true);
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
 				RHICmdList.DrawPrimitiveIndirect(RHICommandBuffer, Offset);
 
@@ -632,8 +603,8 @@ void UCompushadyRasterizer::DispatchMesh(const FCompushadyResourceArray& MSResou
 			{
 				SetupRasterization_RenderThread(RHICmdList, RasterizeConfig, Width, Height);
 
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, MeshShaderRef, MSResourceArray, MSResourceBindings);
-				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {});
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, MeshShaderRef, MSResourceArray, MSResourceBindings, true);
+				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
 				RHICmdList.DispatchMeshShader(XYZ.X, XYZ.Y, XYZ.Z);
 

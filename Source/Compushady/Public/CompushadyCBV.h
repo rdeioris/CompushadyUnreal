@@ -24,6 +24,8 @@ public:
 
 	void SyncBufferData(FRHICommandList& RHICmdList);
 
+	void SyncBufferDataWithData(FRHICommandList& RHICmdList, const TArray<uint8> InData);
+
 	void BufferDataClean();
 
 	FUniformBufferRHIRef GetRHI();

@@ -3,7 +3,7 @@
 
 #include "CompushadyTypes.h"
 
-bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& SlicesData, int64& Offset, uint32& Width, uint32& Height, uint32& Depth, EPixelFormat PixelFormat)
+bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& SlicesData, int64& Offset, uint32& Width, uint32& Height, uint32& Depth, EPixelFormat& PixelFormat)
 {
 	if (!FFileHelper::LoadFileToArray(SlicesData, *Filename))
 	{

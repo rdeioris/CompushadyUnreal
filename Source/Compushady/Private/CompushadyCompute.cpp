@@ -45,7 +45,7 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 void UCompushadyCompute::Dispatch_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, const FIntVector& XYZ)
 {
 	SetComputePipelineState(RHICmdList, ComputeShaderRef);
-	Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
+	Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings, true);
 
 	RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
 }
@@ -53,7 +53,7 @@ void UCompushadyCompute::Dispatch_RenderThread(FRHICommandList& RHICmdList, cons
 void UCompushadyCompute::DispatchIndirect_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, FBufferRHIRef BufferRHIRef, const int32 Offset)
 {
 	SetComputePipelineState(RHICmdList, ComputeShaderRef);
-	Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings);
+	Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ResourceArray, ResourceBindings, true);
 
 	RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::IndirectArgs));
 	RHICmdList.DispatchIndirectComputeShader(BufferRHIRef, Offset);

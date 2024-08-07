@@ -129,7 +129,8 @@ public:
 				[&](const int32 Index)
 				{
 					return SamplerStateRef;
-				});
+				},
+				true);
 
 			Compushady::Utils::SetupPipelineParametersRHI(RHICmdList, PixelShaderRef, PSResourceBindings,
 				[&](const int32 Index)
@@ -148,7 +149,8 @@ public:
 				[&](const int32 Index)
 				{
 					return SamplerStateRef;
-				});
+				},
+				true);
 
 			RHICmdList.DrawPrimitive(0, 2, 1);
 		}
@@ -180,7 +182,7 @@ public:
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
 						{
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-						});
+						}, {});
 				});
 		}
 	}
@@ -207,7 +209,7 @@ public:
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
 						{
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-						});
+						}, {});
 				});
 		}
 	}
@@ -247,7 +249,7 @@ public:
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
 						{
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-						});
+						}, {});
 				});
 		}
 

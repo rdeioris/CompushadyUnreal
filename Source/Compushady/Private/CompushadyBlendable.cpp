@@ -62,7 +62,7 @@ protected:
 		SceneTextures.SetTexture(ECompushadySceneTexture::Velocity, Contents->GBufferVelocityTexture->GetRHI());
 	}
 
-	void FillRasterizerConfig(const FViewMatrices& ViewMatrices, const FVector2D ScreenSize)
+	void FillRasterizerCBV(const FViewMatrices& ViewMatrices, const FVector2D ScreenSize)
 	{
 		if (VSResourceArray.CBVs.Num() == 0)
 		{
@@ -108,6 +108,7 @@ protected:
 
 		SetVector4ByOffset(RasterizerConfig.ViewOriginFloat4Offset, ViewMatrices.GetViewOrigin());
 
+		CBVData = VSResourceArray.CBVs[0]->GetBufferData();
 	}
 
 	FScreenPassTexture PostProcessCallback_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
@@ -144,14 +145,14 @@ protected:
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 						{
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
 							UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
 								0, 0, 1, 1,
 								RenderTarget->GetSizeXY(),
 								FIntPoint(1, 1),
 								INDEX_NONE,
 								false, EDRF_UseTriangleOptimization);
-						});
+						}, RasterizerConfig.RasterizerConfig);
 				});
 		}
 		else
@@ -161,7 +162,7 @@ protected:
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
 				ERDGPassFlags::None,
-				[this, SceneColorInput, Output, &View, SceneTextureUniform](FRHICommandList& RHICmdList)
+				[this, SceneColorInput, Output, &View, SceneTextureUniform, CopyBufferData=CBVData](FRHICommandList& RHICmdList)
 				{
 					FCompushadySceneTextures SceneTextures = {};
 					FillSceneTextures(SceneTextures, RHICmdList, SceneColorInput.Texture->GetRHI(), SceneTextureUniform);
@@ -175,16 +176,17 @@ protected:
 						DepthStencil = SceneTextureUniform->SceneDepthTexture->GetRHI();
 					}
 
-					const FVector2D ScreenSize = FVector2D(RenderTarget->GetDesc().GetSize().X, RenderTarget->GetDesc().GetSize().Y);
-
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
 						{
-							FillRasterizerConfig(View.ViewMatrices, ScreenSize);
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							if (VSResourceArray.CBVs.IsValidIndex(0))
+							{
+								VSResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
+							}
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, false);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
 							RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
-						});
+						}, RasterizerConfig.RasterizerConfig);
 				});
 		}
 
@@ -205,6 +207,8 @@ protected:
 	int32 CompushadyPriority = 0;
 
 	FCompushadyBlendableRasterizerConfig RasterizerConfig;
+
+	TArray<uint8> CBVData;
 };
 
 class FCompushadyViewExtension : public ISceneViewExtension, public TSharedFromThis<FCompushadyViewExtension, ESPMode::ThreadSafe>, public ICompushadyViewExtension
@@ -229,7 +233,11 @@ public:
 	}
 
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
-	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {}
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override
+	{
+		FillRasterizerCBV(InView.ViewMatrices, InView.UnconstrainedViewRect.Size());
+	}
+
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override {}
 
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
@@ -265,14 +273,14 @@ public:
 				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 					{
-						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
 						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
 							0, 0, 1, 1,
 							RenderTarget->GetSizeXY(),
 							FIntPoint(1, 1),
 							INDEX_NONE,
 							false, EDRF_UseTriangleOptimization);
-					});
+					}, RasterizerConfig.RasterizerConfig);
 			});
 	}
 
@@ -306,7 +314,11 @@ public:
 	}
 
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
-	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {}
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override
+	{
+		FillRasterizerCBV(InView.ViewMatrices, InView.UnconstrainedViewRect.Size());
+	}
+
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override {}
 
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
@@ -344,14 +356,14 @@ public:
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 						{
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
 							UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
 								0, 0, 1, 1,
 								RenderTarget->GetSizeXY(),
 								FIntPoint(1, 1),
 								INDEX_NONE,
 								false, EDRF_UseTriangleOptimization);
-						});
+						}, RasterizerConfig.RasterizerConfig);
 				});
 		}
 		else
@@ -359,7 +371,7 @@ public:
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
 				ERDGPassFlags::None,
-				[this, InputSceneTextures, &View](FRHICommandList& RHICmdList)
+				[this, InputSceneTextures, &View, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
 				{
 					FTextureRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 					FTextureRHIRef DepthStencil = nullptr;
@@ -372,16 +384,17 @@ public:
 					FCompushadySceneTextures SceneTextures = {};
 					FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
 
-					const FVector2D ScreenSize = FVector2D(RenderTarget->GetDesc().GetSize().X, RenderTarget->GetDesc().GetSize().Y);
-
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
 						{
-							FillRasterizerConfig(View.ViewMatrices, ScreenSize);
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings);
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures);
+							if (VSResourceArray.CBVs.IsValidIndex(0))
+							{
+								VSResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
+							}
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, false);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
 							RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
-						});
+						}, RasterizerConfig.RasterizerConfig);
 				});
 		}
 	}
