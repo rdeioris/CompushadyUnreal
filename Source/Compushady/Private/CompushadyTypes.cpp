@@ -360,7 +360,7 @@ bool UCompushadyResource::ReadbackBufferToFloatArraySync(const int64 Offset, con
 			{
 				NumElements = FMath::Min<int64>(Elements, NumElements);
 			}
-			if ((Offset + static_cast<int64>(NumElements * sizeof(float))) >= GetBufferSize())
+			if ((Offset + static_cast<int64>(NumElements * sizeof(float))) > GetBufferSize())
 			{
 				ErrorMessages = "Invalid Offset and Size";
 				return false;
@@ -389,7 +389,7 @@ bool UCompushadyResource::ReadbackBufferToByteArraySync(const int64 Offset, cons
 			{
 				RequestedSize = FMath::Min<int64>(Size, RequestedSize);
 			}
-			if ((Offset + RequestedSize) >= GetBufferSize())
+			if ((Offset + RequestedSize) > GetBufferSize())
 			{
 				ErrorMessages = "Invalid Offset and Size";
 				return false;

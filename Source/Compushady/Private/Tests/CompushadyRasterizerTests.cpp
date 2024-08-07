@@ -88,7 +88,7 @@ bool FCompushadyRasterizerTest_ClearDepthStencil::RunTest(const FString& Paramet
 			TArray<uint64> Output;
 			Output.AddZeroed(8 * 8);
 
-			// for now skip this test in d3d12 mode...
+			// for now skip this test in d3d12 mode (4k alignment will break)...
 			if (RHIGetInterfaceType() == ERHIInterfaceType::D3D12)
 			{
 				return;
@@ -135,7 +135,7 @@ bool FCompushadyRasterizerTest_StencilOnly::RunTest(const FString& Parameters)
 			TArray<uint64> Output;
 			Output.AddZeroed(8 * 8);
 
-			// for now skip this test in d3d12 mode...
+			// for now skip this test in d3d12 mode (4k alignment will break)...
 			if (RHIGetInterfaceType() == ERHIInterfaceType::D3D12)
 			{
 				return;

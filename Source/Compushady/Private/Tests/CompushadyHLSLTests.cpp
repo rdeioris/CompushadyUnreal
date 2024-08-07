@@ -105,4 +105,88 @@ bool FCompushadyHLSLTest_RWBuffer::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyHLSLTest_RWBufferFloats, "Compushady.HLSL.RWBufferFloats", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyHLSLTest_RWBufferFloats::RunTest(const FString& Parameters)
+{
+	FString ErrorMessages;
+	const FString Code = "RWBuffer<float> Output; [numthreads(1,1,1)] void main(uint3 tid : SV_DispatchThreadID) { Output[tid.x] = tid.x; }";
+	UCompushadyCompute* Compute = UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(Code, ErrorMessages, "main");
+
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName, 32, EPixelFormat::PF_R32_FLOAT);
+
+	Compute->DispatchByMapSync({ {"Output", UAV} }, FIntVector(8, 1, 1), ErrorMessages);
+
+	TArray<float> Output;
+	Output.AddZeroed(8);
+
+	UAV->ReadbackBufferToFloatArraySync(0, 8, Output, ErrorMessages);
+
+	TestEqual(TEXT("Output[0]"), Output[0], 0.0f);
+	TestEqual(TEXT("Output[1]"), Output[1], 1.0f);
+	TestEqual(TEXT("Output[2]"), Output[2], 2.0f);
+	TestEqual(TEXT("Output[3]"), Output[3], 3.0f);
+	TestEqual(TEXT("Output[4]"), Output[4], 4.0f);
+	TestEqual(TEXT("Output[5]"), Output[5], 5.0f);
+	TestEqual(TEXT("Output[6]"), Output[6], 6.0f);
+	TestEqual(TEXT("Output[7]"), Output[7], 7.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyHLSLTest_RWBufferFloatsOffset, "Compushady.HLSL.RWBufferFloatsOffset", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyHLSLTest_RWBufferFloatsOffset::RunTest(const FString& Parameters)
+{
+	FString ErrorMessages;
+	const FString Code = "RWBuffer<float> Output; [numthreads(1,1,1)] void main(uint3 tid : SV_DispatchThreadID) { Output[tid.x] = tid.x; }";
+	UCompushadyCompute* Compute = UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(Code, ErrorMessages, "main");
+
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName, 32, EPixelFormat::PF_R32_FLOAT);
+
+	Compute->DispatchByMapSync({ {"Output", UAV} }, FIntVector(8, 1, 1), ErrorMessages);
+
+	TArray<float> Output;
+	Output.AddZeroed(5);
+
+	UAV->ReadbackBufferToFloatArraySync(12, 5, Output, ErrorMessages);
+
+	TestEqual(TEXT("Output[0]"), Output[0], 3.0f);
+	TestEqual(TEXT("Output[1]"), Output[1], 4.0f);
+	TestEqual(TEXT("Output[2]"), Output[2], 5.0f);
+	TestEqual(TEXT("Output[3]"), Output[3], 6.0f);
+	TestEqual(TEXT("Output[4]"), Output[4], 7.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyHLSLTest_RWBufferBytes, "Compushady.HLSL.RWBufferBytes", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyHLSLTest_RWBufferBytes::RunTest(const FString& Parameters)
+{
+	FString ErrorMessages;
+	const FString Code = "RWBuffer<uint> Output; [numthreads(1,1,1)] void main(uint3 tid : SV_DispatchThreadID) { Output[tid.x] = tid.x; }";
+	UCompushadyCompute* Compute = UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLString(Code, ErrorMessages, "main");
+
+	UCompushadyUAV* UAV = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName, 8, EPixelFormat::PF_R8_UINT);
+
+	Compute->DispatchByMapSync({ {"Output", UAV} }, FIntVector(8, 1, 1), ErrorMessages);
+
+	TArray<uint8> Output;
+	Output.AddZeroed(8);
+
+	UAV->ReadbackBufferToByteArraySync(0, 8, Output, ErrorMessages);
+
+	TestEqual(TEXT("Output[0]"), Output[0], 0);
+	TestEqual(TEXT("Output[1]"), Output[1], 1);
+	TestEqual(TEXT("Output[2]"), Output[2], 2);
+	TestEqual(TEXT("Output[3]"), Output[3], 3);
+	TestEqual(TEXT("Output[4]"), Output[4], 4);
+	TestEqual(TEXT("Output[5]"), Output[5], 5);
+	TestEqual(TEXT("Output[6]"), Output[6], 6);
+	TestEqual(TEXT("Output[7]"), Output[7], 7);
+
+	return true;
+}
+
 #endif
