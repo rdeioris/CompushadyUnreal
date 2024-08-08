@@ -9,7 +9,7 @@ The plugin exposes features like runtime shaders loading (from strings/bytearray
 
 The common use case is to optimize highly parallelizable problems using compute shaders, but you can integrate runtime shaders programming to generate motion graphics and even audio (yes, you can pipe the the audio output to a shader or generate waveforms from a shader!). The shadertoy website is always a good source for amazing ideas: https://www.shadertoy.com/ (Note: if you are on this page because you want to run shadertoy shaders on unreal, you can jump to the relevant section: [ShaderToy](#ShaderToy-Integration))
 
-Another focus is on scientific data processing, so native support for the TIFF format (both reading and writing) is available.
+Another focus is on scientific data processing, so native support for formats like TIFF or NRRD is available.
  
 Currently Windows (D3D12 and Vulkan), Linux and Android (Vulkan) are supported. Mac and iOS (Metal) are currently in development.
 
