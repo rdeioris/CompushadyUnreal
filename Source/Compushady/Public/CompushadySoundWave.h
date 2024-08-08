@@ -39,6 +39,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	int32 GetTotalSamples() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	void ClearSamples();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	bool IsPlaying();
 protected:
 	TArray<uint8> TempData;
 };

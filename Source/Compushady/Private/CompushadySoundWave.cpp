@@ -25,6 +25,16 @@ void UCompushadySoundWave::UpdateSamples()
 	QueueAudio(TempData.GetData(), TempData.Num());
 }
 
+void UCompushadySoundWave::ClearSamples()
+{
+	ResetAudio();
+}
+
+bool UCompushadySoundWave::IsPlaying()
+{
+	return GetAvailableAudioByteCount() > 0;
+}
+
 int32 UCompushadySoundWave::GetSampleRate() const
 {
 	return SampleRate;
