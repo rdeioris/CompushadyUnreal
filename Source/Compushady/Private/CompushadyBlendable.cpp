@@ -185,7 +185,7 @@ protected:
 							}
 							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, false);
 							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
-							RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+							Compushady::Utils::DrawVertices(RHICmdList, NumVertices, NumInstances, RasterizerConfig.RasterizerConfig);
 						}, RasterizerConfig.RasterizerConfig);
 				});
 		}
@@ -393,7 +393,7 @@ public:
 							}
 							Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, false);
 							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
-							RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+							Compushady::Utils::DrawVertices(RHICmdList, NumVertices, NumInstances, RasterizerConfig.RasterizerConfig);
 						}, RasterizerConfig.RasterizerConfig);
 				});
 		}

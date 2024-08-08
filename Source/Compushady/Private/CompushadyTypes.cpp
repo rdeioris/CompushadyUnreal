@@ -2023,7 +2023,6 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 	GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
 	GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShaderRef;
 	GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShaderRef;
-	GraphicsPSOInit.PrimitiveType = PT_TriangleList;
 
 	SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
 
@@ -2129,4 +2128,26 @@ void Compushady::Utils::FillRasterizerPipelineStateInitializer(const FCompushady
 			break;
 		}
 	}
+
+	switch (RasterizerConfig.PrimitiveType)
+	{
+	case(ECompushadyRasterizerPrimitiveType::TriangleList):
+		PipelineStateInitializer.PrimitiveType = PT_TriangleList;
+		break;
+	case(ECompushadyRasterizerPrimitiveType::LineList):
+		PipelineStateInitializer.PrimitiveType = PT_LineList;
+		break;
+	case(ECompushadyRasterizerPrimitiveType::PointList):
+		PipelineStateInitializer.PrimitiveType = PT_PointList;
+		break;
+	default:
+		PipelineStateInitializer.PrimitiveType = PT_TriangleList;
+		break;
+	}
+}
+
+void Compushady::Utils::DrawVertices(FRHICommandList& RHICmdList, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig)
+{
+	static int32 Denominators[] = { 3, 2, 1 };
+	RHICmdList.DrawPrimitive(0, NumVertices / Denominators[static_cast<int32>(RasterizerConfig.PrimitiveType)], NumInstances);
 }

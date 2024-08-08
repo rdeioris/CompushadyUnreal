@@ -1241,7 +1241,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 		[&BufferRHIRef, Name, Data, Stride](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::SRVMask, ResourceCreateInfo);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -1263,17 +1263,22 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 	return CompushadySRV;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromByteArray(const FString& Name, const TArray<uint8>& Data, const int32 Stride)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromByteArray(const FString& Name, const TArray<uint8>& Data, const int32 Stride, const int64 Offset)
 {
+	if (Offset >= Data.Num())
+	{
+		return nullptr;
+	}
+
 	FBufferRHIRef BufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
-		[&BufferRHIRef, Name, Data, Stride](FRHICommandListImmediate& RHICmdList)
+		[&BufferRHIRef, Name, Data, Stride, Offset](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() - Offset, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::SRVMask, ResourceCreateInfo);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
-			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
+			FMemory::Memcpy(LockedData, Data.GetData() + Offset, BufferRHIRef->GetSize() - Offset);
 			RHICmdList.UnlockBuffer(BufferRHIRef);
 		});
 
@@ -1293,14 +1298,67 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 	return CompushadySRV;
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride, const int64 Offset)
 {
 	TArray<uint8> Data;
 	if (!FFileHelper::LoadFileToArray(Data, *Filename))
 	{
 		return nullptr;
 	}
-	return CreateCompushadySRVStructuredBufferFromByteArray(Name, Data, Stride);
+	return CreateCompushadySRVStructuredBufferFromByteArray(Name, Data, Stride, Offset);
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromASCIIFile(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty)
+{
+	TArray<FString> Lines;
+	if (!FFileHelper::LoadFileToStringArray(Lines, *Filename))
+	{
+		return nullptr;
+	}
+
+	if (SkipLines > Lines.Num())
+	{
+		return nullptr;
+	}
+
+	TArray<float> Values;
+	Values.AddUninitialized((Lines.Num() - SkipLines) * Columns.Num());
+
+	const int32 Stride = sizeof(float) * Columns.Num();
+
+	int32 ProcessedLines = 0;
+
+	for (int32 LineIndex = SkipLines; LineIndex < Lines.Num(); LineIndex++)
+	{
+		const FString& Line = Lines[LineIndex];
+		TArray<FString> Items;
+		Line.ParseIntoArray(Items, *Separator, bCullEmpty);
+
+		bool bValid = true;
+		for (const int32 ColumnIndex : Columns)
+		{
+			if (!Items.IsValidIndex(ColumnIndex))
+			{
+				bValid = false;
+				break;
+			}
+		}
+
+		if (bValid)
+		{
+			for (int32 ColumnIndexIndex = 0; ColumnIndexIndex < Columns.Num(); ColumnIndexIndex++)
+			{
+				Values[ProcessedLines * Columns.Num() + ColumnIndexIndex] = FCString::Atof(*Items[Columns[ColumnIndexIndex]]);
+			}
+
+			ProcessedLines++;
+		}
+	}
+
+	// do not shrink memory as we are going to trash this array after GPU upload
+	Values.SetNum(ProcessedLines * Columns.Num(), false);
+
+	return CreateCompushadySRVStructuredBufferFromFloatArray(Name, Values, Stride);
 }
 
 UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadyUAVSoundWave(const FString& Name, const float Duration, const int32 SampleRate, const int32 NumChannels, UAudioBus* AudioBus)

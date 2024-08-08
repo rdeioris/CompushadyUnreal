@@ -88,4 +88,6 @@ protected:
 	FPixelShaderRHIRef PixelShaderRef;
 	FMeshShaderRHIRef MeshShaderRef;
 	FGraphicsPipelineStateInitializer PipelineStateInitializer;
+
+	int32 DrawDenominator = 0;
 };

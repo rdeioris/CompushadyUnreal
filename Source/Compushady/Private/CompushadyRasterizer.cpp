@@ -91,7 +91,9 @@ void UCompushadyRasterizer::FillPipelineStateInitializer(const FCompushadyRaster
 
 	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_LessEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
 	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
-	PipelineStateInitializer.PrimitiveType = PT_TriangleList;
+
+	static int32 Denominators[] = { 3, 2, 1 };
+	DrawDenominator = Denominators[static_cast<int32>(RasterizerConfig.PrimitiveType)];
 }
 
 bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(const FCompushadyRasterizerConfig& RasterizerConfig, FString& ErrorMessages)
@@ -200,7 +202,7 @@ void UCompushadyRasterizer::Draw(const FCompushadyResourceArray& VSResourceArray
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, true);
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
-				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+				RHICmdList.DrawPrimitive(0, NumVertices / DrawDenominator, NumInstances);
 
 				RHICmdList.EndRenderPass();
 			}
@@ -265,7 +267,7 @@ void UCompushadyRasterizer::ClearAndDraw(const FCompushadyResourceArray& VSResou
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, true);
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
-				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+				RHICmdList.DrawPrimitive(0, NumVertices / DrawDenominator, NumInstances);
 
 				RHICmdList.EndRenderPass();
 			}
@@ -327,7 +329,7 @@ bool UCompushadyRasterizer::ClearAndDrawSync(const FCompushadyResourceArray& VSR
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, true);
 				Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, {}, true);
 
-				RHICmdList.DrawPrimitive(0, NumVertices / 3, NumInstances);
+				RHICmdList.DrawPrimitive(0, NumVertices / DrawDenominator, NumInstances);
 
 				RHICmdList.EndRenderPass();
 			}

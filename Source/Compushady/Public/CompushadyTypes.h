@@ -268,6 +268,14 @@ enum class ECompushadyRasterizerCullMode : uint8
 	CounterClockWise
 };
 
+UENUM(BlueprintType)
+enum class ECompushadyRasterizerPrimitiveType : uint8
+{
+	TriangleList,
+	LineList,
+	PointList
+};
+
 USTRUCT(BlueprintType)
 struct COMPUSHADY_API FCompushadyRasterizerConfig
 {
@@ -279,6 +287,8 @@ struct COMPUSHADY_API FCompushadyRasterizerConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	ECompushadyRasterizerCullMode CullMode = ECompushadyRasterizerCullMode::None;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	ECompushadyRasterizerPrimitiveType PrimitiveType = ECompushadyRasterizerPrimitiveType::TriangleList;
 };
 
 USTRUCT(BlueprintType)
@@ -578,5 +588,7 @@ namespace Compushady
 
 		COMPUSHADY_API bool GenerateTIFF(const void* Data, const int32 Stride, const uint32 Width, const uint32 Height, const EPixelFormat PixelFormat, const FString ImageDescription, TArray<uint8>& IFD);
 		COMPUSHADY_API bool LoadNRRD(const FString& Filename, TArray64<uint8>& SlicesData, int64& Offset, uint32& Width, uint32& Height, uint32& Depth, EPixelFormat& PixelFormat);
+
+		COMPUSHADY_API void DrawVertices(FRHICommandList& RHICmdList, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig);
 	}
 }

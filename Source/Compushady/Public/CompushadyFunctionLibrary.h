@@ -81,10 +81,13 @@ public:
 	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromByteArray(const FString& Name, const TArray<uint8>& Data, const int32 Stride);
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromByteArray(const FString& Name, const TArray<uint8>& Data, const int32 Stride, const int64 Offset = 0);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride);
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride, const int64 Offset = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromASCIIFile(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FString& Separator = ",", const int32 SkipLines = 0, const bool bCullEmpty = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
