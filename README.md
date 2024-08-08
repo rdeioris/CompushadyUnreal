@@ -175,7 +175,10 @@ Note: while the node allows to specify an entry point for the function name, the
 
 ## Tutorials
 
-* PostProcessing
+* Volumetric Rendering a NNRD file
+* Generating chiptunes
+* Gameboy-like postprocess
+* ISF effects
 
 ## The Blitter
 
