@@ -149,6 +149,49 @@ Note: while the node allows to specify an entry point for the function name, the
 
 ## Quickstart (step3, Defining the number of threads)
 
+This section requires a bit of understanding on how GPU scheduling works:
+
+GPUs run tasks over what are commonly called "waves" (or workgroups). Each wave runs the same code on different cores in parallel (the amount of cores per wave is GPU specific, but generally 32 on NVidia and 64 on AMD).
+
+When you schedule a Compute Shader to the GPU you specify how many times that shader must be executed: the XYZ value of the Dispatch functions.
+
+By doing X * Y * Z (1024 * 1024 * 1) we now know that we are scheduling the execution of our shader 1048576 times (each of those execution is known as a 'ThreadGroup').
+
+It may looks impressive, but looking at it from the "wave" point of view we are underutilizing our GPU: each of those 1048576 ThreadGroups is scheduled to a different wave.
+
+It means (on an NVidia card) that 31 of our 32 per-wave cores are doing nothing.
+
+Our goal is to activate the other wave cores, and we can do this by specifying on how many "threads" each 'ThreadGroup' will be executed.
+
+To specify it we have the ```[numthreads(X, Y, Z)]`` attribute on HLSL and ```layout(local_size_x = Z, local_size_y = Y, local_size_z = Z) in;```
+
+Note that specyfing the amount of ThreadGroups (the XYZ argument of Dispatch) and the number of threads per group using 3 dimensions is just a handy way for dealing with common graphics-related problems. At the end
+we are dealing with a single dimension value (1024 * 1024 * 1 maps to 1048576)
+
+Befor starting tuning are amount of threads per group, let's profile our current shader to have some measure of the execution time (we can use the DispatchByMapAndProfile function)
+
+![image](Docs/Screenshots/README_008.png)
+
+DispatchByMapAndProfile is the first Asynchronous/Nonblocking function we are using (more on this later), it will basically runs the Compute Shader in background without blocking the Game Thread. 
+
+Its "Microseconds" parameter returns how much time the Compute Shader required to complete its task.
+
+By running it multiple times you should get a series of pretty stable numbers (around 600 in my testing machine).
+
+Let's try increasing the number of threads per group to (2, 2, 1):
+
+![image](Docs/Screenshots/README_009.png)
+
+Note that in addition to setting numthreas to 2, 2, 1 (4 threads per group, 2 * 2 * 1) you need to reduce the number of ThreadGroups (as now each one is able to process 4 pixels).
+
+Quick table:
+
+* 1048576 pixels with 1 thread per ThreadGroup: XYZ = (1024, 1024, 1) and numthreads(1, 1, 1)
+* 1048576 pixels with 4 threads per ThreadGroup: XYZ = (512, 512, 1) and numthreads(2, 2, 1)
+* 1048576 pixels with 8 threads per ThreadGroup: XYZ = (256, 512, 1) and numthreads(4, 2, 1)
+* 1048576 pixels with 32 threads per ThreadGroup: XYZ = (256, 128, 1) and numthreads(4, 8, 1)
+* 1048576 pixels with 1024 threads per ThreadGroup: XYZ = (32, 32, 1) and numthreads(32, 32, 1)
+
 ## Quickstart (step4, Rendering to Unreal textures/materials)
 
 ## Quickstart (step5, Asynchronous/Nonblocking mode)
