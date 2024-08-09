@@ -163,7 +163,7 @@ It means (on an NVidia card) that 31 of our 32 per-wave cores are doing nothing.
 
 Our goal is to activate the other wave cores, and we can do this by specifying on how many "threads" each 'ThreadGroup' will be executed.
 
-To specify it we have the ```[numthreads(X, Y, Z)]`` attribute on HLSL and ```layout(local_size_x = Z, local_size_y = Y, local_size_z = Z) in;```
+To specify it we have the ```[numthreads(X, Y, Z)]``` attribute on HLSL and ```layout(local_size_x = Z, local_size_y = Y, local_size_z = Z) in;```
 
 Note that specyfing the amount of ThreadGroups (the XYZ argument of Dispatch) and the number of threads per group using 3 dimensions is just a handy way for dealing with common graphics-related problems. At the end
 we are dealing with a single dimension value (1024 * 1024 * 1 maps to 1048576)
@@ -200,7 +200,9 @@ In addition to the SV_DispatchThreadID (and the GLSL gl_GlobalInvocationID) we h
 
 * SV_GroupID (gl_WorkGroupID in GLSL): The ThreadGroup Index (it is related to the XYZ of the Dispatch, so if your XYZ is 1, 2, 1 the SV_GroupID can be 0, 0, 0 or 0, 1, 0
 * SV_GroupIndex (gl_LocalInvocationIndex in GLSL): The monodimensional representation of SV_GroupID, so if your XYZ is 2, 2, 2 the value can go from 0 to 7 (from (0 * 0 * 0) to (2 * 2 * 2) -1 )
-* SV_GroupThreadID (gl_LocalInvocationID in GLSL):
+* SV_GroupThreadID (gl_LocalInvocationID in GLSL): The Thread ID into a ThreadGroup (so it is related to numthreads(), with [numthreads(1, 1, 2)] it can be 0, 0, 0, or 0, 0, 1)
+
+In addition to the increased parallelism it is worth noting that tasks in the same ThreadGroup can have access to a tiny amount (generally 32k) of special shared memory. Check the specific tutorial for examples.
 
 ## Quickstart (step4, Rendering to Unreal textures/materials)
 
@@ -236,6 +238,7 @@ In addition to the SV_DispatchThreadID (and the GLSL gl_GlobalInvocationID) we h
 * Generating chiptunes
 * Gameboy-like postprocess
 * ISF effects
+* GroupShared memory
 
 ## The Blitter
 
