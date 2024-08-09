@@ -196,6 +196,12 @@ By running our shader with ```numthreads(2, 2, 1)``` the microseconds will decre
 
 NOTE: it is up to the GPU to split the threads in a group between waves, you can generally ignore those inner mechanisms.
 
+In addition to the SV_DispatchThreadID (and the GLSL gl_GlobalInvocationID) we have those other semantics/globalvariables available:
+
+* SV_GroupID (gl_WorkGroupID in GLSL): The ThreadGroup Index (it is related to the XYZ of the Dispatch, so if your XYZ is 1, 2, 1 the SV_GroupID can be 0, 0, 0 or 0, 1, 0
+* SV_GroupIndex (gl_LocalInvocationIndex in GLSL): The monodimensional representation of SV_GroupID, so if your XYZ is 2, 2, 2 the value can go from 0 to 7 (from (0 * 0 * 0) to (2 * 2 * 2) -1 )
+* SV_GroupThreadID (gl_LocalInvocationID in GLSL):
+
 ## Quickstart (step4, Rendering to Unreal textures/materials)
 
 ## Quickstart (step5, Asynchronous/Nonblocking mode)
