@@ -52,4 +52,5 @@ protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	TSharedPtr<SMultiLineEditableTextBox> SourceWidget;
 	
+	FReply OnKeyChar(const FGeometry& InGeometry, const FCharacterEvent& InCharacterEvent);
 };

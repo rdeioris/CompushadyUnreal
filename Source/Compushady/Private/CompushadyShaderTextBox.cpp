@@ -15,15 +15,15 @@ TSharedRef<SWidget> UCompushadyShaderTextBox::RebuildWidget()
 {
 	if (ShaderLanguage == ECompushadyShaderLanguage::SPIRV)
 	{
-		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateSPIRV());
+		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateSPIRV()).OnKeyCharHandler_UObject(this, &UCompushadyShaderTextBox::OnKeyChar);
 	}
 	else if (ShaderLanguage == ECompushadyShaderLanguage::GLSL)
 	{
-		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateGLSL());
+		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateGLSL()).OnKeyCharHandler_UObject(this, &UCompushadyShaderTextBox::OnKeyChar);
 	}
 	else
 	{
-		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateHLSL());
+		SourceWidget = SNew(SMultiLineEditableTextBox).Marshaller(FCompushadySyntaxHighlighter::CreateHLSL()).OnKeyCharHandler_UObject(this, &UCompushadyShaderTextBox::OnKeyChar);
 	}
 	return SourceWidget.ToSharedRef();
 }
@@ -49,4 +49,17 @@ FString UCompushadyShaderTextBox::GetSource() const
 void UCompushadyShaderTextBox::SetSource(const FString& Source)
 {
 	SourceWidget->SetText(FText::FromString(Source));
+}
+
+FReply UCompushadyShaderTextBox::OnKeyChar(const FGeometry& InGeometry, const FCharacterEvent& InCharacterEvent)
+{
+	const TCHAR Character = InCharacterEvent.GetCharacter();
+	if (Character == TEXT('\t'))
+	{
+		FString Spaces = TEXT("    ");
+		SourceWidget->ClearSelection();
+		SourceWidget->InsertTextAtCursor(Spaces);
+		return FReply::Handled();
+	}
+	return SourceWidget->OnKeyChar(InGeometry, InCharacterEvent);
 }
