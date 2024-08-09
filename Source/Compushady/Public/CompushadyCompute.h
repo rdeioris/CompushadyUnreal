@@ -55,6 +55,12 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	bool IsRunning() const;
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaledAndProfiled"), Category = "Compushady")
+	void DispatchAndProfile(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaledAndProfiled& OnSignaledAndProfiled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap,OnSignaledAndProfiled"), Category = "Compushady")
+	void DispatchByMapAndProfile(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaledAndProfiled& OnSignaledAndProfiled);
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	FCompushadyResourceBindings ResourceBindings;
 

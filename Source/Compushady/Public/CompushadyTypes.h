@@ -324,6 +324,7 @@ enum ECompushadySamplerAddressMode : uint8
 };
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadySignaled, bool, bSuccess, const FString&, ErrorMessage);
+DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledAndProfiled, bool, bSuccess, const int64, Microseconds, const FString&, ErrorMessage);
 
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatPayload, bool, bSuccess, float&, Payload, const FString&, ErrorMessage);
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatArrayPayload, bool, bSuccess, const TArray<float>&, Payload, const FString&, ErrorMessage);
@@ -346,6 +347,18 @@ public:
 			{
 				bRunning = false;
 				OnSignaled.ExecuteIfBound(true, "");
+				OnSignalReceived();
+			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
+	}
+
+	void BeginFence(const FCompushadySignaledAndProfiled& OnSignaledAndProfiled)
+	{
+		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
+		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaledAndProfiled]
+			{
+				bRunning = false;
+				OnSignaledAndProfiled.ExecuteIfBound(true, LastQueriedMicroseconds, "");
 				OnSignalReceived();
 			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
 	}
@@ -381,6 +394,43 @@ public:
 		BeginFence(OnSignaled, Args...);
 	}
 
+	template<typename DELEGATE, typename... TArgs>
+	void EnqueueToGPUAndProfile(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const DELEGATE& OnSignaledAndProfiled, TArgs & ... Args)
+	{
+		bRunning = true;
+
+		if (!QueryPoolRHIRef.IsValid())
+		{
+			QueryPoolRHIRef = RHICreateRenderQueryPool(ERenderQueryType::RQT_AbsoluteTime);
+		}
+
+		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
+			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			{
+				FRHIPooledRenderQuery BeforeRenderQuery = QueryPoolRHIRef->AllocateQuery();
+				RHICmdList.EndRenderQuery(BeforeRenderQuery.GetQuery());
+
+				InFunction(RHICmdList);
+
+				FRHIPooledRenderQuery AfterRenderQuery = QueryPoolRHIRef->AllocateQuery();
+				RHICmdList.EndRenderQuery(AfterRenderQuery.GetQuery());
+
+				WaitForGPU(RHICmdList);
+
+				uint64 BeforeMicroseconds = 0;
+				RHIGetRenderQueryResult(BeforeRenderQuery.GetQuery(), BeforeMicroseconds, false);
+				uint64 AfterMicroseconds = 0;
+				RHIGetRenderQueryResult(AfterRenderQuery.GetQuery(), AfterMicroseconds, false);
+
+				BeforeRenderQuery.ReleaseQuery();
+				AfterRenderQuery.ReleaseQuery();
+
+				LastQueriedMicroseconds = AfterMicroseconds - BeforeMicroseconds;
+			});
+
+		BeginFence(OnSignaledAndProfiled, Args...);
+	}
+
 	void EnqueueToGPUSync(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction)
 	{
 		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
@@ -398,6 +448,9 @@ protected:
 	bool CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled);
 
 	bool bRunning = false;
+
+	FRenderQueryPoolRHIRef QueryPoolRHIRef;
+	int64 LastQueriedMicroseconds = 0;
 };
 
 class COMPUSHADY_API ICompushadyPipeline : public ICompushadySignalable

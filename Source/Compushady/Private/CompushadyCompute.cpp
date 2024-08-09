@@ -7,6 +7,7 @@
 
 bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
 {
+	FRenderQueryRHIRef Query = RHICreateRenderQuery(ERenderQueryType::RQT_AbsoluteTime);
 	ComputeShaderRef = Compushady::Utils::CreateComputeShaderFromHLSL(ShaderCode, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
 	return ComputeShaderRef != nullptr;
 }
@@ -87,6 +88,50 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		{
 			Dispatch_RenderThread(RHICmdList, ResourceArray, XYZ);
 		}, OnSignaled);
+}
+
+void UCompushadyCompute::DispatchAndProfile(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaledAndProfiled& OnSignaledAndProfiled)
+{
+	if (IsRunning())
+	{
+		OnSignaledAndProfiled.ExecuteIfBound(false, 0, "The Compute is already running");
+		return;
+	}
+
+	if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
+	{
+		OnSignaledAndProfiled.ExecuteIfBound(false, 0, FString::Printf(TEXT("Invalid ThreadGroupCount %s"), *XYZ.ToString()));
+		return;
+	}
+
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
+	{
+		OnSignaledAndProfiled.ExecuteIfBound(false, 0, ErrorMessages);
+		return;
+	}
+
+	TrackResources(ResourceArray);
+
+	EnqueueToGPUAndProfile(
+		[this, ResourceArray, XYZ](FRHICommandListImmediate& RHICmdList)
+		{
+			Dispatch_RenderThread(RHICmdList, ResourceArray, XYZ);
+		}, OnSignaledAndProfiled);
+}
+
+void UCompushadyCompute::DispatchByMapAndProfile(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaledAndProfiled& OnSignaledAndProfiled)
+{
+	FCompushadyResourceArray ResourceArray;
+	FString ErrorMessages;
+
+	if (!Compushady::Utils::ValidateResourceBindingsMap(ResourceMap, ResourceBindings, ResourceArray, ErrorMessages))
+	{
+		OnSignaledAndProfiled.ExecuteIfBound(false, 0, ErrorMessages);
+		return;
+	}
+
+	DispatchAndProfile(ResourceArray, XYZ, OnSignaledAndProfiled);
 }
 
 bool UCompushadyCompute::DispatchSync(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, FString& ErrorMessages)
