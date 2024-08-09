@@ -291,7 +291,7 @@ protected:
 	bool bPrePostProcess = false;
 };
 
-class FCompushadyPostProcess : public FSceneViewExtensionBase, public ICompushadyViewExtension
+class FCompushadyPostProcess : public FSceneViewExtensionBase, public ICompushadyViewExtension, public ICompushadyTransientBlendable
 {
 public:
 	FCompushadyPostProcess(const FAutoRegister& AutoRegister, FVertexShaderRHIRef InVertexShaderRef, const FCompushadyResourceBindings& InVSResourceBindings, const FCompushadyResourceArray& InVSResourceArray, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings, const FCompushadyResourceArray& InPSResourceArray, const ECompushadyPostProcessLocation PostProcessLocation, const int32 InNumVertices, const int32 InNumInstances, const FCompushadyBlendableRasterizerConfig& InRasterizerConfig) :
@@ -401,9 +401,21 @@ public:
 
 	virtual int32 GetPriority() const override { return CompushadyPriority; }
 
+	void Disable() override
+	{
+		bEnabled = false;
+	}
+
+	bool IsEnabled() const
+	{
+		return bEnabled;
+	}
+
 protected:
 	EPostProcessingPass RequiredPass = EPostProcessingPass::Tonemap;
 	bool bPrePostProcess = false;
+
+	bool bEnabled = true;
 };
 #endif
 
@@ -524,6 +536,17 @@ FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int3
 {
 #if COMPUSHADY_UE_VERSION >= 53
 	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = FSceneViewExtensions::NewExtension<FCompushadyPostProcess>(VertexShaderRef, VSResourceBindings, VSResourceArray, PixelShaderRef, PSResourceBindings, PSResourceArray, PostProcessLocation, NumVertices, NumInstances, RasterizerConfig);
+	
+	FSceneViewExtensionIsActiveFunctor PPActiveFunctor;
+
+	PPActiveFunctor.IsActiveFunction = [](const ISceneViewExtension* InSceneViewExtension, const FSceneViewExtensionContext& InContext)
+		{
+			const FCompushadyPostProcess* PostProces = reinterpret_cast<const FCompushadyPostProcess*>(InSceneViewExtension);
+			return PostProces->IsEnabled();
+		};
+	
+	NewViewExtension->IsActiveThisFrameFunctions.Add(MoveTemp(PPActiveFunctor));
+
 	FGuid Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension, this);
 	NewViewExtension->SetPriority(Priority);
 	return Guid;

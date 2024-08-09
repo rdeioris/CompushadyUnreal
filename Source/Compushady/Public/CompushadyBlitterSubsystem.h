@@ -29,7 +29,7 @@ struct FCompushadyBlitterRasterizer
 	int32 NumInstances;
 };
 
-class FSceneViewExtensionBase;
+class ICompushadyTransientBlendable;
 
 UCLASS()
 class COMPUSHADY_API UCompushadyBlitterSubsystem : public UWorldSubsystem
@@ -51,7 +51,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
-	FGuid AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack);
+	FGuid AddViewExtension(TSharedPtr<ICompushadyTransientBlendable, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	void RemoveViewExtension(const FGuid& Guid);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	const FMatrix& GetViewMatrix() const;
@@ -62,7 +65,7 @@ public:
 protected:
 	TSharedPtr<class FCompushadyBlitterViewExtension, ESPMode::ThreadSafe> ViewExtension;
 
-	TArray<TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe>> AdditionalViewExtensions;
+	TMap<FGuid, TSharedPtr<ICompushadyTransientBlendable, ESPMode::ThreadSafe>> AdditionalViewExtensions;
 
 	UPROPERTY()
 	TMap<FGuid, TScriptInterface<IBlendableInterface>> TrackedBlendables;

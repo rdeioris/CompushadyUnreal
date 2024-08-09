@@ -45,6 +45,12 @@ struct COMPUSHADY_API FCompushadyBlendableRasterizerConfig
 	int32 ViewOriginFloat4Offset = -1;
 };
 
+class ICompushadyTransientBlendable
+{
+public:
+	virtual void Disable() = 0;
+};
+
 /**
  *
  */

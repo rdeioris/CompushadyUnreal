@@ -7,6 +7,7 @@
 #endif
 #include "RenderGraphBuilder.h"
 #include "SceneViewExtension.h"
+#include "CompushadyBlendable.h"
 
 struct FCompushadyBlitterDrawable
 {
@@ -498,12 +499,22 @@ bool UCompushadyBlitterSubsystem::AddVSPSRasterizerFromHLSL(const FString& Verte
 #endif
 
 
-FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack)
+FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<ICompushadyTransientBlendable, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack)
 {
-	AdditionalViewExtensions.Add(InViewExtension);
 	FGuid NewGuid = FGuid::NewGuid();
+	AdditionalViewExtensions.Add(NewGuid, InViewExtension);
 	TrackedBlendables.Add(NewGuid, BlendableToTrack);
 	return NewGuid;
+}
+
+void UCompushadyBlitterSubsystem::RemoveViewExtension(const FGuid& Guid)
+{
+	if (AdditionalViewExtensions.Contains(Guid))
+	{
+		AdditionalViewExtensions[Guid]->Disable();
+		AdditionalViewExtensions.Remove(Guid);
+	}
+	TrackedBlendables.Remove(Guid);
 }
 
 const FMatrix& UCompushadyBlitterSubsystem::GetViewMatrix() const
