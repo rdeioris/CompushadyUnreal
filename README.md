@@ -192,6 +192,10 @@ Quick table:
 * 1048576 pixels with 32 threads per ThreadGroup: XYZ = (256, 128, 1) and numthreads(4, 8, 1)
 * 1048576 pixels with 1024 threads per ThreadGroup: XYZ = (32, 32, 1) and numthreads(32, 32, 1)
 
+By running our shader with ```numthreads(2, 2, 1)``` the microseconds will decrease to around 170, with ```numthreads(4, 2, 1)``` we are around 80 and with ```numthreads(4, 8, 1)``` we reach an astonishing 23!
+
+NOTE: it is up to the GPU to split the threads in a group between waves, you can generally ignore those inner mechanisms.
+
 ## Quickstart (step4, Rendering to Unreal textures/materials)
 
 ## Quickstart (step5, Asynchronous/Nonblocking mode)
