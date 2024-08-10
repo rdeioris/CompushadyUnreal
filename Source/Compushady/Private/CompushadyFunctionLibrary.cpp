@@ -400,7 +400,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2D(const F
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -435,7 +435,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVSharedTexture2D(c
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -470,7 +470,7 @@ UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTexture2D(const F
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -505,7 +505,7 @@ UCompushadyDSV* UCompushadyFunctionLibrary::CreateCompushadyDSVTexture2D(const F
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -550,7 +550,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture3D(const F
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -584,7 +584,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2DArray(co
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -614,11 +614,45 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTexture2DArray(co
 	return CompushadyUAV;
 }
 
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTextureCube(const FString& Name, const int32 Width, const EPixelFormat Format)
+{
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
+		return nullptr;
+	}
+
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::CreateCube(*Name, Width, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource | ETextureCreateFlags::UAV);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadyUAV* CompushadyUAV = NewObject<UCompushadyUAV>();
+	if (!CompushadyUAV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadyUAV;
+}
+
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3D(const FString& Name, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format)
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -652,7 +686,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2D(const F
 {
 	if (!GPixelFormats[Format].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %d"), static_cast<int32>(Format));
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
 
@@ -774,6 +808,17 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImag
 		return nullptr;
 	}
 
+	ERGBFormat RGBFormat = ERGBFormat::BGRA;
+	EPixelFormat PixelFormat = EPixelFormat::PF_B8G8R8A8;
+	int32 BitDepth = 8;
+
+	if (ImageFormat == EImageFormat::EXR)
+	{
+		RGBFormat = ERGBFormat::RGBAF;
+		BitDepth = 16;
+		PixelFormat = EPixelFormat::PF_FloatRGBA;
+	}
+
 	TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(ImageFormat);
 	if (!ImageWrapper.IsValid())
 	{
@@ -785,13 +830,14 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImag
 		return nullptr;
 	}
 
+
 	TArray<uint8> UncompressedBytes;
-	if (!ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBytes))
+	if (!ImageWrapper->GetRaw(RGBFormat, BitDepth, UncompressedBytes))
 	{
 		return nullptr;
 	}
 
-	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, ImageWrapper->GetWidth(), ImageWrapper->GetHeight(), EPixelFormat::PF_B8G8R8A8);
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, ImageWrapper->GetWidth(), ImageWrapper->GetHeight(), PixelFormat);
 	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
 	FTextureRHIRef TextureRHIRef = nullptr;
 
@@ -809,10 +855,10 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImag
 	}
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateTexture2D)(
-		[TextureRHIRef, ImageWrapper, &UncompressedBytes](FRHICommandListImmediate& RHICmdList)
+		[TextureRHIRef, ImageWrapper, &UncompressedBytes, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FUpdateTextureRegion2D UpdateTextureRegion2D(0, 0, 0, 0, ImageWrapper->GetWidth(), ImageWrapper->GetHeight());
-			RHICmdList.UpdateTexture2D(TextureRHIRef, 0, UpdateTextureRegion2D, ImageWrapper->GetWidth() * 4, UncompressedBytes.GetData());
+			RHICmdList.UpdateTexture2D(TextureRHIRef, 0, UpdateTextureRegion2D, ImageWrapper->GetWidth() * GPixelFormats[PixelFormat].BlockBytes, UncompressedBytes.GetData());
 		});
 
 	FlushRenderingCommands();
