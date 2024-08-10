@@ -1326,34 +1326,36 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 
 	const int32 Stride = sizeof(float) * Columns.Num();
 
-	int32 ProcessedLines = 0;
+	std::atomic<int32> ProcessedLines = 0;
 
-	for (int32 LineIndex = SkipLines; LineIndex < Lines.Num(); LineIndex++)
-	{
-		const FString& Line = Lines[LineIndex];
-		TArray<FString> Items;
-		Line.ParseIntoArray(Items, *Separator, bCullEmpty);
-
-		bool bValid = true;
-		for (const int32 ColumnIndex : Columns)
+	ParallelFor(Lines.Num() - SkipLines, [&](const int32 LineIndex)
 		{
-			if (!Items.IsValidIndex(ColumnIndex))
-			{
-				bValid = false;
-				break;
-			}
-		}
+			const FString& Line = Lines[SkipLines + LineIndex];
+			TArray<FString> Items;
+			Line.ParseIntoArray(Items, *Separator, bCullEmpty);
 
-		if (bValid)
-		{
-			for (int32 ColumnIndexIndex = 0; ColumnIndexIndex < Columns.Num(); ColumnIndexIndex++)
+			bool bValid = true;
+			for (const int32 ColumnIndex : Columns)
 			{
-				Values[ProcessedLines * Columns.Num() + ColumnIndexIndex] = FCString::Atof(*Items[Columns[ColumnIndexIndex]]);
+				if (!Items.IsValidIndex(ColumnIndex))
+				{
+					bValid = false;
+					break;
+				}
 			}
 
-			ProcessedLines++;
-		}
-	}
+			if (bValid)
+			{
+				// atomic increment
+				ProcessedLines++;
+
+				const int32 Index = ProcessedLines - 1;
+				for (int32 ColumnIndexIndex = 0; ColumnIndexIndex < Columns.Num(); ColumnIndexIndex++)
+				{
+					Values[Index * Columns.Num() + ColumnIndexIndex] = FCString::Atof(*Items[Columns[ColumnIndexIndex]]);
+				}
+			}
+		});
 
 	// do not shrink memory as we are going to trash this array after GPU upload
 	Values.SetNum(ProcessedLines * Columns.Num(), false);
