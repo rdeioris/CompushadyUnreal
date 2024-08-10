@@ -145,7 +145,7 @@ protected:
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 						{
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, true);
 							UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
 								0, 0, 1, 1,
 								RenderTarget->GetSizeXY(),
@@ -273,7 +273,7 @@ public:
 				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 					{
-						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
+						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, true);
 						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
 							0, 0, 1, 1,
 							RenderTarget->GetSizeXY(),
@@ -356,7 +356,7 @@ public:
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 						{
-							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
+							Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, true);
 							UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
 								0, 0, 1, 1,
 								RenderTarget->GetSizeXY(),
