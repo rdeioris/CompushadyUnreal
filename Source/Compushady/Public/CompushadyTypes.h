@@ -244,11 +244,19 @@ struct FCompushadySceneTextures
 
 	void SetTexture(const ECompushadySceneTexture SceneTexture, FTextureRHIRef Texture)
 	{
+		if (!Texture)
+		{
+			Texture = GTransparentBlackTexture->GetTextureRHI();
+		}
 		Textures[(uint32)SceneTexture] = { nullptr, Texture };
 	}
 
 	void SetSRV(const ECompushadySceneTexture SceneTexture, FShaderResourceViewRHIRef SRV)
 	{
+		if (!SRV)
+		{
+			SRV = GTransparentBlackTextureWithSRV->ShaderResourceViewRHI;
+		}
 		Textures[(uint32)SceneTexture] = { SRV, nullptr };
 	}
 };
