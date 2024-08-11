@@ -29,20 +29,6 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "CompushadyFunctionLibrary.generated.h"
 
-USTRUCT(BlueprintType)
-struct FCompushadyComputePass
-{
-	GENERATED_BODY();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	UCompushadyCompute* Compute = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FCompushadyResourceArray ResourceArray;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FIntVector XYZ = FIntVector::ZeroValue;
-};
 
 USTRUCT(BlueprintType)
 struct FCompushadyFileLoaderConfig

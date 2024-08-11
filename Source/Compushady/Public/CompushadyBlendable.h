@@ -7,6 +7,7 @@
 #include "Engine/BlendableInterface.h"
 #include "CompushadyTypes.h"
 #include "CompushadyShader.h"
+#include "CompushadyCompute.h"
 #include "CompushadyBlendable.generated.h"
 
 USTRUCT(BlueprintType)
