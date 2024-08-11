@@ -363,8 +363,17 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 			return E_NOTIMPL;
 		}
 
+#if PLATFORM_WINDOWS
 		HRESULT STDMETHODCALLTYPE QueryInterface(/* [in] */ REFIID riid,
-			/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override { return E_NOINTERFACE; }
+			/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override {
+			return E_NOINTERFACE;
+		}
+#else
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+		{
+			return E_NOINTERFACE;
+		}
+#endif
 		ULONG STDMETHODCALLTYPE AddRef(void) override { return 0; }
 		ULONG STDMETHODCALLTYPE Release(void) override { return 0; }
 	};
