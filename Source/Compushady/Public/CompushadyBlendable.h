@@ -44,6 +44,9 @@ struct COMPUSHADY_API FCompushadyBlendableRasterizerConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 ViewOriginFloat4Offset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 DeltaTimeFloatOffset = -1;
 };
 
 class ICompushadyTransientBlendable
@@ -65,6 +68,7 @@ public:
 	bool InitFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
 
 	bool InitFromHLSLAdvanced(const TArray<uint8>& VertexShaderCode, const FString& VertexShaderEntryPoint, const TArray<uint8>& PixelShaderCode, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
+	bool InitFromHLSLCompute(const TArray<uint8>& ShaderCode, const FString& ShaderEntryPoint, const ECompushadyPostProcessLocation InPostProcessLocation, FString& ErrorMessages);
 
 	/* IBlendableInterface implementation */
 	virtual void OverrideBlendableSettings(class FSceneView& View, float Weight) const override;
@@ -77,10 +81,16 @@ public:
 	bool UpdateResourcesAdvanced(const FCompushadyResourceArray& InVSResourceArray, const FCompushadyResourceArray& InPSResourceArray, const int32 InNumVertices, const int32 InNumInstances, const FCompushadyBlendableRasterizerConfig& InBlendableRasterizerConfig, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool UpdateComputeResourcesAdvanced(const FCompushadyResourceArray& InResourceArray, const FIntVector& InXYZ, const FCompushadyBlendableRasterizerConfig& InBlendableRasterizerConfig, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResourcesByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool UpdateResourcesByMapAdvanced(const TMap<FString, TScriptInterface<ICompushadyBindable>>& InVSResourceMap, const TMap<FString, TScriptInterface<ICompushadyBindable>>& InPSResourceMap, const int32 InNumVertices, const int32 InNumInstances, const FCompushadyBlendableRasterizerConfig& InBlendableRasterizerConfig, FString& ErrorMessages);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool UpdateComputeResourcesByMapAdvanced(const TMap<FString, TScriptInterface<ICompushadyBindable>>& InResourceMap, const FIntVector& InXYZ, const FCompushadyBlendableRasterizerConfig& InBlendableRasterizerConfig, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	FGuid AddToBlitter(UObject* WorldContextObject, const int32 Priority = 0);
@@ -103,6 +113,17 @@ protected:
 
 	UPROPERTY()
 	FCompushadyResourceArray VSResourceArray;
+
+	FComputeShaderRHIRef ComputeShaderRef = nullptr;
+
+	UPROPERTY()
+	FCompushadyResourceBindings ComputeResourceBindings;
+
+	UPROPERTY()
+	FCompushadyResourceArray ComputeResourceArray;
+
+	FIntVector ThreadGroupSize;
+	FIntVector XYZ;
 
 	ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping;
 
