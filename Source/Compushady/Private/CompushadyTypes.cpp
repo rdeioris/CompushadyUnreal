@@ -787,7 +787,7 @@ void UCompushadyResource::OnSignalReceived()
 
 FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const
 {
-	if (TextureRHIRef.IsValid())
+	if (IsValidTexture())
 	{
 		if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
 		{
@@ -803,6 +803,25 @@ FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ, 
 	}
 	return XYZ;
 
+}
+
+FIntVector UCompushadyResource::GetStructuredBufferThreadGroupSize(const FIntVector XYZ) const
+{
+	if (IsValidBuffer() && EnumHasAnyFlags(BufferRHIRef->GetUsage(), EBufferUsageFlags::StructuredBuffer))
+	{
+		if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
+		{
+			return FIntVector(1, 1, 1);
+		}
+
+		uint32 X = BufferRHIRef->GetSize() / BufferRHIRef->GetStride();
+		return FIntVector(
+			FMath::DivideAndRoundUp(static_cast<int32>(X), XYZ.X),
+			XYZ.Y,
+			XYZ.Z
+		);
+	}
+	return XYZ;
 }
 
 FIntVector UCompushadyResource::GetTextureSize() const

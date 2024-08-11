@@ -472,6 +472,7 @@ bool UCompushadyBlendable::UpdateResourcesAdvanced(const FCompushadyResourceArra
 {
 	if (InNumVertices <= 0 || InNumInstances <= 0)
 	{
+		ErrorMessages = "Invalid number of Vertices and Instances";
 		return false;
 	}
 

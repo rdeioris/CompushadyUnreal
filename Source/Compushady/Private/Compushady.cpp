@@ -72,6 +72,17 @@ namespace Compushady
 		Sha1.Update(Data.GetData(), Data.Num());
 		return Sha1.Finalize();
 	}
+
+	bool FileToByteArray(const FString& Filename, const bool bRelativeToContent, TArray<uint8>& Bytes)
+	{
+		FString Path = Filename;
+		if (bRelativeToContent)
+		{
+			Path = FPaths::Combine(FPaths::ProjectContentDir(), Filename);
+		}
+
+		return FFileHelper::LoadFileToArray(Bytes, *Path);
+	}
 }
 
 #if WITH_EDITOR

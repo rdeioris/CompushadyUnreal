@@ -53,14 +53,15 @@ UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBVFromIntArray(cons
 	return CompushadyCBV;
 }
 
-UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint)
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint, const FCompushadyFileLoaderConfig& FileLoaderConfig)
 {
-	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 	TArray<uint8> ShaderCode;
-	if (!FFileHelper::LoadFileToArray(ShaderCode, *Filename))
+	if (!LoadFileWithLoaderConfig(Filename, ShaderCode, FileLoaderConfig))
 	{
 		return nullptr;
 	}
+
+	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 
 	if (!CompushadyCompute->InitFromHLSL(ShaderCode, EntryPoint, ErrorMessages))
 	{
@@ -70,14 +71,15 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLF
 	return CompushadyCompute;
 }
 
-UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromGLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint)
+UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromGLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint, const FCompushadyFileLoaderConfig& FileLoaderConfig)
 {
-	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 	TArray<uint8> ShaderCode;
-	if (!FFileHelper::LoadFileToArray(ShaderCode, *Filename))
+	if (!LoadFileWithLoaderConfig(Filename, ShaderCode, FileLoaderConfig))
 	{
 		return nullptr;
 	}
+
+	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
 
 	if (!CompushadyCompute->InitFromGLSL(ShaderCode, EntryPoint, ErrorMessages))
 	{
@@ -1501,13 +1503,13 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromH
 
 UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyAdvancedBlendableFromHLSLString(const FString& VertexShaderSource, const FCompushadyResourceArray& VSResourceArray, const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FCompushadyBlendableRasterizerConfig& BlendableRasterizerConfig, const int32 NumVertices, const int32 NumInstances, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
 {
-	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
-
 	TArray<uint8> VertexShaderCode;
 	Compushady::StringToShaderCode(VertexShaderSource, VertexShaderCode);
 
 	TArray<uint8> PixelShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
+
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
 	if (!CompushadyBlendable->InitFromHLSLAdvanced(VertexShaderCode, VertexShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
 	{
@@ -1524,13 +1526,13 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyAdvancedBlenda
 
 UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyAdvancedBlendableByMapFromHLSLString(const FString& VertexShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const FString& PixelShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages, const FCompushadyBlendableRasterizerConfig& BlendableRasterizerConfig, const int32 NumVertices, const int32 NumInstances, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
 {
-	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
-
 	TArray<uint8> VertexShaderCode;
 	Compushady::StringToShaderCode(VertexShaderSource, VertexShaderCode);
 
 	TArray<uint8> PixelShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, PixelShaderCode);
+
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
 	if (!CompushadyBlendable->InitFromHLSLAdvanced(VertexShaderCode, VertexShaderEntryPoint, PixelShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
 	{
@@ -1545,12 +1547,41 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyAdvancedBlenda
 	return CompushadyBlendable;
 }
 
-UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyAdvancedBlendableByMapFromHLSLFile(const FString& VSFilename, const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const FString& PSFilename, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages, const FCompushadyBlendableRasterizerConfig& BlendableRasterizerConfig, const int32 NumVertices, const int32 NumInstances, const FString& VertexShaderEntryPoint, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation, const FCompushadyFileLoaderConfig& VSFileLoaderConfig, const FCompushadyFileLoaderConfig& PSFileLoaderConfig)
 {
+	TArray<uint8> VSShaderCode;
+	if (!LoadFileWithLoaderConfig(VSFilename, VSShaderCode, VSFileLoaderConfig))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> PSShaderCode;
+	if (!LoadFileWithLoaderConfig(PSFilename, PSShaderCode, PSFileLoaderConfig))
+	{
+		return nullptr;
+	}
+
 	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
+	if (!CompushadyBlendable->InitFromHLSLAdvanced(VSShaderCode, VertexShaderEntryPoint, PSShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	if (!CompushadyBlendable->UpdateResourcesByMapAdvanced(VSResourceMap, PSResourceMap, NumVertices, NumInstances, BlendableRasterizerConfig, ErrorMessages))
+	{
+		return nullptr;
+	}
+
+	return CompushadyBlendable;
+}
+
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
+{
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, ShaderCode);
+
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
 	if (!CompushadyBlendable->InitFromGLSL(ShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
 	{
@@ -1567,10 +1598,10 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableFromG
 
 UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableByMapFromHLSLString(const FString& PixelShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
 {
-	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
-
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, ShaderCode);
+
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
 	if (!CompushadyBlendable->InitFromHLSL(ShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
 	{
@@ -1587,10 +1618,10 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableByMap
 
 UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyBlendableByMapFromGLSLString(const FString& PixelShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages, const FString& PixelShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
 {
-	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
-
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode(PixelShaderSource, ShaderCode);
+
+	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
 	if (!CompushadyBlendable->InitFromGLSL(ShaderCode, PixelShaderEntryPoint, PostProcessLocation, ErrorMessages))
 	{
@@ -1968,4 +1999,55 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVAudioTexture2D(UO
 	}
 
 	return nullptr;
+}
+
+bool UCompushadyFunctionLibrary::LoadFileWithLoaderConfig(const FString& Filename, TArray<uint8>& Bytes, const FCompushadyFileLoaderConfig& FileLoaderConfig)
+{
+	for (const FString& PrependFilename : FileLoaderConfig.PrependFiles)
+	{
+		TArray<uint8> Data;
+		if (!Compushady::FileToByteArray(PrependFilename, FileLoaderConfig.bRelativeToContent, Data))
+		{
+			return false;
+		}
+
+		Bytes.Append(MoveTemp(Data));
+	}
+
+	for (const FString& PrependString : FileLoaderConfig.PrependStrings)
+	{
+		TArray<uint8> Data;
+		Compushady::StringToShaderCode(PrependString, Data);
+
+		Bytes.Append(MoveTemp(Data));
+	}
+
+	TArray<uint8> MainData;
+	if (!Compushady::FileToByteArray(Filename, FileLoaderConfig.bRelativeToContent, MainData))
+	{
+		return false;
+	}
+
+	Bytes.Append(MoveTemp(MainData));
+
+	for (const FString& AppendFilename : FileLoaderConfig.AppendFiles)
+	{
+		TArray<uint8> Data;
+		if (!Compushady::FileToByteArray(AppendFilename, FileLoaderConfig.bRelativeToContent, Data))
+		{
+			return false;
+		}
+
+		Bytes.Append(MoveTemp(Data));
+	}
+
+	for (const FString& AppendString : FileLoaderConfig.AppendStrings)
+	{
+		TArray<uint8> Data;
+		Compushady::StringToShaderCode(AppendString, Data);
+
+		Bytes.Append(MoveTemp(Data));
+	}
+
+	return true;
 }

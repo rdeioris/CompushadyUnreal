@@ -100,6 +100,8 @@ namespace Compushady
 	COMPUSHADY_API bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs, const uint32 NumSamplers, FSHAHash& Hash);
 	COMPUSHADY_API FSHAHash GetHash(const TArrayView<uint8>& Data);
 
+	COMPUSHADY_API bool FileToByteArray(const FString& Filename, const bool bRelativeToContent, TArray<uint8>& Bytes);
+
 	void DXCTeardown();
 }
 

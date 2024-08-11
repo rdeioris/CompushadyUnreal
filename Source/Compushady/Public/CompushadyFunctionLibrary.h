@@ -44,6 +44,28 @@ struct FCompushadyComputePass
 	FIntVector XYZ = FIntVector::ZeroValue;
 };
 
+USTRUCT(BlueprintType)
+struct FCompushadyFileLoaderConfig
+{
+	GENERATED_BODY();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	bool bRelativeToContent = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	TArray<FString> PrependFiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	TArray<FString> PrependStrings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	TArray<FString> AppendFiles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	TArray<FString> AppendStrings;
+};
+
+
 /**
  *
  */
@@ -170,8 +192,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVFromRenderTargetVolume(UTextureRenderTargetVolume* RenderTargetVolume);
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadyCompute* CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main");
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "FileLoaderConfig", AdvancedDisplay = "FileLoaderConfig"), Category = "Compushady")
+	static UCompushadyCompute* CreateCompushadyComputeFromHLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main", const FCompushadyFileLoaderConfig& FileLoaderConfig = FCompushadyFileLoaderConfig());
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromSPIRVFile(const FString& Filename, FString& ErrorMessages);
@@ -209,8 +231,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static bool CompileGLSLToSPIRVBlob(const FString& GLSL, const FString& EntryPoint, const FString& TargetProfile, TArray<uint8>& Blob, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	static UCompushadyCompute* CreateCompushadyComputeFromGLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main");
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "FileLoaderConfig", AdvancedDisplay = "FileLoaderConfig"), Category = "Compushady")
+	static UCompushadyCompute* CreateCompushadyComputeFromGLSLFile(const FString& Filename, FString& ErrorMessages, const FString& EntryPoint = "main", const FCompushadyFileLoaderConfig& FileLoaderConfig = FCompushadyFileLoaderConfig());
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromHLSLString(const FString& ShaderSource, FString& ErrorMessages, const FString& EntryPoint = "main");
@@ -238,6 +260,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceMap,PSResourceMap,BlendableRasterizerConfig"), Category = "Compushady")
 	static UCompushadyBlendable* CreateCompushadyAdvancedBlendableByMapFromHLSLString(const FString& VertexShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const FString& PixelShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages, const FCompushadyBlendableRasterizerConfig& BlendableRasterizerConfig, const int32 NumVertices = 0, const int32 NumInstances = 0, const FString& VertexShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main", const ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "VSResourceMap,PSResourceMap,BlendableRasterizerConfig,VSFileLoaderConfig,PSFileLoaderConfig", AdvancedDisplay = "VSFileLoaderConfig,PSFileLoaderConfig"), Category = "Compushady")
+	static UCompushadyBlendable* CreateCompushadyAdvancedBlendableByMapFromHLSLFile(const FString& VSFilename, const TMap<FString, TScriptInterface<ICompushadyBindable>>& VSResourceMap, const FString& PSFilename, const TMap<FString, TScriptInterface<ICompushadyBindable>>& PSResourceMap, FString& ErrorMessages, const FCompushadyBlendableRasterizerConfig& BlendableRasterizerConfig, const int32 NumVertices = 0, const int32 NumInstances = 0, const FString& VertexShaderEntryPoint = "main", const FString& PixelShaderEntryPoint = "main", const ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping, const FCompushadyFileLoaderConfig& VSFileLoaderConfig = FCompushadyFileLoaderConfig(), const FCompushadyFileLoaderConfig& PSFileLoaderConfig = FCompushadyFileLoaderConfig());
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "PSResourceArray"), Category = "Compushady")
 	static UCompushadyBlendable* CreateCompushadyBlendableFromGLSLString(const FString& PixelShaderSource, const FCompushadyResourceArray& PSResourceArray, FString& ErrorMessages, const FString& PixelShaderEntryPoint = "main", const ECompushadyPostProcessLocation PostProcessLocation = ECompushadyPostProcessLocation::AfterTonemapping);
@@ -282,4 +307,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVAudioTexture2D(UObject* WorldContextObject, const FString& Name, UAudioBus* AudioBus);
+
+
+	static bool LoadFileWithLoaderConfig(const FString& Filename, TArray<uint8>& Bytes, const FCompushadyFileLoaderConfig& FileLoaderConfig);
 };

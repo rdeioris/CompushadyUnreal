@@ -354,8 +354,25 @@ bool Compushady::CompileHLSL(const TArray<uint8>& ShaderCode, const FString& Ent
 	SourceBuffer.Size = BlobSource->GetBufferSize();
 	SourceBuffer.Encoding = 0;
 
+	struct ICompushadyNopIncludeHandler : public IDxcIncludeHandler
+	{
+		HRESULT STDMETHODCALLTYPE LoadSource(_In_z_ LPCWSTR pFilename, _COM_Outptr_result_maybenull_ IDxcBlob** ppIncludeSource) override
+		{
+			UE_LOG(LogCompushady, Error, TEXT("#include directives are disabled!"));
+			*ppIncludeSource = nullptr;
+			return E_NOTIMPL;
+		}
+
+		HRESULT STDMETHODCALLTYPE QueryInterface(/* [in] */ REFIID riid,
+			/* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override { return E_NOINTERFACE; }
+		ULONG STDMETHODCALLTYPE AddRef(void) override { return 0; }
+		ULONG STDMETHODCALLTYPE Release(void) override { return 0; }
+	};
+
+	ICompushadyNopIncludeHandler NopIncludeHandler;
+
 	IDxcResult* CompileResult = nullptr;
-	HR = DXC::Compiler->Compile(&SourceBuffer, Arguments.GetData(), Arguments.Num(), nullptr, __uuidof(IDxcResult), reinterpret_cast<void**>(&CompileResult));
+	HR = DXC::Compiler->Compile(&SourceBuffer, Arguments.GetData(), Arguments.Num(), &NopIncludeHandler, __uuidof(IDxcResult), reinterpret_cast<void**>(&CompileResult));
 	if (!SUCCEEDED(HR))
 	{
 		ErrorMessages = "Unable to compile code blob";

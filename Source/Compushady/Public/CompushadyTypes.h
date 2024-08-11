@@ -539,6 +539,9 @@ public:
 	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	FIntVector GetStructuredBufferThreadGroupSize(const FIntVector XYZ) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureSize() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
