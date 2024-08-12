@@ -239,6 +239,7 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 * Gameboy-like postprocess
 * ISF effects
 * GroupShared memory
+* Particles System
 
 ## The Blitter
 
