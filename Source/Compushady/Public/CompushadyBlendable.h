@@ -47,6 +47,9 @@ struct COMPUSHADY_API FCompushadyBlendableRasterizerConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 DeltaTimeFloatOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 TimeFloatOffset = -1;
 };
 
 class ICompushadyTransientBlendable

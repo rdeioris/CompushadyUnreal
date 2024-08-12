@@ -62,7 +62,7 @@ protected:
 		SceneTextures.SetTexture(ECompushadySceneTexture::Velocity, Contents->GBufferVelocityTexture->GetRHI());
 	}
 
-	void FillRasterizerCBV(FCompushadyResourceArray& ResourceArray, const FViewMatrices& ViewMatrices, const FVector2D ScreenSize, const float DeltaTime)
+	void FillRasterizerCBV(FCompushadyResourceArray& ResourceArray, const FViewMatrices& ViewMatrices, const FVector2D ScreenSize, const float DeltaTime, const float Time)
 	{
 		if (ResourceArray.CBVs.Num() == 0)
 		{
@@ -117,6 +117,7 @@ protected:
 		SetVector4ByOffset(RasterizerConfig.ViewOriginFloat4Offset, ViewMatrices.GetViewOrigin());
 
 		SetFloatByOffset(RasterizerConfig.DeltaTimeFloatOffset, DeltaTime);
+		SetFloatByOffset(RasterizerConfig.TimeFloatOffset, Time);
 
 		CBVData = ResourceArray.CBVs[0]->GetBufferData();
 	}
@@ -253,11 +254,11 @@ public:
 	{
 		if (VertexShaderRef)
 		{
-			FillRasterizerCBV(VSResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds());
+			FillRasterizerCBV(VSResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
 		}
 		else if (ComputeShaderRef)
 		{
-			FillRasterizerCBV(ComputeResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds());
+			FillRasterizerCBV(ComputeResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
 		}
 	}
 
@@ -350,11 +351,11 @@ public:
 	{
 		if (VertexShaderRef)
 		{
-			FillRasterizerCBV(VSResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds());
+			FillRasterizerCBV(VSResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
 		}
 		else if (ComputeShaderRef)
 		{
-			FillRasterizerCBV(ComputeResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds());
+			FillRasterizerCBV(ComputeResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
 		}
 	}
 

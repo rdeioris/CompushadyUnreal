@@ -587,6 +587,9 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "UpdateInfo", AutoCreateRefTerm = "UpdateInfo"), Category = "Compushady")
 	bool UpdateTextureSliceSync(const TArray<uint8>& Pixels, const int32 Slice);
 
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool ClearBufferWithValueSync(const uint8 Value);
+
 	bool UpdateTextureSliceSync(const uint8* Ptr, const int64 Size, const int32 Slice);
 	bool UpdateTextureSliceSyncWithFunction(const uint8* Ptr, const int64 Size, const int32 Slice, TFunction<void(FRHICommandListImmediate& RHICmdList, void* Data, const uint32 SourcePitch, const uint32 DestPitch)> InFunction);
 

@@ -131,6 +131,21 @@ bool UCompushadyResource::UpdateTextureSliceSync(const TArray<uint8>& Pixels, co
 	return UpdateTextureSliceSync(Pixels.GetData(), Pixels.Num(), Slice);
 }
 
+bool UCompushadyResource::ClearBufferWithValueSync(const uint8 Value)
+{
+	if (!IsValidBuffer())
+	{
+		return false;
+	}
+
+	const int64 BufferSize = GetBufferSize();
+	return MapWriteAndExecuteSync([Value, BufferSize](void* Data)
+		{
+			FMemory::Memset(Data, Value, BufferSize);
+			return true;
+		});
+}
+
 bool UCompushadyResource::IsValidTexture() const
 {
 	return TextureRHIRef.IsValid() && TextureRHIRef->IsValid();
