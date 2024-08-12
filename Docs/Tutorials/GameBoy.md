@@ -2,6 +2,8 @@
 
 In this tutorial we are going to create a PostProcessing shader (in both GLSL and HLSL) that will be applied to the Game Viewport.
 
+Video version: https://youtu.be/E2L5MC3e0s0
+
 ![image](..//Screenshots/GAMEBOY_000.png)
 
 I am using the TopDown official Epic template for it, but you can use any level you want.
