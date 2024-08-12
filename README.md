@@ -240,10 +240,7 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 * ISF effects
 * GroupShared memory
 * Particles System
-
-## Videos
-
-https://youtu.be/Y8PP_-6oisg (ShaderToy material)
+* ShaderToy material: https://youtu.be/Y8PP_-6oisg
 
 ## The Blitter
 
