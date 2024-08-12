@@ -65,7 +65,7 @@ In this example we need just the ColorInput (this is the current result of the v
 
 Now we can create the Compushady Blendable object (Blendables are pipelines, generally compute or rasterizer, that are executed automatically at every frame and combined with the renderer passes):
 
-Note how we mapped the SRV of the SceneColorInput to the colorInput shader variable/resource. 
+Note how we mapped colorInput and sampler0 shader variables/resources to their respective SRV and Sampler. 
 
 ![image](../Screenshots/GAMEBOY_002.png)
 
