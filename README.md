@@ -2,7 +2,6 @@
 Compushady for Unreal Engine 5
 
 ![image](Docs/Screenshots/MANDELBROT.png)
-
 ![Megagrant](Docs/Epic_MegaGrants_Recipient_logo_horizontal_black.png?raw=true#gh-light-mode-only "Megagrant")
 ![Megagrant](Docs/Epic_MegaGrants_Recipient_logo_horizontal_white.png?raw=true#gh-dark-mode-only "Megagrant")
 
