@@ -50,4 +50,26 @@ void main()
 }
 ```
 
-## The Shader (HLSL)
+When writing postprocessing shader with Compushady, you need to get the UV of the currently processed pixel (they are available in the location 0 of the fragment/pixel shader) and, eventually one of the Scene Textures (Color, GBuffers, Depth, Stencil...).
+
+## Running the PostProcess effect on the Viewport
+
+In this example we need just the ColorInput (this is the current result of the various passes of the renderer):
+
+
+Now we can create the Compushady Blendable object (Blendables are pipelines, generally compute or rasterizer, that are executed automatically at every frame and combined with the renderer passes):
+
+
+(Eventually connect the ErrorMessages pin to a PrintString node to get error messages, if any)
+
+The blendable is ready, and we can now attach it to the viewport or to a PostProcess Volume.
+
+Attaching to a Viewport is super easy thanks to The Blitter:
+
+You can now play the Level and enjoy.
+
+## Running the PostProcess effect on a PostProcess Volume:
+
+
+
+## HLSL Variant
