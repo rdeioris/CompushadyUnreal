@@ -20,10 +20,11 @@ layout(location=0) in vec2 uv;
 layout(location=0) out vec4 outColor;
 
 // SceneColorInput (SRV)
-layout(binding=0) uniform sampler2D colorInput;
+layout(binding=0) uniform texture2D colorInput;
+layout(binding=1) uniform sampler sampler0;
 
 const vec3 shades[4] = vec3[4](
-	vec3(15./255., 56./255., 15./255.),
+    vec3(15./255., 56./255., 15./255.),
     vec3(48./255., 98./255., 48./255.),
     vec3(139./255., 172./255., 15./255.),
     vec3(155./255., 188./255., 15./255.)
@@ -32,7 +33,7 @@ const vec3 shades[4] = vec3[4](
 void main()
 {
     // get output texture size
-    const ivec2 size = textureSize(colorInput, 0);
+    const ivec2 size = textureSize(sampler2D(colorInput, sampler0), 0);
     // 800 is a good compromise for pixel size
     const float ratio = size.x / 800.; 
 
@@ -41,7 +42,7 @@ void main()
     const vec2 st = floor(uv * resolution) / resolution;
     
     // read the input color
-	  const vec3 color = texture(colorInput, st).rgb;
+	const vec3 color = texture(sampler2D(colorInput, sampler0), st).rgb;
     
     // find the color in the shades array
     const float intensity = (color.r + color.g + color.b) / 3.;
@@ -52,11 +53,11 @@ void main()
 }
 ```
 
-When writing postprocessing shader with Compushady, you need to get the UV of the currently processed pixel (they are available in the location 0 of the fragment/pixel shader) and, eventually one of the Scene Textures (Color, GBuffers, Depth, Stencil...).
+When writing postprocessing shader with Compushady, you need to get the UV of the currently processed pixel (they are available in the location 0 of the fragment/pixel shader) and, eventually one of the Scene Textures (Color, GBuffers, Depth, Stencil...) with the related Sampler (the filter for reading the texture values)
 
 ## Running the PostProcess effect on the Viewport
 
-In this example we need just the ColorInput (this is the current result of the various passes of the renderer):
+In this example we need just the ColorInput (this is the current result of the various passes of the renderer) and a Sampler (with point/nearest filtering and clamp addressing mode):
 
 ![image](../Screenshots/GAMEBOY_001.png)
 
