@@ -94,3 +94,48 @@ Then by adding a reference to the PostProcess Volume in the Level Blueprint, we 
 Now the effect will trigger as soon as the mannequin steps over the ramp, and will be turned off when the camera exits the volume.
 
 ## HLSL Variant
+
+The HLSL code is pretty similar:
+
+```hlsl
+Texture2D<float4> colorInput;
+SamplerState sampler0;
+
+static const float3 shades[4] = {
+    float3(15./255., 56./255., 15./255.),
+    float3(48./255., 98./255., 48./255.),
+    float3(139./255., 172./255., 15./255.),
+    float3(155./255., 188./255., 15./255.)
+};
+
+float4 main(const float2 uv : TEXCOORD) : SV_Target0
+{
+    // get output texture size
+    uint width;
+    uint height;
+    colorInput.GetDimensions(width, height);
+    const float2 size = float2(width, height);
+    // 800 is a good compromise for pixel size
+    const float ratio = size.x / 800.; 
+
+    // 160x144 is the original gameboy resolution
+    const float2 resolution = float2(160., 144.) * ratio;
+    const float2 st = floor(uv * resolution) / resolution;
+    
+    // read the input color
+    const float3 color = colorInput.Sample(sampler0, st).rgb;
+    
+    // find the color in the shades array
+    const float intensity = (color.r + color.g + color.b) / 3.;
+    const int index = int(intensity * 4.);
+    
+    // write it
+   return float4(shades[index], 1.0);
+}
+```
+
+Instead of locations/layout in HLSL we have semantics: TEXCOORD is the semantic containing the UVs (it it set by the postprocess vertex shader automatically) and SV_Target0 (it means 'write the the first render target/RTV'):
+
+We can now use `CreateCompushadyBlendableByMapFromHLSLString` instead of `CreateCompushadyBlendableByMapFromGLSLString`:
+
+![image](../Screenshots/GAMEBOY_006.png)
