@@ -1,6 +1,8 @@
 # CompushadyUnreal
 Compushady for Unreal Engine 5
 
+![image](Docs/Screenshots/MANDELBROT.png)
+
 ## Intro
 
 Compushady is an Unreal Engine 5 plugin aimed at easily (and quickly) executing GPU shaders. 
