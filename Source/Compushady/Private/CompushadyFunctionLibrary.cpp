@@ -2094,3 +2094,20 @@ bool UCompushadyFunctionLibrary::LoadFileWithLoaderConfig(const FString& Filenam
 
 	return true;
 }
+
+FIntVector UCompushadyFunctionLibrary::IntToDispatchXYZ(const int32 Value, const FIntVector& ThreadGroupSize)
+{
+	return FIntVector(FMath::DivideAndRoundUp(Value, ThreadGroupSize.X), 1, 1);
+}
+
+FIntVector UCompushadyFunctionLibrary::Int64ToDispatchXYZ(const int64 Value, const FIntVector& ThreadGroupSize)
+{
+	return FIntVector(FMath::DivideAndRoundUp(static_cast<int32>(Value), ThreadGroupSize.X), 1, 1);
+}
+
+FIntVector UCompushadyFunctionLibrary::IntVectorToDispatchXYZ(const FIntVector& Value, const FIntVector& ThreadGroupSize)
+{
+	return FIntVector(FMath::DivideAndRoundUp(Value.X, ThreadGroupSize.X),
+		FMath::DivideAndRoundUp(Value.Y, ThreadGroupSize.Y),
+		FMath::DivideAndRoundUp(Value.Z, ThreadGroupSize.Z));
+}

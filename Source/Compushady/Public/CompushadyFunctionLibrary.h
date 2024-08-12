@@ -300,6 +300,14 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVAudioTexture2D(UObject* WorldContextObject, const FString& Name, UAudioBus* AudioBus);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	static FIntVector IntToDispatchXYZ(const int32 Value, const FIntVector& ThreadGroupSize);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	static FIntVector Int64ToDispatchXYZ(const int64 Value, const FIntVector& ThreadGroupSize);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	static FIntVector IntVectorToDispatchXYZ(const FIntVector& Value, const FIntVector& ThreadGroupSize);
 
 	static bool LoadFileWithLoaderConfig(const FString& Filename, TArray<uint8>& Bytes, const FCompushadyFileLoaderConfig& FileLoaderConfig);
 };
