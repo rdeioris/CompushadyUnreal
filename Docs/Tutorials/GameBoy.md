@@ -2,6 +2,8 @@
 
 In this tutorial we are going to create a PostProcessing shader (in both GLSL and HLSL) that will be applied to the Game Viewport.
 
+![image](Docs/Screenshots/GAMEBOY_000.png)
+
 I am using the TopDown official Epic template for it, but you can use any level you want.
 
 The code is based on this shadertoy shader: https://www.shadertoy.com/view/MlfBR8 (set one of the available videos as iChannel0, like the Van Damme one, and have fun)
@@ -56,15 +58,21 @@ When writing postprocessing shader with Compushady, you need to get the UV of th
 
 In this example we need just the ColorInput (this is the current result of the various passes of the renderer):
 
+![image](Docs/Screenshots/GAMEBOY_001.png)
 
 Now we can create the Compushady Blendable object (Blendables are pipelines, generally compute or rasterizer, that are executed automatically at every frame and combined with the renderer passes):
 
+Note how we mapped the SRV of the SceneColorInput to the colorInput shader variable/resource. 
+
+![image](Docs/Screenshots/GAMEBOY_002.png)
 
 (Eventually connect the ErrorMessages pin to a PrintString node to get error messages, if any)
 
 The blendable is ready, and we can now attach it to the viewport or to a PostProcess Volume.
 
 Attaching to a Viewport is super easy thanks to The Blitter:
+
+![image](Docs/Screenshots/GAMEBOY_002.png)
 
 You can now play the Level and enjoy.
 
