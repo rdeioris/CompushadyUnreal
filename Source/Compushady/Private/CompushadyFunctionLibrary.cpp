@@ -874,6 +874,68 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImag
 	return CompushadySRV;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3DFromFile(const FString& Name, const FString& Filename, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format, const int64 Offset)
+{
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
+		return nullptr;
+	}
+	
+	if (Width <= 0 || Height <= 0 || Depth <= 0)
+	{
+		return nullptr;
+	}
+
+	TArray64<uint8> SlicesData;
+	if (!FFileHelper::LoadFileToArray(SlicesData, *Filename))
+	{
+		return nullptr;
+	}
+
+	const int64 RequiredSize = Width * Height * Depth * GPixelFormats[Format].BlockBytes;
+
+	if (SlicesData.Num() - Offset < RequiredSize)
+	{
+		return nullptr;
+	}
+
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create3D(*Name, Width, Height, Depth, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateTexture3D)(
+		[TextureRHIRef, &SlicesData, Offset, Width, Height, Depth, Format](FRHICommandListImmediate& RHICmdList)
+		{
+			FUpdateTextureRegion3D UpdateTextureRegion3D(0, 0, 0, 0, 0, 0, Width, Height, Depth);
+			RHICmdList.UpdateTexture3D(TextureRHIRef, 0, UpdateTextureRegion3D, Width * GPixelFormats[Format].BlockBytes, Width * Height * GPixelFormats[Format].BlockBytes, SlicesData.GetData() + Offset);
+		});
+
+	FlushRenderingCommands();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3DFromNRRDFile(const FString& Name, const FString& Filename)
 {
 	TArray64<uint8> SlicesData;

@@ -131,6 +131,9 @@ public:
 	static UCompushadySRV* CreateCompushadySRVTexture2DFromImageFile(const FString& Name, const FString& Filename);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVTexture3DFromFile(const FString& Name, const FString& Filename, const int32 Width, const int32 Height, const int32 Depth, const EPixelFormat Format, const int64 Offset = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVTexture3DFromNRRDFile(const FString& Name, const FString& Filename);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
