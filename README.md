@@ -236,7 +236,7 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 
 * Volumetric Rendering a NNRD file
 * Generating chiptunes
-* Gameboy-like postprocess: [GameBoy](Docs/Tutorials/GameBoy.md)
+* Gameboy-like postprocess: [GameBoy](Docs/Tutorials/GameBoy.md) (video: https://youtu.be/E2L5MC3e0s0)
 * ISF effects
 * GroupShared memory
 * Particles System
