@@ -241,6 +241,10 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 * GroupShared memory
 * Particles System
 
+## Videos
+
+https://youtu.be/Y8PP_-6oisg (ShaderToy material)
+
 ## The Blitter
 
 ## ShaderToy integration
