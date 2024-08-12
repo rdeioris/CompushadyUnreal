@@ -53,7 +53,9 @@ void main()
 }
 ```
 
-When writing postprocessing shader with Compushady, you need to get the UV of the currently processed pixel (they are available in the location 0 of the fragment/pixel shader) and, eventually one of the Scene Textures (Color, GBuffers, Depth, Stencil...) with the related Sampler (the filter for reading the texture values)
+When writing postprocessing shader with Compushady, you need to get the UV of the currently processed pixel (they are available in the location 0 of the fragment/pixel shader) and eventually one of the Scene Textures (Color, GBuffers, Depth, Stencil...) with the related Sampler (the filter for reading the texture values)
+
+Note that while GLSL supports the sampler2D type (texture and sampler as a single object), in Compushady (and generally in Vulkan-friendly GLSL) is better to split them like in HLSL. This simplifies the support for the same shader code on the various platforms.
 
 ## Running the PostProcess effect on the Viewport
 
