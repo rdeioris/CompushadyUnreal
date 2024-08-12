@@ -1,9 +1,12 @@
 # CompushadyUnreal
-Compushady for Unreal Engine 5
+Compushady for Unreal Engine 5 
 
 ![image](Docs/Screenshots/MANDELBROT.png)
+
 ![Megagrant](Docs/Epic_MegaGrants_Recipient_logo_horizontal_black.png?raw=true#gh-light-mode-only "Megagrant")
 ![Megagrant](Docs/Epic_MegaGrants_Recipient_logo_horizontal_white.png?raw=true#gh-dark-mode-only "Megagrant")
+
+Join the Discord server: https://discord.gg/2WvdpkYXHW
 
 ## Intro
 
@@ -18,8 +21,6 @@ Another focus is on scientific data processing, so native support for formats li
 Currently Windows (D3D12 and Vulkan), Linux and Android (Vulkan) are supported. Mac and iOS (Metal) are currently in development.
 
 Like the homonym python module (this plugin is a porting of its APIs), it makes heavy use of the DirectXShaderCompiler project (https://github.com/Microsoft/DirectXShaderCompiler) as well as the various Khronos projects for SPIRV management.
-
-Join the Discord server for support: https://discord.gg/2WvdpkYXHW
 
 ## Quickstart (step0, Glossary)
 
