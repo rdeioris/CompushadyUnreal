@@ -42,7 +42,7 @@ void main()
     const vec2 st = floor(uv * resolution) / resolution;
     
     // read the input color
-	const vec3 color = texture(sampler2D(colorInput, sampler0), st).rgb;
+    const vec3 color = texture(sampler2D(colorInput, sampler0), st).rgb;
     
     // find the color in the shades array
     const float intensity = (color.r + color.g + color.b) / 3.;
