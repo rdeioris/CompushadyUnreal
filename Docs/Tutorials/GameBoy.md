@@ -93,6 +93,8 @@ Then by adding a reference to the PostProcess Volume in the Level Blueprint, we 
 
 Now the effect will trigger as soon as the mannequin steps over the ramp, and will be turned off when the camera exits the volume.
 
+Note that sometimes the context autocomplete fails to find the "Add or Update Blendable" node, just disable it from the context menu and search it again.
+
 ## HLSL Variant
 
 The HLSL code is pretty similar:
