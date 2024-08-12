@@ -72,12 +72,22 @@ The blendable is ready, and we can now attach it to the viewport or to a PostPro
 
 Attaching to a Viewport is super easy thanks to The Blitter:
 
-![image](../Screenshots/GAMEBOY_002.png)
+![image](../Screenshots/GAMEBOY_003.png)
 
 You can now play the Level and enjoy.
 
 ## Running the PostProcess effect on a PostProcess Volume:
 
+Instead of applying the effect to the whole viewport, we can configure a PostProcess Volume that triggers the effect whenever the current camera enters its volume.
 
+The first step is defining the PostProcess Volume by adding it to the level and defining its Brush settings (the goal here is to activate the effect when the characters moves over the ramp):
+
+![image](../Screenshots/GAMEBOY_004.png)
+
+Then by adding a reference to the PostProcess Volume in the Level Blueprint, we can attach the Compushady Blendable to it:
+
+![image](../Screenshots/GAMEBOY_005.png)
+
+Now the effect will trigger as soon as the mannequin steps over the ramp, and will be turned off when the camera exits the volume.
 
 ## HLSL Variant
