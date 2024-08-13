@@ -246,6 +246,7 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 * GroupShared memory
 * Particles System
 * ShaderToy material: https://youtu.be/Y8PP_-6oisg
+* EXR spherical image to Cube Render Target
 
 ## The Blitter
 
