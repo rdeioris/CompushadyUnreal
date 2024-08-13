@@ -535,11 +535,6 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
 	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
-	void CopyToBuffer(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset,  const FCompushadySignaled& OnSignaled);
-
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool CopyToBufferSync(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const;

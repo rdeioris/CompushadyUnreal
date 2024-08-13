@@ -1,4 +1,4 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2024 - Roberto De Ioris.
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "CompushadyFunctionLibrary.h"
@@ -32,10 +32,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyCopyTest_Simple, "Compushady.Copy.Si
 
 bool FCompushadyCopyTest_Simple::RunTest(const FString& Parameters)
 {
-	UCompushadySRV* Source = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
+	UCompushadyUAV* Source = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
 	Source->ClearBufferWithFloatSync(17);
 
-	UCompushadySRV* Destination = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
+	UCompushadyUAV* Destination = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
+	Destination->ClearBufferWithFloatSync(0);
 
 	FCompushadySignaled Signal;
 	Signal.BindUFunction(Source, TEXT("StoreLastSignal"));
@@ -67,10 +68,11 @@ bool FCompushadyCopyTest_SimpleSync::RunTest(const FString& Parameters)
 {
 	FString ErrorMessages;
 
-	UCompushadySRV* Source = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
+	UCompushadyUAV* Source = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
 	Source->ClearBufferWithFloatSync(17);
 
-	UCompushadySRV* Destination = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
+	UCompushadyUAV* Destination = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
+	Destination->ClearBufferWithFloatSync(0);
 
 	Source->CopyToBufferSync(Destination, 8, 0, 0, ErrorMessages);
 

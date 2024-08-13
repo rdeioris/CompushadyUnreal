@@ -695,116 +695,6 @@ void UCompushadyResource::CopyToRenderTarget2DArray(UTextureRenderTarget2DArray*
 	}
 }
 
-void UCompushadyResource::CopyToBuffer(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, const FCompushadySignaled& OnSignaled)
-{
-	if (!DestinationBuffer)
-	{
-		OnSignaled.ExecuteIfBound(false, "Destination Buffer cannot be NULL");
-		return;
-	}
-
-	if (Size < 0 || DestinationOffset < 0 || SourceOffset < 0)
-	{
-		OnSignaled.ExecuteIfBound(false, "Size and Offsets cannot be negative");
-		return;
-	}
-
-	if (!IsValidBuffer())
-	{
-		OnSignaled.ExecuteIfBound(false, "Invalid Source Buffer");
-		return;
-	}
-
-	if (!DestinationBuffer->IsValidBuffer())
-	{
-		OnSignaled.ExecuteIfBound(false, "Invalid Destination Buffer");
-		return;
-	}
-
-	int64 RequiredSize = Size;
-	if (RequiredSize <= 0)
-	{
-		RequiredSize = GetBufferSize() - SourceOffset;
-	}
-
-	if (SourceOffset + RequiredSize > GetBufferSize())
-	{
-		OnSignaled.ExecuteIfBound(false, "Source Offset + Size out of bounds");
-		return;
-	}
-
-	if (DestinationOffset + RequiredSize > DestinationBuffer->GetBufferSize())
-	{
-		OnSignaled.ExecuteIfBound(false, "Destination Offset + Size out of bounds");
-		return;
-	}
-
-	EnqueueToGPU(
-		[this, DestinationBuffer, RequiredSize, DestinationOffset, SourceOffset](FRHICommandListImmediate& RHICmdList)
-		{
-			RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
-			RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
-
-			RHICmdList.CopyBufferRegion(DestinationBuffer->GetBufferRHI(), DestinationOffset, GetBufferRHI(), SourceOffset, RequiredSize);
-		}, OnSignaled);
-}
-
-bool UCompushadyResource::CopyToBufferSync(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, FString& ErrorMessages)
-{
-	if (!DestinationBuffer)
-	{
-		ErrorMessages = "Destination Buffer cannot be NULL";
-		return false;
-	}
-
-	if (Size < 0 || DestinationOffset < 0 || SourceOffset < 0)
-	{
-		ErrorMessages = "Size and Offsets cannot be negative";
-		return false;
-	}
-
-	if (!IsValidBuffer())
-	{
-		ErrorMessages = "Invalid Source Buffer";
-		return false;
-	}
-
-	if (!DestinationBuffer->IsValidBuffer())
-	{
-		ErrorMessages = "Invalid Destination Buffer";
-		return false;
-	}
-
-	int64 RequiredSize = Size;
-	if (RequiredSize <= 0)
-	{
-		RequiredSize = GetBufferSize() - SourceOffset;
-	}
-
-	if (SourceOffset + RequiredSize > GetBufferSize())
-	{
-		ErrorMessages = "Source Offset + Size out of bounds";
-		return false;
-	}
-
-	if (DestinationOffset + RequiredSize > DestinationBuffer->GetBufferSize())
-	{
-		ErrorMessages = "Destination Offset + Size out of bounds";
-		return false;
-	}
-
-	EnqueueToGPUSync(
-		[this, DestinationBuffer, RequiredSize, DestinationOffset, SourceOffset](FRHICommandListImmediate& RHICmdList)
-		{
-			RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
-			RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
-
-			RHICmdList.CopyBufferRegion(DestinationBuffer->GetBufferRHI(), DestinationOffset, GetBufferRHI(), SourceOffset, RequiredSize);
-		});
-
-	return true;
-}
-
 bool ICompushadySignalable::CopyTexture_Internal(FTextureRHIRef Destination, FTextureRHIRef Source, const FCompushadyTextureCopyInfo& CopyInfo, const FCompushadySignaled& OnSignaled)
 {
 	if (Destination->GetFormat() != Source->GetFormat())
@@ -1260,7 +1150,7 @@ namespace Compushady
 #else
 					RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Key);
 #endif
-				}
+		}
 				else
 				{
 #if COMPUSHADY_UE_VERSION >= 53
@@ -1387,8 +1277,8 @@ namespace Compushady
 					continue;
 				}
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
-	}
-}
+			}
+			}
 #endif
 
 		template<typename SHADER_TYPE>
@@ -1435,7 +1325,7 @@ namespace Compushady
 					return ResourceArray.Samplers[Index]->GetRHI();
 				}, bSyncCBV);
 		}
-		}
+				}
 	}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const bool bSyncCBV)
