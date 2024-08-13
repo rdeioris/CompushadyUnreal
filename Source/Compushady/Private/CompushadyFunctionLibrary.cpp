@@ -1187,6 +1187,18 @@ UCompushadyRTV* UCompushadyFunctionLibrary::CreateCompushadyRTVTextureRenderTarg
 	return CreateCompushadyRTVFromRenderTarget2D(RenderTarget);
 }
 
+UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVTextureRenderTargetCube(const int32 Width, const EPixelFormat Format, UTextureRenderTargetCube*& RenderTarget, const FLinearColor ClearColor, const float Gamma, const bool bLinearGamma)
+{
+	RenderTarget = NewObject<UTextureRenderTargetCube>();
+	RenderTarget->TargetGamma = Gamma;
+	RenderTarget->ClearColor = ClearColor;
+	RenderTarget->bCanCreateUAV = true;
+	RenderTarget->bForceLinearGamma = bLinearGamma;
+	RenderTarget->Init(Width, Format);
+
+	return CreateCompushadyUAVFromRenderTargetCube(RenderTarget);
+}
+
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVFromRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray)
 {
 	if (!RenderTargetArray)
