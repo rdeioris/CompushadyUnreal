@@ -237,6 +237,8 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 
 * Video Encoding (H264/H265)
 
+* Accessing StaticMeshes GPU buffers
+
 ## Tutorials
 
 * Volumetric Rendering a NNRD file
