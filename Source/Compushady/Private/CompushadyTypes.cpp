@@ -131,7 +131,7 @@ bool UCompushadyResource::UpdateTextureSliceSync(const TArray<uint8>& Pixels, co
 	return UpdateTextureSliceSync(Pixels.GetData(), Pixels.Num(), Slice);
 }
 
-bool UCompushadyResource::ClearBufferWithValueSync(const uint8 Value)
+bool UCompushadyResource::ClearBufferWithByteSync(const uint8 Value)
 {
 	if (!IsValidBuffer())
 	{
@@ -142,6 +142,44 @@ bool UCompushadyResource::ClearBufferWithValueSync(const uint8 Value)
 	return MapWriteAndExecuteSync([Value, BufferSize](void* Data)
 		{
 			FMemory::Memset(Data, Value, BufferSize);
+			return true;
+		});
+}
+
+bool UCompushadyResource::ClearBufferWithFloatSync(const float Value)
+{
+	if (!IsValidBuffer())
+	{
+		return false;
+	}
+
+	const int64 BufferSize = GetBufferSize() / sizeof(float);
+	return MapWriteAndExecuteSync([Value, BufferSize](void* Data)
+		{
+			float* Ptr = reinterpret_cast<float*>(Data);
+			for (int64 Index = 0; Index < BufferSize; Index++)
+			{
+				Ptr[Index] = Value;
+			}
+			return true;
+		});
+}
+
+bool UCompushadyResource::ClearBufferWithIntSync(const int32 Value)
+{
+	if (!IsValidBuffer())
+	{
+		return false;
+	}
+
+	const int64 BufferSize = GetBufferSize() / sizeof(int32);
+	return MapWriteAndExecuteSync([Value, BufferSize](void* Data)
+		{
+			int32* Ptr = reinterpret_cast<int32*>(Data);
+			for (int64 Index = 0; Index < BufferSize; Index++)
+			{
+				Ptr[Index] = Value;
+			}
 			return true;
 		});
 }
