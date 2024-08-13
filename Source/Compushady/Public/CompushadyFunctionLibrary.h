@@ -74,6 +74,9 @@ public:
 	static UCompushadyCBV* CreateCompushadyCBVFromIntArray(const FString& Name, const TArray<int32>& Data);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")

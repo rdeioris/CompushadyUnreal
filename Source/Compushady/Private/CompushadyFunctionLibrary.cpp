@@ -334,6 +334,38 @@ UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromHLSLS
 	return CompushadyCompute;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat)
+{
+	if (Size <= 0)
+	{
+		return nullptr;
+	}
+
+	FBufferRHIRef BufferRHIRef;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
+		[&BufferRHIRef, Name, Size, PixelFormat](FRHICommandListImmediate& RHICmdList)
+		{
+			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask, ResourceCreateInfo);
+		});
+
+	FlushRenderingCommands();
+
+	if (!BufferRHIRef.IsValid() || !BufferRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromBuffer(BufferRHIRef, PixelFormat))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
 UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FString& Name, const int64 Size, const EPixelFormat PixelFormat)
 {
 	if (Size <= 0)
@@ -347,7 +379,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FStr
 		[&BufferRHIRef, Name, Size, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::UAVCompute, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::UAVMask, ResourceCreateInfo);
 		});
 
 	FlushRenderingCommands();
@@ -881,7 +913,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture3DFromFile
 		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
 		return nullptr;
 	}
-	
+
 	if (Width <= 0 || Height <= 0 || Depth <= 0)
 	{
 		return nullptr;
