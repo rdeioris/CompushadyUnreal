@@ -41,7 +41,7 @@ FBufferRHIRef UCompushadyResource::GetUploadBuffer(FRHICommandListImmediate& RHI
 	if (!UploadBufferRHIRef.IsValid() || !UploadBufferRHIRef->IsValid())
 	{
 		FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
-		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), EBufferUsageFlags::VertexBuffer, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
 	}
 
 	return UploadBufferRHIRef;
@@ -1150,7 +1150,7 @@ namespace Compushady
 #else
 					RHICmdList.SetShaderResourceViewParameter(Shader, ResourceBindings.SRVs[Index].SlotIndex, SRVPair.Key);
 #endif
-		}
+				}
 				else
 				{
 #if COMPUSHADY_UE_VERSION >= 53
@@ -1278,7 +1278,7 @@ namespace Compushady
 				}
 				RHICmdList.SetShaderSampler(Shader, ResourceBindings.Samplers[Index].SlotIndex, SamplerState);
 			}
-			}
+		}
 #endif
 
 		template<typename SHADER_TYPE>
@@ -1325,8 +1325,8 @@ namespace Compushady
 					return ResourceArray.Samplers[Index]->GetRHI();
 				}, bSyncCBV);
 		}
-				}
 	}
+}
 
 void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const bool bSyncCBV)
 {
@@ -1443,6 +1443,170 @@ void ICompushadyPipeline::UntrackResourcesAndUnmarkAsRunning()
 void ICompushadyPipeline::OnSignalReceived()
 {
 	UntrackResources();
+}
+
+void UCompushadyResource::CopyToBuffer(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, const FCompushadySignaled& OnSignaled)
+{
+	if (!DestinationBuffer)
+	{
+		OnSignaled.ExecuteIfBound(false, "Destination Buffer cannot be NULL");
+		return;
+	}
+
+	if (this == DestinationBuffer)
+	{
+		OnSignaled.ExecuteIfBound(false, "Destination Buffer cannot be the Source one");
+		return;
+	}
+
+	if (Size < 0 || DestinationOffset < 0 || SourceOffset < 0)
+	{
+		OnSignaled.ExecuteIfBound(false, "Size and Offsets cannot be negative");
+		return;
+	}
+
+	if (!IsValidBuffer())
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid Source Buffer");
+		return;
+	}
+
+	if (!DestinationBuffer->IsValidBuffer())
+	{
+		OnSignaled.ExecuteIfBound(false, "Invalid Destination Buffer");
+		return;
+	}
+
+	int64 RequiredSize = Size;
+	if (RequiredSize <= 0)
+	{
+		RequiredSize = GetBufferSize() - SourceOffset;
+	}
+
+	if (SourceOffset + RequiredSize > GetBufferSize())
+	{
+		OnSignaled.ExecuteIfBound(false, "Source Offset + Size out of bounds");
+		return;
+	}
+
+	if (DestinationOffset + RequiredSize > DestinationBuffer->GetBufferSize())
+	{
+		OnSignaled.ExecuteIfBound(false, "Destination Offset + Size out of bounds");
+		return;
+	}
+
+	EnqueueToGPU(
+		[this, DestinationBuffer, RequiredSize, DestinationOffset, SourceOffset](FRHICommandListImmediate& RHICmdList)
+		{
+			// fast path, if at least one of the two resources is a UAV
+			if (EnumHasAnyFlags(GetBufferRHI()->GetUsage(), EBufferUsageFlags::UnorderedAccess) || EnumHasAnyFlags(DestinationBuffer->GetBufferRHI()->GetUsage(), EBufferUsageFlags::UnorderedAccess))
+			{
+				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
+
+				RHICmdList.CopyBufferRegion(DestinationBuffer->GetBufferRHI(), DestinationOffset, GetBufferRHI(), SourceOffset, RequiredSize);
+			}
+			else
+			{
+				// as unreal makes heavy reuse of resources, we need to rely on a temp UAV buffer
+				FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
+				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+
+				RHICmdList.CopyBufferRegion(TempBuffer, 0, GetBufferRHI(), SourceOffset, RequiredSize);
+
+				WaitForGPU(RHICmdList);
+
+				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
+
+				RHICmdList.CopyBufferRegion(DestinationBuffer->GetBufferRHI(), DestinationOffset, TempBuffer, 0, RequiredSize);
+			}
+		}, OnSignaled);
+}
+
+bool UCompushadyResource::CopyToBufferSync(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, FString& ErrorMessages)
+{
+	if (!DestinationBuffer)
+	{
+		ErrorMessages = "Destination Buffer cannot be NULL";
+		return false;
+	}
+
+	if (this == DestinationBuffer)
+	{
+		ErrorMessages = "Destination Buffer cannot be the Source one";
+		return false;
+	}
+
+	if (Size < 0 || DestinationOffset < 0 || SourceOffset < 0)
+	{
+		ErrorMessages = "Size and Offsets cannot be negative";
+		return false;
+	}
+
+	if (!IsValidBuffer())
+	{
+		ErrorMessages = "Invalid Source Buffer";
+		return false;
+	}
+
+	if (!DestinationBuffer->IsValidBuffer())
+	{
+		ErrorMessages = "Invalid Destination Buffer";
+		return false;
+	}
+
+	int64 RequiredSize = Size;
+	if (RequiredSize <= 0)
+	{
+		RequiredSize = GetBufferSize() - SourceOffset;
+	}
+
+	if (SourceOffset + RequiredSize > GetBufferSize())
+	{
+		ErrorMessages = "Source Offset + Size out of bounds";
+		return false;
+	}
+
+	if (DestinationOffset + RequiredSize > DestinationBuffer->GetBufferSize())
+	{
+		ErrorMessages = "Destination Offset + Size out of bounds";
+		return false;
+	}
+
+	EnqueueToGPUSync(
+		[this, DestinationBuffer, RequiredSize, DestinationOffset, SourceOffset](FRHICommandListImmediate& RHICmdList)
+		{
+			// fast path, if at least one of the two resources is a UAV
+			if (EnumHasAnyFlags(GetBufferRHI()->GetUsage(), EBufferUsageFlags::UnorderedAccess) || EnumHasAnyFlags(DestinationBuffer->GetBufferRHI()->GetUsage(), EBufferUsageFlags::UnorderedAccess))
+			{
+				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
+
+				RHICmdList.CopyBufferRegion(DestinationBuffer->GetBufferRHI(), DestinationOffset, GetBufferRHI(), SourceOffset, RequiredSize);
+			}
+			else
+			{
+				// as unreal makes heavy reuse of resources, we need to rely on a temp UAV buffer
+				FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
+				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopyDest));
+
+				RHICmdList.CopyBufferRegion(TempBuffer, 0, GetBufferRHI(), SourceOffset, RequiredSize);
+
+				WaitForGPU(RHICmdList);
+
+				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
+
+				RHICmdList.CopyBufferRegion(DestinationBuffer->GetBufferRHI(), DestinationOffset, TempBuffer, 0, RequiredSize);
+			}
+		});
+
+	return true;
 }
 
 bool Compushady::Utils::ValidateResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
@@ -2069,26 +2233,78 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const FString& Sha
 
 void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
 {
-	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, nullptr, InFunction, RasterizerConfig);
+	TArray<FTextureRHIRef> RenderTargets;
+	if (RenderTarget)
+	{
+		RenderTargets.Add(RenderTarget);
+	}
+	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTargets, nullptr, InFunction, RasterizerConfig);
 }
 
 void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
 {
-	FRHIRenderPassInfo PassInfo(RenderTarget, ERenderTargetActions::Load_Store);
-	if (DepthStencil)
+	TArray<FTextureRHIRef> RenderTargets;
+	if (RenderTarget)
 	{
-		PassInfo = FRHIRenderPassInfo(RenderTarget, ERenderTargetActions::Load_Store, DepthStencil, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil);
+		RenderTargets.Add(RenderTarget);
+	}
+	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTargets, DepthStencil, InFunction, RasterizerConfig);
+}
+
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, const TArray<FTextureRHIRef>& RenderTargets, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
+{
+	FRHIRenderPassInfo PassInfo;
+	FIntPoint OutputSize;
+
+	if (RenderTargets.Num() == 0)
+	{
+		// invalid combo?
+		if (!DepthStencil)
+		{
+			return;
+		}
+
+		PassInfo = FRHIRenderPassInfo(DepthStencil, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil);
+		OutputSize = DepthStencil->GetSizeXY();
+	}
+	else
+	{
+		TArray<FRHITexture*> RTVs;
+		for (const FTextureRHIRef& TextureRHI : RenderTargets)
+		{
+			RTVs.Add(TextureRHI);
+		}
+
+		if (DepthStencil)
+		{
+			PassInfo = FRHIRenderPassInfo(RenderTargets.Num(), RTVs.GetData(), ERenderTargetActions::Load_Store, DepthStencil, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil);
+		}
+		else
+		{
+			PassInfo = FRHIRenderPassInfo(RenderTargets.Num(), RTVs.GetData(), ERenderTargetActions::Load_Store);
+		}
+
+		OutputSize = RenderTargets[0]->GetSizeXY();
 	}
 
 	RHICmdList.BeginRenderPass(PassInfo, PassName);
 
-	RHICmdList.SetViewport(0, 0, 0.0f, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(), 1.0f);
+	RHICmdList.SetViewport(0, 0, 0.0f, OutputSize.X, OutputSize.Y, 1.0f);
 
 	FGraphicsPipelineStateInitializer GraphicsPSOInit;
 	RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
 
 	FillRasterizerPipelineStateInitializer(RasterizerConfig, GraphicsPSOInit);
-	GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
+
+	if (RasterizerConfig.BlendMode == ECompushadyRasterizerBlendMode::AlphaBlending)
+	{
+		GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
+	}
+	else if (RasterizerConfig.BlendMode == ECompushadyRasterizerBlendMode::Always)
+	{
+		GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI();
+	}
+
 	if (DepthStencil)
 	{
 		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual>::GetRHI();

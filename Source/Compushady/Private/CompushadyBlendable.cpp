@@ -153,6 +153,8 @@ protected:
 					FCompushadySceneTextures SceneTextures = {};
 					FillSceneTextures(SceneTextures, RHICmdList, SceneColorInput.Texture->GetRHI(), InOutInputs.SceneTextures.SceneTextures->GetContents());
 
+					RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
+
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 						{
@@ -294,6 +296,8 @@ public:
 				FCompushadySceneTextures SceneTextures = {};
 				FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
 
+				RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
+
 				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 					{
@@ -326,6 +330,9 @@ public:
 		{
 		case ECompushadyPostProcessLocation::PrePostProcess:
 			bPrePostProcess = true;
+			break;
+		case ECompushadyPostProcessLocation::AfterBasePass:
+			bAfterBasePass = true;
 			break;
 		case ECompushadyPostProcessLocation::AfterMotionBlur:
 			RequiredPass = EPostProcessingPass::MotionBlur;
@@ -363,13 +370,141 @@ public:
 
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
 	{
-		if (!bPrePostProcess && Pass == RequiredPass && bIsPassEnabled)
+		if (!bPrePostProcess && !bAfterBasePass && Pass == RequiredPass && bIsPassEnabled)
 		{
 			InOutPassCallbacks.Add(FAfterPassCallbackDelegate::CreateSP(this, &FCompushadyPostProcess::PostProcessCallback_RenderThread));
 		}
 	}
 
-	void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override
+	virtual void PostRenderBasePassDeferred_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView, const FRenderTargetBindingSlots& RenderTargets, TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures)
+	{
+		if (!bAfterBasePass)
+		{
+			return;
+		}
+
+		if (PixelShaderRef)
+		{
+			if (!VertexShaderRef)
+			{
+				FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(InView.GetFeatureLevel());
+				TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
+
+				GraphBuilder.AddPass(
+					RDG_EVENT_NAME("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
+					ERDGPassFlags::None,
+					[this, VertexShader, SceneTextures, RenderTargets](FRHICommandList& RHICmdList)
+					{
+						FCompushadySceneTextures CompushadySceneTextures = {};
+						FillSceneTextures(CompushadySceneTextures, RHICmdList, SceneTextures->GetContents()->SceneColorTexture->GetRHI(), SceneTextures->GetContents());
+
+						TArray<FTextureRHIRef> RTVs;
+						for (int32 RTVIndex = 0; RTVIndex < MaxSimultaneousRenderTargets; RTVIndex++)
+						{
+							if (RenderTargets[RTVIndex].GetTexture() != nullptr)
+							{
+								RTVs.Add(RenderTargets[RTVIndex].GetTexture()->GetRHI());
+								switch (RTVIndex)
+								{
+								case 0:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 1:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 2:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 3:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 4:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 5:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								}
+							}
+						}
+
+						if (RTVs.Num() == 0)
+						{
+							return;
+						}
+
+						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
+
+						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
+							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RTVs, nullptr, [&]()
+							{
+								Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, CompushadySceneTextures, true);
+								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RTVs[0]->GetSizeX(), RTVs[0]->GetSizeY(),
+									0, 0, 1, 1,
+									RTVs[0]->GetSizeXY(),
+									FIntPoint(1, 1),
+									INDEX_NONE,
+									false, EDRF_UseTriangleOptimization);
+							}, RasterizerConfig.RasterizerConfig);
+					});
+			}
+			else
+			{
+				GraphBuilder.AddPass(
+					RDG_EVENT_NAME("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
+					ERDGPassFlags::None,
+					[this, SceneTextures, RenderTargets, &InView, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
+					{
+						FTextureRHIRef RenderTarget = RenderTargets[0].GetTexture()->GetRHI();
+						FTextureRHIRef DepthStencil = nullptr;
+
+						if (RasterizerConfig.bCheckDepth)
+						{
+							DepthStencil = SceneTextures->GetContents()->SceneDepthTexture->GetRHI();
+						}
+
+						FCompushadySceneTextures CompushadySceneTextures = {};
+						FillSceneTextures(CompushadySceneTextures, RHICmdList, RenderTarget, SceneTextures->GetContents());
+
+						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
+							RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
+							{
+								if (VSResourceArray.CBVs.IsValidIndex(0))
+								{
+									VSResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
+								}
+								Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, false);
+								Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, CompushadySceneTextures, false);
+								Compushady::Utils::DrawVertices(RHICmdList, NumVertices, NumInstances, RasterizerConfig.RasterizerConfig);
+							}, RasterizerConfig.RasterizerConfig);
+					});
+			}
+		}
+		else if (ComputeShaderRef)
+		{
+			GraphBuilder.AddPass(
+				RDG_EVENT_NAME("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
+				ERDGPassFlags::None,
+				[this, SceneTextures, &InView, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
+				{
+					FTextureRHIRef RenderTarget = SceneTextures->GetContents()->SceneColorTexture->GetRHI();
+					FCompushadySceneTextures CompushadySceneTextures = {};
+					FillSceneTextures(CompushadySceneTextures, RHICmdList, RenderTarget, SceneTextures->GetContents());
+
+					SetComputePipelineState(RHICmdList, ComputeShaderRef);
+
+					if (ComputeResourceArray.CBVs.IsValidIndex(0))
+					{
+						ComputeResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
+					}
+					Compushady::Utils::SetupPipelineParameters(RHICmdList, ComputeShaderRef, ComputeResourceArray, ComputeResourceBindings, CompushadySceneTextures, false);
+
+					RHICmdList.DispatchComputeShader(XYZ.X, XYZ.Y, XYZ.Z);
+				});
+		}
+	}
+
+	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override
 	{
 		if (!bPrePostProcess)
 		{
@@ -426,6 +561,8 @@ public:
 						FCompushadySceneTextures SceneTextures = {};
 						FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
 
+						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
+
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 							RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
 							{
@@ -480,6 +617,7 @@ public:
 protected:
 	EPostProcessingPass RequiredPass = EPostProcessingPass::Tonemap;
 	bool bPrePostProcess = false;
+	bool bAfterBasePass = false;;
 
 	bool bEnabled = true;
 };
@@ -676,4 +814,4 @@ FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int3
 #else
 	return FGuid::NewGuid();
 #endif
-		}
+}

@@ -22,12 +22,6 @@ public:
 
 	FUnorderedAccessViewRHIRef GetRHI() const;
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
-	void CopyToBuffer(UCompushadyUAV* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, const FCompushadySignaled& OnSignaled);
-
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool CopyToBufferSync(UCompushadyUAV* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, FString& ErrorMessages);
-
 protected:
 	FUnorderedAccessViewRHIRef UAVRHIRef;
 };

@@ -196,7 +196,8 @@ enum class ECompushadyPostProcessLocation : uint8
 {
 	AfterTonemapping,
 	AfterMotionBlur,
-	PrePostProcess
+	PrePostProcess,
+	AfterBasePass
 };
 
 UENUM(BlueprintType)
@@ -284,6 +285,13 @@ enum class ECompushadyRasterizerPrimitiveType : uint8
 	PointList
 };
 
+UENUM(BlueprintType)
+enum class ECompushadyRasterizerBlendMode : uint8
+{
+	AlphaBlending,
+	Always
+};
+
 USTRUCT(BlueprintType)
 struct COMPUSHADY_API FCompushadyRasterizerConfig
 {
@@ -297,6 +305,9 @@ struct COMPUSHADY_API FCompushadyRasterizerConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	ECompushadyRasterizerPrimitiveType PrimitiveType = ECompushadyRasterizerPrimitiveType::TriangleList;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	ECompushadyRasterizerBlendMode BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
 };
 
 USTRUCT(BlueprintType)
@@ -535,6 +546,11 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
 	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
+	void CopyToBuffer(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool CopyToBufferSync(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const;
@@ -654,6 +670,7 @@ namespace Compushady
 
 		COMPUSHADY_API void RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig);
 		COMPUSHADY_API void RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig);
+		COMPUSHADY_API void RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, const TArray<FTextureRHIRef>& RenderTargets, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig);
 
 		COMPUSHADY_API void RasterizePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FGraphicsPipelineStateInitializer& PipelineStateInitializer, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction);
 

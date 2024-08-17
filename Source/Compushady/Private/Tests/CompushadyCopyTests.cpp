@@ -32,10 +32,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyCopyTest_Simple, "Compushady.Copy.Si
 
 bool FCompushadyCopyTest_Simple::RunTest(const FString& Parameters)
 {
-	UCompushadyUAV* Source = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
+	UCompushadySRV* Source = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
 	Source->ClearBufferWithFloatSync(17);
 
-	UCompushadyUAV* Destination = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
+	UCompushadySRV* Destination = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
 	Destination->ClearBufferWithFloatSync(0);
 
 	FCompushadySignaled Signal;
@@ -68,10 +68,39 @@ bool FCompushadyCopyTest_SimpleSync::RunTest(const FString& Parameters)
 {
 	FString ErrorMessages;
 
+	UCompushadySRV* Source = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
+	Source->ClearBufferWithFloatSync(17);
+
+	UCompushadySRV* Destination = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
+	Destination->ClearBufferWithFloatSync(0);
+
+	Source->CopyToBufferSync(Destination, 8, 0, 0, ErrorMessages);
+
+	TArray<float> Output;
+	Output.AddZeroed(2);
+
+	Destination->MapReadAndExecuteSync([&Output](const void* Data)
+		{
+			FMemory::Memcpy(Output.GetData(), Data, sizeof(float) * 2);
+			return true;
+		});
+
+	TestEqual(TEXT("Output[0]"), Output[0], 17.0f);
+	TestEqual(TEXT("Output[1]"), Output[1], 17.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCompushadyCopyTest_SimpleUAVSync, "Compushady.Copy.SimpleUAVSync", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCompushadyCopyTest_SimpleUAVSync::RunTest(const FString& Parameters)
+{
+	FString ErrorMessages;
+
 	UCompushadyUAV* Source = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName, 8, EPixelFormat::PF_R32_FLOAT);
 	Source->ClearBufferWithFloatSync(17);
 
-	UCompushadyUAV* Destination = UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
+	UCompushadySRV* Destination = UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(TestName + "_", 8, EPixelFormat::PF_R32_FLOAT);
 	Destination->ClearBufferWithFloatSync(0);
 
 	Source->CopyToBufferSync(Destination, 8, 0, 0, ErrorMessages);
