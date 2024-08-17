@@ -530,6 +530,8 @@ public:
 						FCompushadySceneTextures SceneTextures = {};
 						FillSceneTextures(SceneTextures, RHICmdList, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI(), InputSceneTextures->GetContents());
 
+						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
+
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
 							{
@@ -560,8 +562,6 @@ public:
 
 						FCompushadySceneTextures SceneTextures = {};
 						FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
-
-						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 							RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
