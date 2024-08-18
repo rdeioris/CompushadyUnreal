@@ -565,6 +565,9 @@ public:
 	int64 GetBufferSize() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	int32 GetBufferStride() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	int32 GetTextureNumSlices() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")

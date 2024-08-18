@@ -896,6 +896,15 @@ int64 UCompushadyResource::GetBufferSize() const
 	return 0;
 }
 
+int32 UCompushadyResource::GetBufferStride() const
+{
+	if (BufferRHIRef.IsValid() && BufferRHIRef->IsValid())
+	{
+		return static_cast<int32>(BufferRHIRef->GetStride());
+	}
+	return 0;
+}
+
 int32 UCompushadyResource::GetTextureNumSlices() const
 {
 	if (TextureRHIRef.IsValid())
