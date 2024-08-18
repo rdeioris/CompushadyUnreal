@@ -243,12 +243,12 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 
 * Volumetric Rendering a NNRD file
 * Generating chiptunes
-* [GameBoy-like post-processing](Docs/Tutorials/GameBoy.md) (video: https://youtu.be/E2L5MC3e0s0)
+* [GameBoy-like post-processing](Docs/Tutorials/GameBoy.md): using the blitter to apply a postprocessing effect (video version: https://youtu.be/E2L5MC3e0s0)
 * ISF effects
 * GroupShared memory
-* [PointCloud](Docs/Tutorials/PointCloud.md)
+* [PointCloud](Docs/Tutorials/PointCloud.md): using the blitter and the rasterizer to render pointclouds from ASCII/XYZ compressed files
 * Particles System
-* ShaderToy material: https://youtu.be/Y8PP_-6oisg
+* ShaderToy material: (video only) https://youtu.be/Y8PP_-6oisg
 * EXR spherical image to Cube Render Target
 
 ## The Blitter
