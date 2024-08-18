@@ -30,7 +30,13 @@ struct Point
 
 This is pretty straightforward:
 
+![image](..//Screenshots/POINTCLOUD_001.png)
 
+Most of the nodes are just for debugging/printing the resulting size and stride of the buffer as well as the number of points in the cloud (that is just the ratio between size and stride).
+
+The node/function ```CreateCompushadySRVStructuredBufferFromGZASCIIFileAsync``` is non-blocking so it will trigger the "FileLoaded" custom event as soon as the file is loaded and parsed.
+
+Columns is an array with the index of columns (6 in this case) to includem while Separator (left empty here) means "split every line of the file by space"
 
 ## Step1: rendering points
 
