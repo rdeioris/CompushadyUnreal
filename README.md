@@ -243,9 +243,10 @@ In addition to the increased parallelism it is worth noting that tasks in the sa
 
 * Volumetric Rendering a NNRD file
 * Generating chiptunes
-* Gameboy-like postprocess: [GameBoy](Docs/Tutorials/GameBoy.md) (video: https://youtu.be/E2L5MC3e0s0)
+* [GameBoy-like post-processing](Docs/Tutorials/GameBoy.md) (video: https://youtu.be/E2L5MC3e0s0)
 * ISF effects
 * GroupShared memory
+* [PointCloud](Docs/Tutorials/PointCloud.md)
 * Particles System
 * ShaderToy material: https://youtu.be/Y8PP_-6oisg
 * EXR spherical image to Cube Render Target
