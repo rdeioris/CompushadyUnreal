@@ -132,6 +132,12 @@ The Blueprint will be a bit more complex than before:
 * Set the PostProcessLocation of the "AdvancedBlendable" to "PrePostProcess"
 * Finally connect the "AdvancedBlendable" to the "AddToBlitter" node
 
+We are ready to render:
+
+![image](..//Screenshots/POINTCLOUD_003.png)
+
+## Step1: some additional note
+
 ## Step2: moving to quads
 
 ## Optional Step 3: storing the shaders in a file
