@@ -1206,7 +1206,7 @@ namespace Compushady
 		// Special case for UE 5.2 where a VertexShader and a MeshShader cannot have UAVs
 #if COMPUSHADY_UE_VERSION < 53
 		template<>
-		void SetupParametersRHI(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+		void SetupParametersRHI(FRHICommandList& RHICmdList, FVertexShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 		{
 			for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
 			{
@@ -1248,7 +1248,7 @@ namespace Compushady
 		}
 
 		template<>
-		void SetupParametersRHI(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction)
+		void SetupParametersRHI(FRHICommandList& RHICmdList, FMeshShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 		{
 			for (int32 Index = 0; Index < ResourceBindings.CBVs.Num(); Index++)
 			{
@@ -1318,8 +1318,10 @@ namespace Compushady
 						}
 						else if (SRVOrTexture.Key)
 						{
+#if COMPUSHADY_UE_VERSION > 52
 							FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
 							//RHICmdList.Transition(FRHITransitionInfo(TextureToTransition, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+#endif
 						}
 						return SRVOrTexture;
 					}

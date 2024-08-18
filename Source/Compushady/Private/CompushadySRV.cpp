@@ -71,7 +71,9 @@ bool UCompushadySRV::InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRe
 		[this, Slice, SlicesNum, MipLevel, MipsNum, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHITextureSRVCreateInfo SRVCreateInfo;
+#if COMPUSHADY_UE_VERSION > 52
 			SRVCreateInfo.DimensionOverride = TextureRHIRef->GetDesc().Dimension;
+#endif
 			SRVCreateInfo.Format = PixelFormat;
 			SRVCreateInfo.FirstArraySlice = Slice;
 			SRVCreateInfo.NumArraySlices = SlicesNum;
