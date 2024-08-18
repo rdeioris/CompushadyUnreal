@@ -8,6 +8,8 @@ The tutorial will use HLSL for both the Vertex and Pixel shaders, but at the end
 
 ## Step0: loading the data in a StructuredBuffer
 
+For this tutorial we are going to use the New York Union Station pointcloud that you can download (in gzipped XYZ format) from here: https://github.com/rdeioris/compushady-assets/raw/main/StationNY.txt.gz
+
 ## Step1: rendering points
 
 ## Step2: moving to quads
