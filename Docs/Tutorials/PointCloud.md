@@ -48,6 +48,74 @@ NumPoints: 6356395 (152553480 / 24)
 
 ## Step1: rendering points
 
+Rendering the points requires to define the VertexShader we want to run for every point and the related PixelShader.
+
+To be integrated with the Unreal Engine rendering system, we need to have access to the camera and projection matrix (that we are going to store in a CBV).
+
+Those two infos are exposed by the Compushady Blendable system, but first let's define the Vertx Shader:
+
+```hlsl
+// SRV
+struct Point
+{
+    float x;
+    float y;
+    float z;
+    float r;
+    float g;
+    float b;
+};
+StructuredBuffer<Point> points;
+
+// CBV
+struct Config
+{
+    matrix view;
+    matrix projection;
+};
+ConstantBuffer<Config> config;
+
+// this will be passed to the PixelShader
+struct PSInput
+{
+    float4 position : SV_Position;
+    float4 color: COLOR;
+};
+
+PSInput main(const uint vid : SV_VertexID)
+{
+    // extract the point
+    float3 xyz = float3(-points[vid].x, points[vid].y, points[vid].z) * 100;
+
+    // extract the color (and normalize it)
+    float3 color = float3(points[vid].r / 255.0, points[vid].g / 255.0, points[vid].b / 255.0);
+
+    // get the point in view/camera space
+    float4 view_space = mul(config.view, float4(xyz, 1));
+
+    PSInput o;
+    // project the point
+    o.position = mul(config.projection, view_space);
+    // pass the color to the PixelShader
+    o.color = float4(color, 1);
+    return o;
+}
+
+the related PixelShader will be pretty simple (and boring):
+
+```hlsl
+struct PSInput
+{
+    float4 position : SV_Position;
+    float4 color: COLOR;
+};
+
+float4 main(PSInput i) : SV_Target0
+{
+    return i.color;
+}
+```
+
 ## Step2: moving to quads
 
 ## Optional Step 3: storing the shaders in a file
