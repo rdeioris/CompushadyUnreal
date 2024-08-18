@@ -10,6 +10,8 @@ The tutorial will use HLSL for both the Vertex and Pixel shaders, but at the end
 
 For this tutorial we are going to use the Denver Union Station (https://en.wikipedia.org/wiki/Denver_Union_Station) pointcloud by Trimble Inc. (https://www.trimble.com/en) that you can download (in gzipped XYZ format) from here: https://github.com/rdeioris/compushady-assets/raw/main/UnionStation.txt.gz
 
+![image](..//Screenshots/POINTCLOUD_000.png)
+
 ## Step1: rendering points
 
 ## Step2: moving to quads
