@@ -1384,7 +1384,25 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromFile(co
 	{
 		return nullptr;
 	}
+
 	return CreateCompushadySRVBufferFromByteArray(Name, Data, PixelFormat);
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromGZFile(const FString& Name, const FString& Filename, const EPixelFormat PixelFormat)
+{
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Filename))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> UncompressedData;
+	if (!Compushady::Utils::GZIPDecompress(Data, UncompressedData))
+	{
+		return nullptr;
+	}
+
+	return CreateCompushadySRVBufferFromByteArray(Name, UncompressedData, PixelFormat);
 }
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride)
@@ -1462,59 +1480,108 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 	return CreateCompushadySRVStructuredBufferFromByteArray(Name, Data, Stride, Offset);
 }
 
-UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromASCIIFile(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty)
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromGZFile(const FString& Name, const FString& Filename, const int32 Stride, const int64 Offset)
 {
-	TArray<FString> Lines;
-	if (!FFileHelper::LoadFileToStringArray(Lines, *Filename))
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Filename))
 	{
 		return nullptr;
 	}
 
-	if (SkipLines > Lines.Num())
+	TArray<uint8> UncompressedData;
+	if (!Compushady::Utils::GZIPDecompress(Data, UncompressedData))
 	{
 		return nullptr;
 	}
 
+	return CreateCompushadySRVStructuredBufferFromByteArray(Name, Data, Stride, Offset);
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromStringArray(const FString& Name, const TArray<FString>& Lines, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty)
+{
 	TArray<float> Values;
-	Values.AddUninitialized((Lines.Num() - SkipLines) * Columns.Num());
-
-	const int32 Stride = sizeof(float) * Columns.Num();
-
-	std::atomic<int32> ProcessedLines = 0;
-
-	ParallelFor(Lines.Num() - SkipLines, [&](const int32 LineIndex)
-		{
-			const FString& Line = Lines[SkipLines + LineIndex];
-			TArray<FString> Items;
-			Line.ParseIntoArray(Items, *Separator, bCullEmpty);
-
-			bool bValid = true;
-			for (const int32 ColumnIndex : Columns)
-			{
-				if (!Items.IsValidIndex(ColumnIndex))
-				{
-					bValid = false;
-					break;
-				}
-			}
-
-			if (bValid)
-			{
-				// atomic increment
-				ProcessedLines++;
-
-				const int32 Index = ProcessedLines - 1;
-				for (int32 ColumnIndexIndex = 0; ColumnIndexIndex < Columns.Num(); ColumnIndexIndex++)
-				{
-					Values[Index * Columns.Num() + ColumnIndexIndex] = FCString::Atof(*Items[Columns[ColumnIndexIndex]]);
-				}
-			}
-		});
-
-	// do not shrink memory as we are going to trash this array after GPU upload
-	Values.SetNum(ProcessedLines * Columns.Num(), false);
+	int32 Stride;
+	if (!Compushady::Utils::SplitToFloats(Lines, Columns, Separator, SkipLines, bCullEmpty, Values, Stride))
+	{
+		return nullptr;
+	}
 
 	return CreateCompushadySRVStructuredBufferFromFloatArray(Name, Values, Stride);
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromASCIIFile(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty)
+{
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Filename))
+	{
+		return nullptr;
+	}
+
+	TArray<FString> Lines;
+	Compushady::Utils::BytesToStringArray(Data, Lines);
+
+	return CreateCompushadySRVStructuredBufferFromStringArray(Name, Lines, Columns, Separator, SkipLines, bCullEmpty);
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromGZASCIIFile(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty)
+{
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Filename))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> UncompressedData;
+	if (!Compushady::Utils::GZIPDecompress(Data, UncompressedData))
+	{
+		return nullptr;
+	}
+
+	TArray<FString> Lines;
+	Compushady::Utils::BytesToStringArray(UncompressedData, Lines);
+
+	return CreateCompushadySRVStructuredBufferFromStringArray(Name, Lines, Columns, Separator, SkipLines, bCullEmpty);
+}
+
+void UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromGZASCIIFileAsync(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FCompushadyResourceCreation& OnResource, const FString& Separator, const int32 SkipLines, const bool bCullEmpty)
+{
+	CompushadyAsyncResource<TPair<TArray<float>, int32>>(OnResource, [Name, Filename, Columns, OnResource, Separator, SkipLines, bCullEmpty](FString& ErrorMessages)
+		{
+			TPair<bool, TPair<TArray<float>, int32>> ErrorPair(false, TPair<TArray<float>, int32>());
+			TArray<float> Values;
+
+			TArray<uint8> Data;
+			if (!FFileHelper::LoadFileToArray(Data, *Filename))
+			{
+				return ErrorPair;
+			}
+
+			TArray<uint8> UncompressedData;
+			if (!Compushady::Utils::GZIPDecompress(Data, UncompressedData))
+			{
+				return ErrorPair;
+			}
+
+			TArray<FString> Lines;
+			Compushady::Utils::BytesToStringArray(UncompressedData, Lines);
+
+			int32 Stride;
+			if (!Compushady::Utils::SplitToFloats(Lines, Columns, Separator, SkipLines, bCullEmpty, Values, Stride))
+			{
+				return ErrorPair;
+			}
+
+			return TPair<bool, TPair<TArray<float>, int32>>(true, TPair<TArray<float>, int32>(Values, Stride));
+		},
+		[Name](const TPair<TArray<float>, int32>& Pair, FString& ErrorMessages) -> UCompushadyResource*
+		{
+			if (Pair.Value < 0)
+			{
+				return nullptr;
+			}
+			return CreateCompushadySRVStructuredBufferFromFloatArray(Name, Pair.Key, Pair.Value);
+		}
+	);
 }
 
 UCompushadySoundWave* UCompushadyFunctionLibrary::CreateCompushadyUAVSoundWave(const FString& Name, const float Duration, const int32 SampleRate, const int32 NumChannels, UAudioBus* AudioBus)

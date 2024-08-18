@@ -680,6 +680,10 @@ namespace Compushady
 
 		COMPUSHADY_API bool GenerateTIFF(const void* Data, const int32 Stride, const uint32 Width, const uint32 Height, const EPixelFormat PixelFormat, const FString ImageDescription, TArray<uint8>& IFD);
 		COMPUSHADY_API bool LoadNRRD(const FString& Filename, TArray64<uint8>& SlicesData, int64& Offset, uint32& Width, uint32& Height, uint32& Depth, EPixelFormat& PixelFormat);
+		COMPUSHADY_API bool GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>& UncompressedData);
+
+		COMPUSHADY_API void BytesToStringArray(const TArray<uint8>& Bytes, TArray<FString>& Lines);
+		COMPUSHADY_API bool SplitToFloats(const TArray<FString>& Lines, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty, TArray<float>& Values, int32& Stride);
 
 		COMPUSHADY_API void DrawVertices(FRHICommandList& RHICmdList, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig);
 	}

@@ -51,6 +51,18 @@ struct FCompushadyFileLoaderConfig
 	TArray<FString> AppendStrings;
 };
 
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FCompushadyResourceCreation, UCompushadyResource*, Resource, const FString&, ErrorMessages);
+
+struct FCompushadyAsyncContext
+{
+	FCompushadyAsyncContext() = delete;
+	FCompushadyAsyncContext(const FCompushadyResourceCreation& InOnResource);
+	~FCompushadyAsyncContext();
+
+	FCompushadyResourceCreation OnResource;
+	UCompushadyResource* Resource = nullptr;
+	FString ErrorMessages;
+};
 
 /**
  *
@@ -89,6 +101,9 @@ public:
 	static UCompushadySRV* CreateCompushadySRVBufferFromFile(const FString& Name, const FString& Filename, const EPixelFormat PixelFormat);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVBufferFromGZFile(const FString& Name, const FString& Filename, const EPixelFormat PixelFormat);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
@@ -98,7 +113,19 @@ public:
 	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromFile(const FString& Name, const FString& Filename, const int32 Stride, const int64 Offset = 0);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromGZFile(const FString& Name, const FString& Filename, const int32 Stride, const int64 Offset = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromStringArray(const FString& Name, const TArray<FString>& Lines, const TArray<int32>& Columns, const FString& Separator = ",", const int32 SkipLines = 0, const bool bCullEmpty = false);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromASCIIFile(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FString& Separator = ",", const int32 SkipLines = 0, const bool bCullEmpty = false);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromGZASCIIFile(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FString& Separator = ",", const int32 SkipLines = 0, const bool bCullEmpty = false);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static void CreateCompushadySRVStructuredBufferFromGZASCIIFileAsync(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FCompushadyResourceCreation& OnResource, const FString& Separator = ",", const int32 SkipLines = 0, const bool bCullEmpty = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
@@ -319,4 +346,30 @@ public:
 	static FIntVector IntVectorToDispatchXYZ(const FIntVector& Value, const FIntVector& ThreadGroupSize);
 
 	static bool LoadFileWithLoaderConfig(const FString& Filename, TArray<uint8>& Bytes, const FCompushadyFileLoaderConfig& FileLoaderConfig);
+
+	template<typename RETVALUE>
+	static void CompushadyAsyncResource(const FCompushadyResourceCreation& OnResource, TFunction<TPair<bool, RETVALUE>(FString& ErrorMessages)> ThreadFunction, TFunction<UCompushadyResource* (const RETVALUE& RetValue, FString& ErrorMessages)> GameThreadFunction)
+	{
+		Async(EAsyncExecution::Thread, [OnResource, ThreadFunction, GameThreadFunction]()
+			{
+				FString ErrorMessages;
+				TPair<bool, RETVALUE> AsyncRetValue = ThreadFunction(ErrorMessages);
+				if (!AsyncRetValue.Key)
+				{
+					FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([OnResource, ErrorMessages]()
+						{
+							OnResource.ExecuteIfBound(nullptr, ErrorMessages);
+						}, TStatId(), nullptr, ENamedThreads::GameThread);
+					FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
+					return;
+				}
+
+				FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([OnResource, GameThreadFunction, &AsyncRetValue, &ErrorMessages]()
+					{
+						UCompushadyResource* Resource = GameThreadFunction(AsyncRetValue.Value, ErrorMessages);
+						OnResource.ExecuteIfBound(Resource, ErrorMessages);
+					}, TStatId(), nullptr, ENamedThreads::GameThread);
+				FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);
+			});
+	}
 };
