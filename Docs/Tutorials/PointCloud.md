@@ -100,6 +100,7 @@ PSInput main(const uint vid : SV_VertexID)
     o.color = float4(color, 1);
     return o;
 }
+```
 
 the related PixelShader will be pretty simple (and boring):
 
