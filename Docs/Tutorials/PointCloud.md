@@ -117,6 +117,21 @@ float4 main(PSInput i) : SV_Target0
 }
 ```
 
+The Blueprint will be a bit more complex than before:
+
+![image](..//Screenshots/POINTCLOUD_002.png)
+
+* Remove the two previous print nodes (we only need the NumPoints computation)
+* Create a new CBV for storing the two matrices (i have set the size to 256, we actually need 128 bytes for 2 matrices, but we are preparing it for the future implementations)
+* Add the ```CreateCompushadyAdvancedBlendableByMapFromHLSLString``` node (from now on the "AdvancedBlendable" node)
+* Create the HLSL strings for the Vertex and Pixel shader and connect them to the "AdvancedBlendable"
+* Create a Map for "config" (assigned to the CBV) and "points" (assigned to the SRV) and connect it to the "AdvancedBlendable"
+* Set the Rasterizer configuration to use the Depth buffer (Check Depth), use the PointsList as the PrimitiveType and "Always" as the BlendMode.
+* Set the Rasterizer configuration to copy the View Matrix to CBV offset 0 and the Projection Matrix to CBV offset 64 (a matrx requires 64 bytes to be stored)
+* Set the NumVertices pin of the "AdvancedBlendable" to NumPoints and NumInstaces to 1.
+* Set the PostProcessLocation of the "AdvancedBlendable" to "PrePostProcess"
+* Finally connect the "AdvancedBlendable" to the "AddToBlitter" node
+
 ## Step2: moving to quads
 
 ## Optional Step 3: storing the shaders in a file
