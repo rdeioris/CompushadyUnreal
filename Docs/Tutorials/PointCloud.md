@@ -12,6 +12,26 @@ For this tutorial we are going to use the Denver Union Station (https://en.wikip
 
 ![image](..//Screenshots/POINTCLOUD_000.png)
 
+The file contains one point per line, with each line exposing 6 relevant columns (space separated): X, Y, Z, R, G and B
+
+For loading those data in a GPU StructuredBuffer, we need to instruct the Compushady GZIP ASCII Async loader on how to build the follwing structure:
+
+```c
+struct Point
+{
+    float x;
+    float y;
+    float z;
+    float r;
+    float g;
+    float b;
+};
+```
+
+This is pretty straightforward:
+
+
+
 ## Step1: rendering points
 
 ## Step2: moving to quads
