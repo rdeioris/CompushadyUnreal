@@ -38,6 +38,14 @@ The node/function ```CreateCompushadySRVStructuredBufferFromGZASCIIFileAsync``` 
 
 Columns is an array with the index of columns (6 in this case) to includem while Separator (left empty here) means "split every line of the file by space"
 
+If the file is loaded correctly you will end with the following numbers:
+
+StructuredBuffer Size: 152553480
+
+StructuredBuffer Stride: 24 (6 floats: x, y, z, r, g, b)
+
+NumPoints: 6356395 (152553480 / 24)
+
 ## Step1: rendering points
 
 ## Step2: moving to quads
