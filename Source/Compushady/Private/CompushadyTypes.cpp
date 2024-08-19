@@ -1973,10 +1973,8 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const TArray<uin
 	return PixelShaderRef;
 }
 
-FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const FString& TargetProfile)
 {
-	const FString TargetProfile = "cs_6_0";
-
 	TArray<uint8> ComputeShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings ComputeShaderResourceBindings;
 	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, TargetProfile, ComputeShaderByteCode, ErrorMessages, false))

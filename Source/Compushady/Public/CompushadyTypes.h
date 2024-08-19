@@ -661,7 +661,7 @@ namespace Compushady
 		COMPUSHADY_API FVertexShaderRHIRef CreateVertexShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
-		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
+		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const FString& TargetProfile = "cs_6_0");
 		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromSPIRVBlob(const TArray<uint8>& ShaderByteCode, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);

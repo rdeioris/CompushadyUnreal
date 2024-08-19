@@ -1720,19 +1720,19 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyAdvancedBlenda
 	return CompushadyBlendable;
 }
 
-UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyComputeBlendableByMapFromHLSLString(const FString& ShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, FString& ErrorMessages, const FCompushadyBlendableRasterizerConfig& BlendableRasterizerConfig, const FIntVector& XYZ, const FString& ShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation)
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyComputeBlendableByMapFromHLSLString(const FString& ShaderSource, const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, FString& ErrorMessages, const FCompushadyBlendableMatricesConfig& BlendableMatricesConfig, const FIntVector& XYZ, const FString& ShaderEntryPoint, const FString& TargetProfile, const ECompushadyPostProcessLocation PostProcessLocation)
 {
 	TArray<uint8> ShaderCode;
 	Compushady::StringToShaderCode(ShaderSource, ShaderCode);
 
 	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
-	if (!CompushadyBlendable->InitFromHLSLCompute(ShaderCode, ShaderEntryPoint, PostProcessLocation, ErrorMessages))
+	if (!CompushadyBlendable->InitFromHLSLCompute(ShaderCode, ShaderEntryPoint, TargetProfile, PostProcessLocation, ErrorMessages))
 	{
 		return nullptr;
 	}
 
-	if (!CompushadyBlendable->UpdateComputeResourcesByMapAdvanced(ResourceMap, XYZ, BlendableRasterizerConfig, ErrorMessages))
+	if (!CompushadyBlendable->UpdateComputeResourcesByMapAdvanced(ResourceMap, XYZ, BlendableMatricesConfig, ErrorMessages))
 	{
 		return nullptr;
 	}
@@ -1740,7 +1740,7 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyComputeBlendab
 	return CompushadyBlendable;
 }
 
-UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyComputeBlendableByMapFromHLSLFile(const FString& Filename, const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, FString& ErrorMessages, const FCompushadyBlendableRasterizerConfig& BlendableRasterizerConfig, const FIntVector& XYZ, const FString& ShaderEntryPoint, const ECompushadyPostProcessLocation PostProcessLocation, const FCompushadyFileLoaderConfig& FileLoaderConfig)
+UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyComputeBlendableByMapFromHLSLFile(const FString& Filename, const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, FString& ErrorMessages, const FCompushadyBlendableMatricesConfig& BlendableMatricesConfig, const FIntVector& XYZ, const FString& ShaderEntryPoint, const FString& TargetProfile, const ECompushadyPostProcessLocation PostProcessLocation, const FCompushadyFileLoaderConfig& FileLoaderConfig)
 {
 	TArray<uint8> ShaderCode;
 	if (!LoadFileWithLoaderConfig(Filename, ShaderCode, FileLoaderConfig))
@@ -1750,12 +1750,12 @@ UCompushadyBlendable* UCompushadyFunctionLibrary::CreateCompushadyComputeBlendab
 
 	UCompushadyBlendable* CompushadyBlendable = NewObject<UCompushadyBlendable>();
 
-	if (!CompushadyBlendable->InitFromHLSLCompute(ShaderCode, ShaderEntryPoint, PostProcessLocation, ErrorMessages))
+	if (!CompushadyBlendable->InitFromHLSLCompute(ShaderCode, ShaderEntryPoint, TargetProfile, PostProcessLocation, ErrorMessages))
 	{
 		return nullptr;
 	}
 
-	if (!CompushadyBlendable->UpdateComputeResourcesByMapAdvanced(ResourceMap, XYZ, BlendableRasterizerConfig, ErrorMessages))
+	if (!CompushadyBlendable->UpdateComputeResourcesByMapAdvanced(ResourceMap, XYZ, BlendableMatricesConfig, ErrorMessages))
 	{
 		return nullptr;
 	}
