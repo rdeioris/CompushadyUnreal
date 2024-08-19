@@ -155,6 +155,16 @@ The Depth test is very important even if we are drawing points: without it overl
 
 ## Step2: moving to quads
 
+Based on the PointCloud density or the need to implement special features (like the size of each point) you may want to use billboarded quads instead of points.
+
+The logic will be slightly different: this time we are rendering multiple instances with each one being composed by 6 vertices (the two triangles of the quad).
+
+In addition to this each vertex will be aligned for facing the camera.
+
+Given that we are using triangles, we can optimize teh rendering pipeline by cutting (culling) out non-front facing triangles (CullMode to Clockwise as having the x-inverted has implicitely changed the triangles winding).
+
+
+
 ## Optional Step 3: storing the shaders in a file
 
 ## Optional Step 4: using GLSL
