@@ -36,6 +36,8 @@ Most of the nodes are just for debugging/printing the resulting size and stride 
 
 The node/function ```CreateCompushadySRVStructuredBufferFromGZASCIIFileAsync``` is non-blocking so it will trigger the "FileLoaded" custom event as soon as the file is loaded and parsed.
 
+Note: the PointCloud is pretty big, it may require around 10 seconds to be fully loaded
+
 Columns is an array with the index of columns (6 in this case) to includem while Separator (left empty here) means "split every line of the file by space"
 
 If the file is loaded correctly you will end with the following numbers:
