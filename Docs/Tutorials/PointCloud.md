@@ -136,7 +136,7 @@ We are ready to render:
 
 ![image](..//Screenshots/POINTCLOUD_003.png)
 
-## Step1: some additional note
+## Step1.1: some additional note
 
 ## Step2: moving to quads
 
