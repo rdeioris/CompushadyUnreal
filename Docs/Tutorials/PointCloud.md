@@ -138,6 +138,19 @@ We are ready to render:
 
 ## Step1.1: some additional note
 
+You may have noticed the ```float3 xyz = float3(-points[vid].x, points[vid].y, points[vid].z) * 100;``` line in the vertex shader.
+
+It deserves some more explanation:
+
+* The cloud has been created using Z-up, Y-forward, X-right convention, so (given that Unreal uses X-forward) we are inverting the X to avoid the "mirror-effect" (remove the minus sign to better understand).
+* The 100 multiplication is to correct the scale (as the cloud is in meters while Unreal is in centimeters)
+
+Regarding colors, ```float3 color = float3(points[vid].r / 255.0, points[vid].g / 255.0, points[vid].b / 255.0);``` the 255 division is required as the XYZ file stores the colors channels as 8bit integers.
+
+We are using int64 as the type for NumPoints. This is actually useless as the max number of drawable vertices is a 32bits signed value.
+
+The Depth test is very important even if we are drawing points: without it overlapping points will result in total mess.
+
 ## Step2: moving to quads
 
 ## Optional Step 3: storing the shaders in a file
