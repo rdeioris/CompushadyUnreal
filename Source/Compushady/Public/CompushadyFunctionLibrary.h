@@ -128,6 +128,9 @@ public:
 	static void CreateCompushadySRVStructuredBufferFromGZASCIIFileAsync(const FString& Name, const FString& Filename, const TArray<int32>& Columns, const FCompushadyResourceCreation& OnResource, const FString& Separator = ",", const int32 SkipLines = 0, const bool bCullEmpty = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVStructuredBufferFromLASFile(const FString& Name, const FString& Filename, const bool bIncludeColors);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyUAV* CreateCompushadyUAVStructuredBuffer(const FString& Name, const int64 Size, const int32 Stride);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")

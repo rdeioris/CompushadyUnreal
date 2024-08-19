@@ -1407,6 +1407,11 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromGZFile(
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromFloatArray(const FString& Name, const TArray<float>& Data, const int32 Stride)
 {
+	if (Data.Num() == 0)
+	{
+		return nullptr;
+	}
+
 	FBufferRHIRef BufferRHIRef;
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
@@ -1478,6 +1483,23 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 		return nullptr;
 	}
 	return CreateCompushadySRVStructuredBufferFromByteArray(Name, Data, Stride, Offset);
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromLASFile(const FString& Name, const FString& Filename, const bool bIncludeColors)
+{
+	TArray<uint8> Data;
+	if (!FFileHelper::LoadFileToArray(Data, *Filename))
+	{
+		return nullptr;
+	}
+
+	TArray<float> Floats;
+	if (!Compushady::PointCloud::LoadLASToFloatArray(Data, Floats, bIncludeColors))
+	{
+		return nullptr;
+	}
+
+	return CreateCompushadySRVStructuredBufferFromFloatArray(Name, Floats, bIncludeColors ? (sizeof(float) * 6) : (sizeof(float) * 3));
 }
 
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferFromGZFile(const FString& Name, const FString& Filename, const int32 Stride, const int64 Offset)

@@ -707,4 +707,9 @@ namespace Compushady
 
 		COMPUSHADY_API void DrawVertices(FRHICommandList& RHICmdList, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig);
 	}
+
+	namespace PointCloud
+	{
+		COMPUSHADY_API bool LoadLASToFloatArray(const TArray<uint8>& Data, TArray<float>& Floats, const bool bIncludeColors);
+	}
 }
