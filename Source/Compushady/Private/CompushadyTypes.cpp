@@ -2307,23 +2307,6 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 
 	FillRasterizerPipelineStateInitializer(RasterizerConfig, GraphicsPSOInit);
 
-	if (RasterizerConfig.BlendMode == ECompushadyRasterizerBlendMode::AlphaBlending)
-	{
-		GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
-	}
-	else if (RasterizerConfig.BlendMode == ECompushadyRasterizerBlendMode::Always)
-	{
-		GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI();
-	}
-
-	if (DepthStencil)
-	{
-		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual>::GetRHI();
-	}
-	else
-	{
-		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
-	}
 	GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
 	GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShaderRef;
 	GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShaderRef;
@@ -2430,6 +2413,82 @@ void Compushady::Utils::FillRasterizerPipelineStateInitializer(const FCompushady
 		case(ECompushadyRasterizerCullMode::CounterClockWise):
 			PipelineStateInitializer.RasterizerState = TStaticRasterizerState<FM_Wireframe, CM_CCW>::GetRHI();
 			break;
+		}
+	}
+
+	if (RasterizerConfig.BlendMode == ECompushadyRasterizerBlendMode::AlphaBlending)
+	{
+		PipelineStateInitializer.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_InverseDestAlpha, BF_One>::GetRHI();
+	}
+	else if (RasterizerConfig.BlendMode == ECompushadyRasterizerBlendMode::Always)
+	{
+		PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
+	}
+
+	if (!RasterizerConfig.bDepthWrite)
+	{
+		if (!RasterizerConfig.bStencilWrite)
+		{
+			if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::AlwaysPass)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::NearOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_DepthNearOrEqual>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::FartherOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_DepthFartherOrEqual>::GetRHI();
+			}
+		}
+		else
+		{
+			if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::AlwaysPass)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_Always, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::NearOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_DepthNearOrEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::FartherOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<false, CF_DepthFartherOrEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
+			}
+		}
+	}
+	else
+	{
+		if (!RasterizerConfig.bStencilWrite)
+		{
+			if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::AlwaysPass)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_Always>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::NearOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::FartherOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_DepthFartherOrEqual>::GetRHI();
+			}
+		}
+		else
+		{
+			if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::AlwaysPass)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_Always, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::NearOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_DepthNearOrEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
+			}
+			else if (RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::FartherOrEqual)
+			{
+				PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_DepthFartherOrEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
+			}
 		}
 	}
 

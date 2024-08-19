@@ -179,11 +179,14 @@ public:
 				ERDGPassFlags::None,
 				[this, RenderTarget, CurrentDrawables](FRHICommandList& RHICmdList)
 				{
+					FCompushadyRasterizerConfig RasterizerConfig;
+					RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
+
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
 						{
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-						}, {});
+						}, RasterizerConfig);
 				});
 		}
 	}
@@ -206,11 +209,13 @@ public:
 				[this, SceneTextures, CurrentDrawables](FRHICommandList& RHICmdList)
 				{
 					FTexture2DRHIRef RenderTarget = SceneTextures->GetContents()->SceneColorTexture->GetRHI();
+					FCompushadyRasterizerConfig RasterizerConfig;
+					RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PrePostProcessPass_RenderThread"),
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
 						{
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-						}, {});
+						}, RasterizerConfig);
 				});
 		}
 	}
@@ -245,12 +250,15 @@ public:
 				ERDGPassFlags::None,
 				[this, Output, CurrentDrawables](FRHICommandList& RHICmdList)
 				{
+					FCompushadyRasterizerConfig RasterizerConfig;
+					RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
+
 					FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
 						{
 							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
-						}, {});
+						}, RasterizerConfig);
 				});
 		}
 
@@ -495,7 +503,7 @@ bool UCompushadyBlitterSubsystem::AddVSPSRasterizerFromHLSL(const FString& Verte
 	Guid = FGuid::NewGuid();
 
 	return true;
-}
+	}
 #endif
 
 

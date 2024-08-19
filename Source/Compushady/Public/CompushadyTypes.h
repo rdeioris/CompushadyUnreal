@@ -292,6 +292,14 @@ enum class ECompushadyRasterizerBlendMode : uint8
 	Always
 };
 
+UENUM(BlueprintType)
+enum class ECompushadyRasterizerDepthTest : uint8
+{
+	AlwaysPass,
+	NearOrEqual,
+	FartherOrEqual
+};
+
 USTRUCT(BlueprintType)
 struct COMPUSHADY_API FCompushadyRasterizerConfig
 {
@@ -307,7 +315,16 @@ struct COMPUSHADY_API FCompushadyRasterizerConfig
 	ECompushadyRasterizerPrimitiveType PrimitiveType = ECompushadyRasterizerPrimitiveType::TriangleList;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	ECompushadyRasterizerBlendMode BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
+	ECompushadyRasterizerBlendMode BlendMode = ECompushadyRasterizerBlendMode::Always;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	ECompushadyRasterizerDepthTest DepthTest = ECompushadyRasterizerDepthTest::AlwaysPass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	bool bDepthWrite = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	bool bStencilWrite = false;
 };
 
 USTRUCT(BlueprintType)

@@ -11,15 +11,9 @@
 #include "CompushadyBlendable.generated.h"
 
 USTRUCT(BlueprintType)
-struct COMPUSHADY_API FCompushadyBlendableRasterizerConfig
+struct COMPUSHADY_API FCompushadyBlendableMatricesConfig
 {
 	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	FCompushadyRasterizerConfig RasterizerConfig;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	bool bCheckDepth = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 ViewMatrixOffset = -1;
@@ -50,6 +44,18 @@ struct COMPUSHADY_API FCompushadyBlendableRasterizerConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 TimeFloatOffset = -1;
+};
+
+USTRUCT(BlueprintType)
+struct COMPUSHADY_API FCompushadyBlendableRasterizerConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FCompushadyRasterizerConfig RasterizerConfig;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	FCompushadyBlendableMatricesConfig MatricesConfig;
 };
 
 class ICompushadyTransientBlendable

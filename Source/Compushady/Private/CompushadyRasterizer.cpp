@@ -89,9 +89,6 @@ void UCompushadyRasterizer::FillPipelineStateInitializer(const FCompushadyRaster
 {
 	Compushady::Utils::FillRasterizerPipelineStateInitializer(RasterizerConfig, PipelineStateInitializer);
 
-	PipelineStateInitializer.DepthStencilState = TStaticDepthStencilState<true, CF_LessEqual, true, CF_Always, SO_Keep, SO_Keep, SO_Replace, true, CF_Always, SO_Keep, SO_Keep, SO_Replace>::GetRHI();
-	PipelineStateInitializer.BlendState = TStaticBlendState<>::GetRHI();
-
 	static int32 Denominators[] = { 3, 2, 1 };
 	DrawDenominator = Denominators[static_cast<int32>(RasterizerConfig.PrimitiveType)];
 }

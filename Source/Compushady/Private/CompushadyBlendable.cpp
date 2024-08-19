@@ -105,19 +105,19 @@ protected:
 				}
 			};
 
-		SetMatrixByOffset(RasterizerConfig.ViewMatrixOffset, ViewMatrices.GetViewMatrix());
-		SetMatrixByOffset(RasterizerConfig.ProjectionMatrixOffset, ViewMatrices.GetProjectionMatrix());
-		SetMatrixByOffset(RasterizerConfig.InverseViewMatrixOffset, ViewMatrices.GetInvViewMatrix());
-		SetMatrixByOffset(RasterizerConfig.InverseProjectionMatrixOffset, ViewMatrices.GetInvProjectionMatrix());
-		SetVector2ByOffset(RasterizerConfig.ScreenSizeFloat2Offset, ScreenSize);
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ViewMatrixOffset, ViewMatrices.GetViewMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ProjectionMatrixOffset, ViewMatrices.GetProjectionMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewMatrixOffset, ViewMatrices.GetInvViewMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseProjectionMatrixOffset, ViewMatrices.GetInvProjectionMatrix());
+		SetVector2ByOffset(RasterizerConfig.MatricesConfig.ScreenSizeFloat2Offset, ScreenSize);
 
-		SetMatrixByOffset(RasterizerConfig.ViewProjectionMatrixOffset, ViewMatrices.GetViewProjectionMatrix());
-		SetMatrixByOffset(RasterizerConfig.InverseViewProjectionMatrixOffset, ViewMatrices.GetInvViewProjectionMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ViewProjectionMatrixOffset, ViewMatrices.GetViewProjectionMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewProjectionMatrixOffset, ViewMatrices.GetInvViewProjectionMatrix());
 
-		SetVector4ByOffset(RasterizerConfig.ViewOriginFloat4Offset, ViewMatrices.GetViewOrigin());
+		SetVector4ByOffset(RasterizerConfig.MatricesConfig.ViewOriginFloat4Offset, ViewMatrices.GetViewOrigin());
 
-		SetFloatByOffset(RasterizerConfig.DeltaTimeFloatOffset, DeltaTime);
-		SetFloatByOffset(RasterizerConfig.TimeFloatOffset, Time);
+		SetFloatByOffset(RasterizerConfig.MatricesConfig.DeltaTimeFloatOffset, DeltaTime);
+		SetFloatByOffset(RasterizerConfig.MatricesConfig.TimeFloatOffset, Time);
 
 		CBVData = ResourceArray.CBVs[0]->GetBufferData();
 	}
@@ -182,12 +182,7 @@ protected:
 
 					FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
 
-					FTextureRHIRef DepthStencil = nullptr;
-
-					if (RasterizerConfig.bCheckDepth)
-					{
-						DepthStencil = SceneTextureUniform->SceneDepthTexture->GetRHI();
-					}
+					FTextureRHIRef DepthStencil = SceneTextureUniform->SceneDepthTexture->GetRHI();
 
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
@@ -455,19 +450,48 @@ public:
 					ERDGPassFlags::None,
 					[this, SceneTextures, RenderTargets, &InView, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
 					{
-						FTextureRHIRef RenderTarget = RenderTargets[0].GetTexture()->GetRHI();
-						FTextureRHIRef DepthStencil = nullptr;
-
-						if (RasterizerConfig.bCheckDepth)
-						{
-							DepthStencil = SceneTextures->GetContents()->SceneDepthTexture->GetRHI();
-						}
+						FTextureRHIRef DepthStencil = SceneTextures->GetContents()->SceneDepthTexture->GetRHI();
 
 						FCompushadySceneTextures CompushadySceneTextures = {};
-						FillSceneTextures(CompushadySceneTextures, RHICmdList, RenderTarget, SceneTextures->GetContents());
+						FillSceneTextures(CompushadySceneTextures, RHICmdList, SceneTextures->GetContents()->SceneColorTexture->GetRHI(), SceneTextures->GetContents());
+
+						TArray<FTextureRHIRef> RTVs;
+						for (int32 RTVIndex = 0; RTVIndex < MaxSimultaneousRenderTargets; RTVIndex++)
+						{
+							if (RenderTargets[RTVIndex].GetTexture() != nullptr)
+							{
+								RTVs.Add(RenderTargets[RTVIndex].GetTexture()->GetRHI());
+								switch (RTVIndex)
+								{
+								case 0:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::SceneColor, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 1:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferA, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 2:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferB, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 3:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferC, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 4:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferD, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								case 5:
+									CompushadySceneTextures.SetTexture(ECompushadySceneTexture::GBufferE, RenderTargets[RTVIndex].GetTexture()->GetRHI());
+									break;
+								}
+							}
+						}
+
+						if (RTVs.Num() == 0)
+						{
+							return;
+						}
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
-							RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
+							RHICmdList, VertexShaderRef, PixelShaderRef, RTVs, DepthStencil, [&]()
 							{
 								if (VSResourceArray.CBVs.IsValidIndex(0))
 								{
@@ -553,12 +577,7 @@ public:
 					[this, InputSceneTextures, &View, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
 					{
 						FTextureRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
-						FTextureRHIRef DepthStencil = nullptr;
-
-						if (RasterizerConfig.bCheckDepth)
-						{
-							DepthStencil = InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI();
-						}
+						FTextureRHIRef DepthStencil = InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI();
 
 						FCompushadySceneTextures SceneTextures = {};
 						FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
