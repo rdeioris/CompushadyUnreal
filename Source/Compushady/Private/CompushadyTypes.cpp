@@ -337,7 +337,7 @@ void UCompushadyResource::ReadbackBufferToFile(const FString& Filename, const in
 			{
 				RequiredSize = FMath::Min<int64>(Size, RequiredSize);
 			}
-			if (Offset + RequiredSize >= GetBufferSize())
+			if (Offset + RequiredSize > GetBufferSize())
 			{
 				return;
 			}
@@ -360,7 +360,7 @@ bool UCompushadyResource::ReadbackBufferToFileSync(const FString& Filename, cons
 			{
 				RequiredSize = FMath::Min<int64>(Size, RequiredSize);
 			}
-			if (Offset + RequiredSize >= GetBufferSize())
+			if (Offset + RequiredSize > GetBufferSize())
 			{
 				return false;
 			}
