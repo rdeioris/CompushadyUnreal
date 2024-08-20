@@ -20,8 +20,6 @@ bool Compushady::PointCloud::LoadLASToFloatArray(const TArray<uint8>& Data, TArr
 	const uint8 VersionMajor = Data[24];
 	const uint8 VersionMinor = Data[25];
 
-	UE_LOG(LogTemp, Error, TEXT("Major: %u Minor: %u"), VersionMajor, VersionMinor);
-
 	const uint16 HeaderSize = *(reinterpret_cast<const uint16*>(Data.GetData() + 94));
 	const uint32 OffsetToPointData = *(reinterpret_cast<const uint32*>(Data.GetData() + 96));
 
@@ -45,8 +43,6 @@ bool Compushady::PointCloud::LoadLASToFloatArray(const TArray<uint8>& Data, TArr
 		NumberOfPoints = *(reinterpret_cast<const uint64*>(Data.GetData() + 247));
 	}
 
-	UE_LOG(LogTemp, Error, TEXT("[%u] HeaderSize: %u OffsetToPointData: %u RecordFormat: %u RecordLength: %u %f %f %f %f %f %f"), NumberOfPoints, HeaderSize, OffsetToPointData, RecordFormat, RecordLength, XScaleFactor, YScaleFactor, ZScaleFactor, XOffset, YOffset, ZOffset);
-
 	if ((OffsetToPointData + NumberOfPoints * RecordLength) > static_cast<uint32>(Data.Num()))
 	{
 		return false;
@@ -60,9 +56,9 @@ bool Compushady::PointCloud::LoadLASToFloatArray(const TArray<uint8>& Data, TArr
 			{
 				const uint8* Ptr = Data.GetData() + OffsetToPointData + (Index * RecordLength);
 
-				const uint32 X = *(reinterpret_cast<const uint32*>(Ptr));
-				const uint32 Y = *(reinterpret_cast<const uint32*>(Ptr + sizeof(uint32)));
-				const uint32 Z = *(reinterpret_cast<const uint32*>(Ptr + sizeof(uint32) + sizeof(uint32)));
+				const int32 X = *(reinterpret_cast<const int32*>(Ptr));
+				const int32 Y = *(reinterpret_cast<const int32*>(Ptr + sizeof(int32)));
+				const int32 Z = *(reinterpret_cast<const int32*>(Ptr + sizeof(int32) + sizeof(int32)));
 
 				Floats[Index * 6] = X * XScaleFactor + XOffset;
 				Floats[Index * 6 + 1] = Y * YScaleFactor + YOffset;
@@ -109,9 +105,9 @@ bool Compushady::PointCloud::LoadLASToFloatArray(const TArray<uint8>& Data, TArr
 			{
 				const uint8* Ptr = Data.GetData() + OffsetToPointData + (Index * RecordLength);
 
-				const uint32 X = *(reinterpret_cast<const uint32*>(Ptr));
-				const uint32 Y = *(reinterpret_cast<const uint32*>(Ptr + sizeof(uint32)));
-				const uint32 Z = *(reinterpret_cast<const uint32*>(Ptr + sizeof(uint32) + sizeof(uint32)));
+				const int32 X = *(reinterpret_cast<const uint32*>(Ptr));
+				const int32 Y = *(reinterpret_cast<const uint32*>(Ptr + sizeof(int32)));
+				const int32 Z = *(reinterpret_cast<const uint32*>(Ptr + sizeof(int32) + sizeof(int32)));
 
 				Floats[Index * 3] = X * XScaleFactor + XOffset;
 				Floats[Index * 3 + 1] = Y * YScaleFactor + YOffset;
