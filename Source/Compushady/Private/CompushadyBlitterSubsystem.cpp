@@ -7,6 +7,7 @@
 #endif
 #include "RenderGraphBuilder.h"
 #include "SceneViewExtension.h"
+#include "FXRenderingUtils.h"
 #include "CompushadyBlendable.h"
 
 struct FCompushadyBlitterDrawable
@@ -19,6 +20,16 @@ struct FCompushadyBlitterDrawable
 
 class FCompushadyBlitterViewExtension : public FSceneViewExtensionBase
 {
+protected:
+	FIntRect GetScreenSize(const FSceneView& View, const bool bBeforeUpscaling)
+	{
+		FIntRect CurrentViewRect = View.UnconstrainedViewRect;
+		if (bBeforeUpscaling && View.bIsViewInfo)
+		{
+			CurrentViewRect = UE::FXRenderingUtils::GetRawViewRectUnsafe(View);
+		}
+		return CurrentViewRect;
+	};
 public:
 	FCompushadyBlitterViewExtension(const FAutoRegister& AutoRegister, FVertexShaderRHIRef InVertexShaderRef, const FCompushadyResourceBindings& InVSResourceBindings, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings) :
 		FSceneViewExtensionBase(AutoRegister),
@@ -46,7 +57,7 @@ public:
 
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override {}
 
-	void DrawDrawables_RenderThread(FRHICommandList& RHICmdList, FTextureRHIRef RenderTarget, const TArray<FCompushadyBlitterDrawable>& CurrentDrawables)
+	void DrawDrawables_RenderThread(FRHICommandList& RHICmdList, const FIntRect ViewRect, const TArray<FCompushadyBlitterDrawable>& CurrentDrawables)
 	{
 		TStaticArray<float, 24> QuadData;
 
@@ -56,8 +67,8 @@ public:
 
 			if (Drawable.AspectRatio != ECompushadyKeepAspectRatio::None)
 			{
-				const float ScreenWidth = static_cast<float>(RenderTarget->GetSizeX());
-				const float ScreenHeight = static_cast<float>(RenderTarget->GetSizeY());
+				const float ScreenWidth = static_cast<float>(ViewRect.Width());
+				const float ScreenHeight = static_cast<float>(ViewRect.Height());
 				const float ImageWidth = static_cast<float>(Drawable.Texture->GetSizeX());
 				const float ImageHeight = static_cast<float>(Drawable.Texture->GetSizeY());
 
@@ -174,18 +185,20 @@ public:
 				return;
 			}
 
+			const FIntRect ViewRect = GetScreenSize(InView, false);
+
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
 				ERDGPassFlags::None,
-				[this, RenderTarget, CurrentDrawables](FRHICommandList& RHICmdList)
+				[this, ViewRect, RenderTarget, CurrentDrawables](FRHICommandList& RHICmdList)
 				{
 					FCompushadyRasterizerConfig RasterizerConfig;
 					RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
 
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
-						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
+						RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, [&]()
 						{
-							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
+							DrawDrawables_RenderThread(RHICmdList, ViewRect, CurrentDrawables);
 						}, RasterizerConfig);
 				});
 		}
@@ -203,18 +216,20 @@ public:
 		{
 			TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
 
+			const FIntRect ViewRect = GetScreenSize(View, true);
+
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PrePostProcessPass_RenderThread"),
 				ERDGPassFlags::None,
-				[this, SceneTextures, CurrentDrawables](FRHICommandList& RHICmdList)
+				[this, ViewRect, SceneTextures, CurrentDrawables](FRHICommandList& RHICmdList)
 				{
 					FTexture2DRHIRef RenderTarget = SceneTextures->GetContents()->SceneColorTexture->GetRHI();
 					FCompushadyRasterizerConfig RasterizerConfig;
 					RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PrePostProcessPass_RenderThread"),
-						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
+						RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, [&]()
 						{
-							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
+							DrawDrawables_RenderThread(RHICmdList, ViewRect, CurrentDrawables);
 						}, RasterizerConfig);
 				});
 		}
@@ -243,21 +258,23 @@ public:
 
 		if (CurrentDrawables.Num() > 0)
 		{
+			const FIntRect ViewRect = GetScreenSize(View, false);
+
 			AddCopyTexturePass(GraphBuilder, SceneColorInput.Texture, Output.Texture, FRHICopyTextureInfo());
 
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
 				ERDGPassFlags::None,
-				[this, Output, CurrentDrawables](FRHICommandList& RHICmdList)
+				[this, ViewRect, Output, CurrentDrawables](FRHICommandList& RHICmdList)
 				{
 					FCompushadyRasterizerConfig RasterizerConfig;
 					RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
 
 					FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
 					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
-						RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, [&]()
+						RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, [&]()
 						{
-							DrawDrawables_RenderThread(RHICmdList, RenderTarget, CurrentDrawables);
+							DrawDrawables_RenderThread(RHICmdList, ViewRect, CurrentDrawables);
 						}, RasterizerConfig);
 				});
 		}
@@ -349,7 +366,7 @@ void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 		"struct Quad { float4 vertices[6]; };"
 		"struct Output { float4 position : SV_Position; float2 uv : UV; };"
 		"ConstantBuffer<Quad> quad;"
-		"Output main(const uint vid : SV_VertexID) { Output o; o.position = quad.vertices[vid], 0, 1; o.uv = uvs[vid]; return o; }",
+		"Output main(const uint vid : SV_VertexID) { Output o; o.position = quad.vertices[vid]; o.uv = uvs[vid]; return o; }",
 		"main", VSResourceBindings, ErrorMessages);
 
 	if (!VertexShaderRef)

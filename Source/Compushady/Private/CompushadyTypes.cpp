@@ -2240,30 +2240,35 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const FString& Sha
 	return CreateMeshShaderFromGLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
 }
 
-void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, const FIntRect* ViewRect, FTextureRHIRef RenderTarget, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
 {
 	TArray<FTextureRHIRef> RenderTargets;
 	if (RenderTarget)
 	{
 		RenderTargets.Add(RenderTarget);
 	}
-	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTargets, nullptr, InFunction, RasterizerConfig);
+	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, ViewRect, RenderTargets, nullptr, InFunction, RasterizerConfig);
 }
 
-void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, const FIntRect* ViewRect, FTextureRHIRef RenderTarget, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
 {
 	TArray<FTextureRHIRef> RenderTargets;
 	if (RenderTarget)
 	{
 		RenderTargets.Add(RenderTarget);
 	}
-	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, RenderTargets, DepthStencil, InFunction, RasterizerConfig);
+	RasterizeSimplePass_RenderThread(PassName, RHICmdList, VertexShaderRef, PixelShaderRef, ViewRect, RenderTargets, DepthStencil, InFunction, RasterizerConfig);
 }
 
-void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, const TArray<FTextureRHIRef>& RenderTargets, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
+void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, FRHICommandList& RHICmdList, FVertexShaderRHIRef VertexShaderRef, FPixelShaderRHIRef PixelShaderRef, const FIntRect* ViewRect, const TArray<FTextureRHIRef>& RenderTargets, FTextureRHIRef DepthStencil, TFunction<void()> InFunction, const FCompushadyRasterizerConfig& RasterizerConfig)
 {
 	FRHIRenderPassInfo PassInfo;
-	FIntPoint OutputSize;
+	FIntRect OutputRect;
+
+	if (ViewRect)
+	{
+		OutputRect = *ViewRect;
+	}
 
 	if (RenderTargets.Num() == 0)
 	{
@@ -2274,7 +2279,10 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 		}
 
 		PassInfo = FRHIRenderPassInfo(DepthStencil, EDepthStencilTargetActions::LoadDepthStencil_StoreDepthStencil);
-		OutputSize = DepthStencil->GetSizeXY();
+		if (!ViewRect)
+		{
+			OutputRect = FIntRect(FIntPoint(0, 0), DepthStencil->GetSizeXY());
+		}
 	}
 	else
 	{
@@ -2293,12 +2301,15 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 			PassInfo = FRHIRenderPassInfo(RenderTargets.Num(), RTVs.GetData(), ERenderTargetActions::Load_Store);
 		}
 
-		OutputSize = RenderTargets[0]->GetSizeXY();
+		if (!ViewRect)
+		{
+			OutputRect = FIntRect(FIntPoint(0, 0), RenderTargets[0]->GetSizeXY());
+		}
 	}
 
 	RHICmdList.BeginRenderPass(PassInfo, PassName);
 
-	RHICmdList.SetViewport(0, 0, 0.0f, OutputSize.X, OutputSize.Y, 1.0f);
+	RHICmdList.SetViewport(OutputRect.Min.X, OutputRect.Min.Y, 0.0f, OutputRect.Max.X, OutputRect.Max.Y, 1.0f);
 
 	FGraphicsPipelineStateInitializer GraphicsPSOInit;
 	RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);

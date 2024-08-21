@@ -8,6 +8,7 @@
 #include "PostProcess/DrawRectangle.h"
 #include "SceneViewExtension.h"
 #include "SystemTextures.h"
+#include "FXRenderingUtils.h"
 
 #include "CompushadyBlitterSubsystem.h"
 
@@ -62,64 +63,76 @@ protected:
 		SceneTextures.SetTexture(ECompushadySceneTexture::Velocity, Contents->GBufferVelocityTexture->GetRHI());
 	}
 
-	void FillRasterizerCBV(FCompushadyResourceArray& ResourceArray, const FViewMatrices& ViewMatrices, const FVector2D ScreenSize, const float DeltaTime, const float Time)
+	FIntRect GetViewRectAndFillCBVZero(const FSceneView& View, const bool bBeforeUpscaling)
 	{
-		if (ResourceArray.CBVs.Num() == 0)
+		auto GetScreenSize = [&]()
+			{
+				FIntRect CurrentViewRect = View.UnconstrainedViewRect;
+				if (bBeforeUpscaling && View.bIsViewInfo)
+				{
+					CurrentViewRect = UE::FXRenderingUtils::GetRawViewRectUnsafe(View);
+				}
+				return CurrentViewRect;
+			};
+
+		FIntRect ScreenSize = GetScreenSize();
+
+		if (CBVData.Num() == 0)
 		{
-			return;
+			return ScreenSize;
 		}
 
 		auto SetMatrixByOffset = [&](const int32 Offset, const FMatrix& Matrix)
 			{
-				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 16)) <= ResourceArray.CBVs[0]->GetBufferSize())
+				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 16)) <= CBVData.Num())
 				{
-					ResourceArray.CBVs[0]->SetMatrixFloat(Offset, Matrix, false, false);
+					FMemory::Memcpy(CBVData.GetData() + Offset, FMatrix44f(Matrix).M, sizeof(float) * 16);
 				}
 			};
 
 		auto SetVector2ByOffset = [&](const int32 Offset, const FVector2D Vector)
 			{
-				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 2)) <= ResourceArray.CBVs[0]->GetBufferSize())
+				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 2)) <= CBVData.Num())
 				{
-					ResourceArray.CBVs[0]->SetFloat(Offset, Vector.X);
-					ResourceArray.CBVs[0]->SetFloat(Offset + sizeof(float), Vector.Y);
+					*(reinterpret_cast<float*>(CBVData.GetData() + Offset)) = Vector.X;
+					*(reinterpret_cast<float*>(CBVData.GetData() + Offset + sizeof(float))) = Vector.Y;
 				}
 			};
 
 		auto SetVector4ByOffset = [&](const int32 Offset, const FVector4 Vector)
 			{
-				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 4)) <= ResourceArray.CBVs[0]->GetBufferSize())
+				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 4)) <= CBVData.Num())
 				{
-					ResourceArray.CBVs[0]->SetFloat(Offset, Vector.X);
-					ResourceArray.CBVs[0]->SetFloat(Offset + sizeof(float) * 1, Vector.Y);
-					ResourceArray.CBVs[0]->SetFloat(Offset + sizeof(float) * 2, Vector.Z);
-					ResourceArray.CBVs[0]->SetFloat(Offset + sizeof(float) * 3, Vector.W);
+					*(reinterpret_cast<float*>(CBVData.GetData() + Offset)) = Vector.X;
+					*(reinterpret_cast<float*>(CBVData.GetData() + Offset + sizeof(float))) = Vector.Y;
+					*(reinterpret_cast<float*>(CBVData.GetData() + Offset + sizeof(float) * 2)) = Vector.Z;
+					*(reinterpret_cast<float*>(CBVData.GetData() + Offset + sizeof(float) * 3)) = Vector.W;
 				}
 			};
 
 		auto SetFloatByOffset = [&](const int32 Offset, const float Value)
 			{
-				if (Offset >= 0 && static_cast<int64>(Offset + sizeof(float)) <= ResourceArray.CBVs[0]->GetBufferSize())
+				if (Offset >= 0 && static_cast<int64>(Offset + sizeof(float)) <= CBVData.Num())
 				{
-					ResourceArray.CBVs[0]->SetFloat(Offset, Value);
+					*(reinterpret_cast<float*>(CBVData.GetData() + Offset)) = Value;
 				}
 			};
 
-		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ViewMatrixOffset, ViewMatrices.GetViewMatrix());
-		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ProjectionMatrixOffset, ViewMatrices.GetProjectionMatrix());
-		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewMatrixOffset, ViewMatrices.GetInvViewMatrix());
-		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseProjectionMatrixOffset, ViewMatrices.GetInvProjectionMatrix());
-		SetVector2ByOffset(RasterizerConfig.MatricesConfig.ScreenSizeFloat2Offset, ScreenSize);
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ViewMatrixOffset, View.ViewMatrices.GetViewMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ProjectionMatrixOffset, View.ViewMatrices.GetProjectionMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewMatrixOffset, View.ViewMatrices.GetInvViewMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseProjectionMatrixOffset, View.ViewMatrices.GetInvProjectionMatrix());
+		SetVector2ByOffset(RasterizerConfig.MatricesConfig.ScreenSizeFloat2Offset, ScreenSize.Size());
 
-		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ViewProjectionMatrixOffset, ViewMatrices.GetViewProjectionMatrix());
-		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewProjectionMatrixOffset, ViewMatrices.GetInvViewProjectionMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ViewProjectionMatrixOffset, View.ViewMatrices.GetViewProjectionMatrix());
+		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewProjectionMatrixOffset, View.ViewMatrices.GetInvViewProjectionMatrix());
 
-		SetVector4ByOffset(RasterizerConfig.MatricesConfig.ViewOriginFloat4Offset, ViewMatrices.GetViewOrigin());
+		SetVector4ByOffset(RasterizerConfig.MatricesConfig.ViewOriginFloat4Offset, View.ViewMatrices.GetViewOrigin());
 
-		SetFloatByOffset(RasterizerConfig.MatricesConfig.DeltaTimeFloatOffset, DeltaTime);
-		SetFloatByOffset(RasterizerConfig.MatricesConfig.TimeFloatOffset, Time);
+		SetFloatByOffset(RasterizerConfig.MatricesConfig.DeltaTimeFloatOffset, View.Family->Time.GetDeltaRealTimeSeconds());
+		SetFloatByOffset(RasterizerConfig.MatricesConfig.TimeFloatOffset, View.Family->Time.GetRealTimeSeconds());
 
-		CBVData = ResourceArray.CBVs[0]->GetBufferData();
+		return ScreenSize;
 	}
 
 	FScreenPassTexture PostProcessCallback_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessMaterialInputs& InOutInputs)
@@ -138,6 +151,8 @@ protected:
 
 		GraphBuilder.ConvertToExternalTexture(Output.Texture);
 
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, false);
+
 		if (PixelShaderRef)
 		{
 			if (!VertexShaderRef)
@@ -148,7 +163,7 @@ protected:
 				GraphBuilder.AddPass(
 					RDG_EVENT_NAME("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 					ERDGPassFlags::None,
-					[this, VertexShader, Output, SceneColorInput, InOutInputs](FRHICommandList& RHICmdList)
+					[this, ViewRect, VertexShader, Output, SceneColorInput, InOutInputs](FRHICommandList& RHICmdList)
 					{
 						FTextureRHIRef RenderTarget = Output.Texture->GetRHI();
 
@@ -158,12 +173,12 @@ protected:
 						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
+							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, nullptr, RenderTarget, [&]()
 							{
 								Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, true);
-								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
+								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, ViewRect.Min.X, ViewRect.Min.Y, ViewRect.Width(), ViewRect.Height(),
 									0, 0, 1, 1,
-									RenderTarget->GetSizeXY(),
+									ViewRect.Size(),
 									FIntPoint(1, 1),
 									INDEX_NONE,
 									false, EDRF_UseTriangleOptimization);
@@ -177,7 +192,7 @@ protected:
 				GraphBuilder.AddPass(
 					RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
 					ERDGPassFlags::None,
-					[this, SceneColorInput, Output, &View, SceneTextureUniform, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
+					[this, ViewRect, SceneColorInput, Output, SceneTextureUniform, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
 					{
 						FCompushadySceneTextures SceneTextures = {};
 						FillSceneTextures(SceneTextures, RHICmdList, SceneColorInput.Texture->GetRHI(), SceneTextureUniform);
@@ -187,9 +202,9 @@ protected:
 						FTextureRHIRef DepthStencil = SceneTextureUniform->SceneDepthTexture->GetRHI();
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-							RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
+							RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, DepthStencil, [&]()
 							{
-								if (VSResourceArray.CBVs.IsValidIndex(0))
+								if (VSResourceArray.CBVs.IsValidIndex(0) && CopyBufferData.Num() > 0)
 								{
 									VSResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
 								}
@@ -215,7 +230,7 @@ protected:
 
 					SetComputePipelineState(RHICmdList, ComputeShaderRef);
 
-					if (ComputeResourceArray.CBVs.IsValidIndex(0))
+					if (ComputeResourceArray.CBVs.IsValidIndex(0) && CopyBufferData.Num() > 0)
 					{
 						ComputeResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
 					}
@@ -279,13 +294,14 @@ public:
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
 	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override
 	{
-		if (VertexShaderRef)
+		// make a copy of the CBV for thread-safe management (we need to rely on copies)
+		if (VertexShaderRef && VSResourceArray.CBVs.Num() > 0)
 		{
-			FillRasterizerCBV(VSResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
+			CBVData = VSResourceArray.CBVs[0]->GetBufferData();
 		}
-		else if (ComputeShaderRef)
+		else if (ComputeShaderRef && ComputeResourceArray.CBVs.Num() > 0)
 		{
-			FillRasterizerCBV(ComputeResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
+			CBVData = ComputeResourceArray.CBVs[0]->GetBufferData();
 		}
 	}
 
@@ -311,10 +327,12 @@ public:
 		FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
 		TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
 
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, true);
+
 		GraphBuilder.AddPass(
 			RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
 			ERDGPassFlags::None,
-			[this, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
+			[this, ViewRect, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
 			{
 				FTextureRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 
@@ -324,12 +342,12 @@ public:
 				RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
 
 				Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
+					RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, nullptr, RenderTarget, [&]()
 					{
 						Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, true);
-						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
+						UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, ViewRect.Min.X, ViewRect.Min.Y, ViewRect.Width(), ViewRect.Height(),
 							0, 0, 1, 1,
-							RenderTarget->GetSizeXY(),
+							ViewRect.Size(),
 							FIntPoint(1, 1),
 							INDEX_NONE,
 							false, EDRF_UseTriangleOptimization);
@@ -381,13 +399,14 @@ public:
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
 	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override
 	{
-		if (VertexShaderRef)
+		// make a copy of the CBV for thread-safe management (we need to rely on copies)
+		if (VertexShaderRef && VSResourceArray.CBVs.Num() > 0)
 		{
-			FillRasterizerCBV(VSResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
+			CBVData = VSResourceArray.CBVs[0]->GetBufferData();
 		}
-		else if (ComputeShaderRef)
+		else if (ComputeShaderRef && ComputeResourceArray.CBVs.Num() > 0)
 		{
-			FillRasterizerCBV(ComputeResourceArray, InView.ViewMatrices, InView.UnconstrainedViewRect.Size(), InViewFamily.Time.GetDeltaRealTimeSeconds(), InViewFamily.Time.GetRealTimeSeconds());
+			CBVData = ComputeResourceArray.CBVs[0]->GetBufferData();
 		}
 	}
 
@@ -408,6 +427,8 @@ public:
 			return;
 		}
 
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(InView, true);
+
 		if (PixelShaderRef)
 		{
 			if (!VertexShaderRef)
@@ -418,7 +439,7 @@ public:
 				GraphBuilder.AddPass(
 					RDG_EVENT_NAME("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
 					ERDGPassFlags::None,
-					[this, VertexShader, SceneTextures, RenderTargets](FRHICommandList& RHICmdList)
+					[this, ViewRect, VertexShader, SceneTextures, RenderTargets](FRHICommandList& RHICmdList)
 					{
 						FCompushadySceneTextures CompushadySceneTextures = {};
 						FillSceneTextures(CompushadySceneTextures, RHICmdList, SceneTextures->GetContents()->SceneColorTexture->GetRHI(), SceneTextures->GetContents());
@@ -461,12 +482,12 @@ public:
 						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
-							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RTVs, nullptr, [&]()
+							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, nullptr, RTVs, nullptr, [&]()
 							{
 								Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, CompushadySceneTextures, true);
-								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RTVs[0]->GetSizeX(), RTVs[0]->GetSizeY(),
+								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, ViewRect.Min.X, ViewRect.Min.Y, ViewRect.Width(), ViewRect.Height(),
 									0, 0, 1, 1,
-									RTVs[0]->GetSizeXY(),
+									ViewRect.Size(),
 									FIntPoint(1, 1),
 									INDEX_NONE,
 									false, EDRF_UseTriangleOptimization);
@@ -478,7 +499,7 @@ public:
 				GraphBuilder.AddPass(
 					RDG_EVENT_NAME("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
 					ERDGPassFlags::None,
-					[this, SceneTextures, RenderTargets, &InView, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
+					[this, ViewRect, SceneTextures, RenderTargets, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
 					{
 						FTextureRHIRef DepthStencil = SceneTextures->GetContents()->SceneDepthTexture->GetRHI();
 
@@ -521,9 +542,9 @@ public:
 						}
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostRenderBasePassDeferred_RenderThread"),
-							RHICmdList, VertexShaderRef, PixelShaderRef, RTVs, DepthStencil, [&]()
+							RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RTVs, DepthStencil, [&]()
 							{
-								if (VSResourceArray.CBVs.IsValidIndex(0))
+								if (VSResourceArray.CBVs.IsValidIndex(0) && CopyBufferData.Num() > 0)
 								{
 									VSResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
 								}
@@ -547,7 +568,7 @@ public:
 
 					SetComputePipelineState(RHICmdList, ComputeShaderRef);
 
-					if (ComputeResourceArray.CBVs.IsValidIndex(0))
+					if (ComputeResourceArray.CBVs.IsValidIndex(0) && CopyBufferData.Num() > 0)
 					{
 						ComputeResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
 					}
@@ -567,6 +588,8 @@ public:
 
 		TRDGUniformBufferRef<FSceneTextureUniformParameters> InputSceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
 
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, true);
+
 		if (PixelShaderRef)
 		{
 			if (!VertexShaderRef)
@@ -577,7 +600,7 @@ public:
 				GraphBuilder.AddPass(
 					RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
 					ERDGPassFlags::None,
-					[this, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
+					[this, ViewRect, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
 					{
 						FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 
@@ -587,12 +610,12 @@ public:
 						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, RenderTarget, [&]()
+							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, nullptr, RenderTarget, [&]()
 							{
 								Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, true);
-								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, 0, 0, RenderTarget->GetSizeX(), RenderTarget->GetSizeY(),
+								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, ViewRect.Min.X, ViewRect.Min.Y, ViewRect.Width(), ViewRect.Height(),
 									0, 0, 1, 1,
-									RenderTarget->GetSizeXY(),
+									ViewRect.Size(),
 									FIntPoint(1, 1),
 									INDEX_NONE,
 									false, EDRF_UseTriangleOptimization);
@@ -604,7 +627,7 @@ public:
 				GraphBuilder.AddPass(
 					RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
 					ERDGPassFlags::None,
-					[this, InputSceneTextures, &View, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
+					[this, ViewRect, InputSceneTextures, CopyBufferData = CBVData](FRHICommandList& RHICmdList)
 					{
 						FTextureRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 						FTextureRHIRef DepthStencil = InputSceneTextures->GetContents()->SceneDepthTexture->GetRHI();
@@ -613,9 +636,9 @@ public:
 						FillSceneTextures(SceneTextures, RHICmdList, RenderTarget, InputSceneTextures->GetContents());
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-							RHICmdList, VertexShaderRef, PixelShaderRef, RenderTarget, DepthStencil, [&]()
+							RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, DepthStencil, [&]()
 							{
-								if (VSResourceArray.CBVs.IsValidIndex(0))
+								if (VSResourceArray.CBVs.IsValidIndex(0) && CopyBufferData.Num() > 0)
 								{
 									VSResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
 								}
@@ -639,7 +662,7 @@ public:
 
 					SetComputePipelineState(RHICmdList, ComputeShaderRef);
 
-					if (ComputeResourceArray.CBVs.IsValidIndex(0))
+					if (ComputeResourceArray.CBVs.IsValidIndex(0) && CopyBufferData.Num() > 0)
 					{
 						ComputeResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
 					}
@@ -863,4 +886,4 @@ FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int3
 #else
 	return FGuid::NewGuid();
 #endif
-	}
+}
