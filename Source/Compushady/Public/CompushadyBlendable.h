@@ -28,7 +28,7 @@ struct COMPUSHADY_API FCompushadyBlendableMatricesConfig
 	int32 InverseProjectionMatrixOffset = -1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
-	int32 ScreenSizeFloat2Offset = -1;
+	int32 ScreenSizeFloat4Offset = -1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 ViewProjectionMatrixOffset = -1;
@@ -44,6 +44,9 @@ struct COMPUSHADY_API FCompushadyBlendableMatricesConfig
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
 	int32 TimeFloatOffset = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Compushady")
+	int32 ViewRectFloat4Offset = -1;
 };
 
 USTRUCT(BlueprintType)

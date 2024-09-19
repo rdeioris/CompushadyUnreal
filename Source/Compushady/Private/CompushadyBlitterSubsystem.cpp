@@ -12,6 +12,7 @@
 
 struct FCompushadyBlitterDrawable
 {
+	FGuid Guid;
 	FTextureRHIRef Texture;
 	FShaderResourceViewRHIRef SRV;
 	FVector4 Quad;
@@ -170,6 +171,11 @@ public:
 
 	void PostRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override
 	{
+		if (InView.bIsSceneCapture || InView.bIsSceneCaptureCube || InView.bIsReflectionCapture || InView.bIsPlanarReflection)
+		{
+			return;
+		}
+
 		TArray<FCompushadyBlitterDrawable> CurrentDrawables;
 		{
 			FScopeLock DrawablesLock(&DrawablesCriticalSection);
@@ -206,6 +212,11 @@ public:
 
 	void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override
 	{
+		if (View.bIsSceneCapture || View.bIsSceneCaptureCube || View.bIsReflectionCapture || View.bIsPlanarReflection)
+		{
+			return;
+		}
+
 		TArray<FCompushadyBlitterDrawable> CurrentDrawables;
 		{
 			FScopeLock DrawablesLock(&BeforePostProcessingDrawablesCriticalSection);
@@ -250,6 +261,13 @@ public:
 			Output = FScreenPassRenderTarget::CreateFromInput(GraphBuilder, SceneColorInput, View.GetOverwriteLoadAction(), TEXT("FCompushadyBlitterViewExtension::PostProcessAfterMotionBlur_RenderThread"));
 		}
 
+		AddCopyTexturePass(GraphBuilder, SceneColorInput.Texture, Output.Texture, FRHICopyTextureInfo());
+
+		if (View.bIsSceneCapture || View.bIsSceneCaptureCube || View.bIsReflectionCapture || View.bIsPlanarReflection)
+		{
+			return Output;
+		}
+
 		TArray<FCompushadyBlitterDrawable> CurrentDrawables;
 		{
 			FScopeLock DrawablesLock(&AfterMotionBlurDrawablesCriticalSection);
@@ -259,8 +277,6 @@ public:
 		if (CurrentDrawables.Num() > 0)
 		{
 			const FIntRect ViewRect = GetScreenSize(View, false);
-
-			AddCopyTexturePass(GraphBuilder, SceneColorInput.Texture, Output.Texture, FRHICopyTextureInfo());
 
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostProcessAfterMotionBlur_RenderThread"),
@@ -320,6 +336,66 @@ public:
 	const FMatrix& GetProjectionMatrix() const
 	{
 		return CurrentProjectionMatrix;
+	}
+
+	void RemoveDrawable(const FGuid& Guid)
+	{
+		{
+			FScopeLock DrawablesLock(&DrawablesCriticalSection);
+			int32 FoundIndex = -1;
+			for (int32 DrawableIndex = 0; DrawableIndex < Drawables.Num(); DrawableIndex++)
+			{
+				if (Drawables[DrawableIndex].Guid == Guid)
+				{
+					FoundIndex = DrawableIndex;
+					break;
+				}
+			}
+
+			if (FoundIndex > -1)
+			{
+				Drawables.RemoveAt(FoundIndex);
+				return;
+			}
+		}
+
+		{
+			FScopeLock DrawablesLock(&BeforePostProcessingDrawablesCriticalSection);
+			int32 FoundIndex = -1;
+			for (int32 DrawableIndex = 0; DrawableIndex < BeforePostProcessingDrawables.Num(); DrawableIndex++)
+			{
+				if (BeforePostProcessingDrawables[DrawableIndex].Guid == Guid)
+				{
+					FoundIndex = DrawableIndex;
+					break;
+				}
+			}
+
+			if (FoundIndex > -1)
+			{
+				BeforePostProcessingDrawables.RemoveAt(FoundIndex);
+				return;
+			}
+		}
+
+		{
+			FScopeLock DrawablesLock(&AfterMotionBlurDrawablesCriticalSection);
+			int32 FoundIndex = -1;
+			for (int32 DrawableIndex = 0; DrawableIndex < AfterMotionBlurDrawables.Num(); DrawableIndex++)
+			{
+				if (AfterMotionBlurDrawables[DrawableIndex].Guid == Guid)
+				{
+					FoundIndex = DrawableIndex;
+					break;
+				}
+			}
+
+			if (FoundIndex > -1)
+			{
+				AfterMotionBlurDrawables.RemoveAt(FoundIndex);
+				return;
+			}
+		}
 	}
 
 protected:
@@ -397,14 +473,15 @@ void UCompushadyBlitterSubsystem::Deinitialize()
 
 }
 
-void UCompushadyBlitterSubsystem::AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyBlitterSubsystem::AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
 	if (!ViewExtension || !Resource || !Resource->GetTextureRHI())
 	{
-		return;
+		return FGuid();
 	}
 
 	FCompushadyBlitterDrawable Drawable;
+	Drawable.Guid = FGuid::NewGuid();
 	Drawable.Texture = Resource->GetTextureRHI();
 	Drawable.SRV = nullptr;
 	UCompushadySRV* SRV = Cast<UCompushadySRV>(Resource);
@@ -413,19 +490,23 @@ void UCompushadyBlitterSubsystem::AddDrawable(UCompushadyResource* Resource, con
 		Drawable.SRV = SRV->GetRHI();
 	}
 	Drawable.Quad = Quad;
+
 	Drawable.AspectRatio = KeepAspectRatio;
 
 	ViewExtension->AddDrawable(Drawable);
+
+	return Drawable.Guid;
 }
 
-void UCompushadyBlitterSubsystem::AddBeforePostProcessingDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyBlitterSubsystem::AddBeforePostProcessingDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
 	if (!ViewExtension || !Resource || !Resource->GetTextureRHI())
 	{
-		return;
+		return FGuid();
 	}
 
 	FCompushadyBlitterDrawable Drawable;
+	Drawable.Guid = FGuid::NewGuid();
 	Drawable.Texture = Resource->GetTextureRHI();
 	Drawable.SRV = nullptr;
 	UCompushadySRV* SRV = Cast<UCompushadySRV>(Resource);
@@ -437,16 +518,19 @@ void UCompushadyBlitterSubsystem::AddBeforePostProcessingDrawable(UCompushadyRes
 	Drawable.AspectRatio = KeepAspectRatio;
 
 	ViewExtension->AddBeforePostProcessingDrawable(Drawable);
+
+	return Drawable.Guid;
 }
 
-void UCompushadyBlitterSubsystem::AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyBlitterSubsystem::AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
 	if (!ViewExtension || !Resource || !Resource->GetTextureRHI())
 	{
-		return;
+		return FGuid();
 	}
 
 	FCompushadyBlitterDrawable Drawable;
+	Drawable.Guid = FGuid::NewGuid();
 	Drawable.Texture = Resource->GetTextureRHI();
 	Drawable.SRV = nullptr;
 	UCompushadySRV* SRV = Cast<UCompushadySRV>(Resource);
@@ -458,6 +542,18 @@ void UCompushadyBlitterSubsystem::AddAfterMotionBlurDrawable(UCompushadyResource
 	Drawable.AspectRatio = KeepAspectRatio;
 
 	ViewExtension->AddAfterMotionBlurDrawable(Drawable);
+
+	return Drawable.Guid;
+}
+
+void UCompushadyBlitterSubsystem::RemoveDrawable(const FGuid& Guid)
+{
+	if (!ViewExtension)
+	{
+		return;
+	}
+
+	ViewExtension->RemoveDrawable(Guid);
 }
 
 FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<ICompushadyTransientBlendable, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack)
@@ -499,19 +595,19 @@ const FMatrix& UCompushadyBlitterSubsystem::GetProjectionMatrix() const
 }
 
 // let's put them here to avoid circular includes
-void UCompushadyResource::Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyResource::Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
-	WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddDrawable(this, Quad, KeepAspectRatio);
+	return WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddDrawable(this, Quad, KeepAspectRatio);
 }
 
-void UCompushadyResource::DrawBeforePostProcessing(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyResource::DrawBeforePostProcessing(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
-	WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddBeforePostProcessingDrawable(this, Quad, KeepAspectRatio);
+	return WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddBeforePostProcessingDrawable(this, Quad, KeepAspectRatio);
 }
 
-void UCompushadyResource::DrawAfterMotionBlur(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyResource::DrawAfterMotionBlur(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
 {
-	WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddAfterMotionBlurDrawable(this, Quad, KeepAspectRatio);
+	return WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddAfterMotionBlurDrawable(this, Quad, KeepAspectRatio);
 }
 
 bool UCompushadyCBV::SetProjectionMatrixFromViewport(UObject* WorldContextObject, const int64 Offset, const bool bTranspose, const bool bInverse)

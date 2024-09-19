@@ -2270,6 +2270,12 @@ void Compushady::Utils::RasterizeSimplePass_RenderThread(const TCHAR* PassName, 
 		OutputRect = *ViewRect;
 	}
 
+	// disable DepthBuffer if not required
+	if (!RasterizerConfig.bDepthWrite && !RasterizerConfig.bStencilWrite && RasterizerConfig.DepthTest == ECompushadyRasterizerDepthTest::AlwaysPass)
+	{
+		DepthStencil = nullptr;
+	}
+
 	if (RenderTargets.Num() == 0)
 	{
 		// invalid combo?

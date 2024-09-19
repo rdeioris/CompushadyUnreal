@@ -63,7 +63,7 @@ protected:
 		SceneTextures.SetTexture(ECompushadySceneTexture::Velocity, Contents->GBufferVelocityTexture->GetRHI());
 	}
 
-	FIntRect GetViewRectAndFillCBVZero(const FSceneView& View, const bool bBeforeUpscaling)
+	FIntRect GetViewRectAndFillCBVZero(const FSceneView& View, const FIntPoint OutputTextureSize, const bool bBeforeUpscaling)
 	{
 		auto GetScreenSize = [&]()
 			{
@@ -90,15 +90,6 @@ protected:
 				}
 			};
 
-		auto SetVector2ByOffset = [&](const int32 Offset, const FVector2D Vector)
-			{
-				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 2)) <= CBVData.Num())
-				{
-					*(reinterpret_cast<float*>(CBVData.GetData() + Offset)) = Vector.X;
-					*(reinterpret_cast<float*>(CBVData.GetData() + Offset + sizeof(float))) = Vector.Y;
-				}
-			};
-
 		auto SetVector4ByOffset = [&](const int32 Offset, const FVector4 Vector)
 			{
 				if (Offset >= 0 && static_cast<int64>(Offset + (sizeof(float) * 4)) <= CBVData.Num())
@@ -122,12 +113,14 @@ protected:
 		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ProjectionMatrixOffset, View.ViewMatrices.GetProjectionMatrix());
 		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewMatrixOffset, View.ViewMatrices.GetInvViewMatrix());
 		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseProjectionMatrixOffset, View.ViewMatrices.GetInvProjectionMatrix());
-		SetVector2ByOffset(RasterizerConfig.MatricesConfig.ScreenSizeFloat2Offset, ScreenSize.Size());
+		SetVector4ByOffset(RasterizerConfig.MatricesConfig.ScreenSizeFloat4Offset, FVector4(ScreenSize.Width(), ScreenSize.Height(), OutputTextureSize.X, OutputTextureSize.Y));
 
 		SetMatrixByOffset(RasterizerConfig.MatricesConfig.ViewProjectionMatrixOffset, View.ViewMatrices.GetViewProjectionMatrix());
 		SetMatrixByOffset(RasterizerConfig.MatricesConfig.InverseViewProjectionMatrixOffset, View.ViewMatrices.GetInvViewProjectionMatrix());
 
 		SetVector4ByOffset(RasterizerConfig.MatricesConfig.ViewOriginFloat4Offset, View.ViewMatrices.GetViewOrigin());
+
+		SetVector4ByOffset(RasterizerConfig.MatricesConfig.ViewRectFloat4Offset, FVector4(View.UnconstrainedViewRect.Min.X, View.UnconstrainedViewRect.Min.Y, View.UnconstrainedViewRect.Max.X, View.UnconstrainedViewRect.Max.Y));
 
 		SetFloatByOffset(RasterizerConfig.MatricesConfig.DeltaTimeFloatOffset, View.Family->Time.GetDeltaRealTimeSeconds());
 		SetFloatByOffset(RasterizerConfig.MatricesConfig.TimeFloatOffset, View.Family->Time.GetRealTimeSeconds());
@@ -151,14 +144,16 @@ protected:
 
 		GraphBuilder.ConvertToExternalTexture(Output.Texture);
 
-		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, false);
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, Output.Texture->Desc.Extent, false);
 
 		if (PixelShaderRef)
 		{
-			if (!VertexShaderRef)
+			/*if (!VertexShaderRef)
 			{
 				FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
 				TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
+
+				UE_LOG(LogTemp, Warning, TEXT("View: %s -- %s -- %s -- %s"), *View.UnscaledViewRect.ToString(), *View.UnconstrainedViewRect.ToString(), *Output.ViewRect.ToString(), *SceneColorInput.ViewRect.ToString());
 
 				GraphBuilder.AddPass(
 					RDG_EVENT_NAME("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
@@ -173,19 +168,19 @@ protected:
 						RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
 
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
-							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, nullptr, RenderTarget, [&]()
+							RHICmdList, VertexShader.GetVertexShader(), PixelShaderRef, &ViewRect, RenderTarget, [&]()
 							{
 								Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, true);
 								UE::Renderer::PostProcess::DrawPostProcessPass(RHICmdList, VertexShader, ViewRect.Min.X, ViewRect.Min.Y, ViewRect.Width(), ViewRect.Height(),
-									0, 0, 1, 1,
+									0, 0, ViewRect.Width(), ViewRect.Height(),
 									ViewRect.Size(),
-									FIntPoint(1, 1),
+									RenderTarget->GetSizeXY(),
 									INDEX_NONE,
-									false, EDRF_UseTriangleOptimization);
+									false, EDRF_Default);
 							}, RasterizerConfig.RasterizerConfig);
 					});
 			}
-			else
+			else*/
 			{
 				const FSceneTextureUniformParameters* SceneTextureUniform = InOutInputs.SceneTextures.SceneTextures->GetContents();
 
@@ -201,13 +196,17 @@ protected:
 
 						FTextureRHIRef DepthStencil = SceneTextureUniform->SceneDepthTexture->GetRHI();
 
+						//RasterizerConfig.RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::Always;
+
 						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyPostProcess::PostProcessCallback_RenderThread"),
 							RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, DepthStencil, [&]()
 							{
+								UE_LOG(LogTemp, Error, TEXT("Texture Size: %s View Size: %s"), *RenderTarget->GetSizeXY().ToString(), *ViewRect.ToString());
 								if (VSResourceArray.CBVs.IsValidIndex(0) && CopyBufferData.Num() > 0)
 								{
 									VSResourceArray.CBVs[0]->SyncBufferDataWithData(RHICmdList, CopyBufferData);
 								}
+
 								Compushady::Utils::SetupPipelineParameters(RHICmdList, VertexShaderRef, VSResourceArray, VSResourceBindings, false);
 								Compushady::Utils::SetupPipelineParameters(RHICmdList, PixelShaderRef, PSResourceArray, PSResourceBindings, SceneTextures, false);
 								Compushady::Utils::DrawVertices(RHICmdList, NumVertices, NumInstances, RasterizerConfig.RasterizerConfig);
@@ -327,7 +326,7 @@ public:
 		FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(View.GetFeatureLevel());
 		TShaderMapRef<FScreenPassVS> VertexShader(ShaderMap);
 
-		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, true);
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, InputSceneTextures->GetContents()->SceneColorTexture->Desc.Extent, true);
 
 		GraphBuilder.AddPass(
 			RDG_EVENT_NAME("FCompushadyPostProcess::PrePostProcessPass_RenderThread"),
@@ -427,7 +426,7 @@ public:
 			return;
 		}
 
-		const FIntRect ViewRect = GetViewRectAndFillCBVZero(InView, true);
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(InView, SceneTextures->GetContents()->SceneColorTexture->Desc.Extent, true);
 
 		if (PixelShaderRef)
 		{
@@ -588,7 +587,7 @@ public:
 
 		TRDGUniformBufferRef<FSceneTextureUniformParameters> InputSceneTextures = *((TRDGUniformBufferRef<FSceneTextureUniformParameters>*) & Inputs);
 
-		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, true);
+		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, InputSceneTextures->GetContents()->SceneColorTexture->Desc.Extent, true);
 
 		if (PixelShaderRef)
 		{
