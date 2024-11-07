@@ -41,7 +41,7 @@ FBufferRHIRef UCompushadyResource::GetUploadBuffer(FRHICommandListImmediate& RHI
 	if (!UploadBufferRHIRef.IsValid() || !UploadBufferRHIRef->IsValid())
 	{
 		FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
-		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), EBufferUsageFlags::VertexBuffer, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
 	}
 
 	return UploadBufferRHIRef;
