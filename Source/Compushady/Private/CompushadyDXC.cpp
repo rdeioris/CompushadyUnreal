@@ -133,7 +133,11 @@ namespace Compushady
 #endif
 				if (!LibHandle)
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Unable to load dxcompiler shared library"));
+					//TODO: fix this
+					//Temporarly commented out to avoid error in logs as of 07/11 scrum meeting
+					//UE_LOG(LogCompushady, Error, TEXT("Unable to load dxcompiler shared library"));
+					//printing it as log to avoid red error but still have an output
+					UE_LOG(LogCompushady, Log, TEXT("Unable to load dxcompiler shared library"));
 					return false;
 				}
 			}

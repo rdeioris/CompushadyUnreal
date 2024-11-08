@@ -447,7 +447,11 @@ void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 
 	if (!VertexShaderRef)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
+		//TODO: fix this
+		//Temporarly commented out to avoid error in logs as of 07/11 scrum meeting
+		//UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
+		//printing it as log to avoid red error but still have an output
+		UE_LOG(LogCompushady, Log, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
 		return;
 	}
 
@@ -461,7 +465,11 @@ void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 
 	if (!PixelShaderRef)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
+		//TODO: fix this
+		//Temporarly commented out to avoid error in logs as of 07/11 scrum meeting
+		//UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
+		//printing it as log to avoid red error but still have an output
+		UE_LOG(LogCompushady, Log, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
 		return;
 	}
 
