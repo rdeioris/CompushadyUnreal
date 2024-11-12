@@ -425,7 +425,7 @@ protected:
 bool UCompushadyBlitterSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	UWorld* CurrentWorld = Cast<UWorld>(Outer);
-	if (CurrentWorld && (CurrentWorld->WorldType == EWorldType::Game || CurrentWorld->WorldType == EWorldType::PIE || CurrentWorld->WorldType == EWorldType::GamePreview))
+	if (CurrentWorld && (CurrentWorld->WorldType == EWorldType::Game || CurrentWorld->WorldType == EWorldType::PIE))
 	{
 		return (RHIGetInterfaceType() == ERHIInterfaceType::D3D12 || RHIGetInterfaceType() == ERHIInterfaceType::Vulkan);
 	}
