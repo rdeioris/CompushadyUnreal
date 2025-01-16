@@ -51,7 +51,11 @@ bool Compushady::Utils::SplitToFloats(const TArray<FString>& Lines, const TArray
 		});
 
 	// do not shrink memory as we are going to trash this array after GPU upload
+#if COMPUSHADY_UE_VERSION >= 55
+	Values.SetNum(ProcessedLines * Columns.Num(), EAllowShrinking::No);
+#else
 	Values.SetNum(ProcessedLines * Columns.Num(), false);
+#endif
 
 	return true;
 }

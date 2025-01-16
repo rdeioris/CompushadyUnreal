@@ -59,7 +59,11 @@ namespace Compushady
 		ResourceMasks.UAVMask = 0xffffffff;
 		ShaderCode.AddOptionalData<FShaderCodeResourceMasks>(ResourceMasks);
 
+#if COMPUSHADY_UE_VERSION >= 55
+		Blob.Append(ShaderCode.GetReadView());
+#else
 		Blob.Append(ShaderCode.GetReadAccess());
+#endif
 
 		Hash = GetHash(Blob);
 

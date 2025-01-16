@@ -40,8 +40,9 @@ FBufferRHIRef UCompushadyResource::GetUploadBuffer(FRHICommandListImmediate& RHI
 {
 	if (!UploadBufferRHIRef.IsValid() || !UploadBufferRHIRef->IsValid())
 	{
+		const ERHIInterfaceType RHIInterfaceType = RHIGetInterfaceType();
 		FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
-		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), RHIInterfaceType == ERHIInterfaceType::Vulkan ? EBufferUsageFlags::VertexBuffer : EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
 	}
 
 	return UploadBufferRHIRef;
@@ -1363,32 +1364,6 @@ void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FPi
 {
 	Compushady::Pipeline::SetupParameters(RHICmdList, Shader, ResourceArray, ResourceBindings, SceneTextures, bSyncCBV);
 }
-void Compushady::Utils::SetupPipelineParameters(FRHICommandList& RHICmdList, FRayTracingShaderBindingsWriter& ShaderBindingsWriter, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const bool bSyncCBV)
-{
-	FRayTracingShaderBindingsWriter GlobalResources;
-
-	for (int32 Index = 0; Index < ResourceArray.CBVs.Num(); Index++)
-	{
-		if (bSyncCBV && ResourceArray.CBVs[Index]->BufferDataIsDirty())
-		{
-			ResourceArray.CBVs[Index]->SyncBufferData(RHICmdList);
-		}
-
-		GlobalResources.SetUniformBuffer(ResourceBindings.CBVs[Index].SlotIndex, ResourceArray.CBVs[Index]->GetRHI());
-	}
-
-	for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
-	{
-		RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-		GlobalResources.SetSRV(ResourceBindings.SRVs[Index].SlotIndex, ResourceArray.SRVs[Index]->GetRHI());
-	}
-
-	for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
-	{
-		RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
-		GlobalResources.SetUAV(ResourceBindings.UAVs[Index].SlotIndex, ResourceArray.UAVs[Index]->GetRHI());
-	}
-}
 
 void Compushady::Utils::SetupPipelineParametersRHI(FRHICommandList& RHICmdList, FComputeShaderRHIRef Shader, const FCompushadyResourceBindings& ResourceBindings, TFunction<FUniformBufferRHIRef(const int32)> CBVFunction, TFunction<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>(const int32)> SRVFunction, TFunction<FUnorderedAccessViewRHIRef(const int32)> UAVFunction, TFunction<FSamplerStateRHIRef(const int32)> SamplerFunction, const bool bSyncCBV)
 {
@@ -1629,7 +1604,7 @@ bool Compushady::Utils::ValidateResourceBindings(const FCompushadyResourceArray&
 
 	if (CBVs.Num() != ResourceBindings.CBVs.Num())
 	{
-		ErrorMessages = FString::Printf(TEXT("Expected %d VS CBVs got %d"), ResourceBindings.CBVs.Num(), CBVs.Num());
+		ErrorMessages = FString::Printf(TEXT("Expected %d CBVs got %d"), ResourceBindings.CBVs.Num(), CBVs.Num());
 		return false;
 	}
 

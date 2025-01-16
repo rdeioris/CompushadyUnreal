@@ -525,50 +525,50 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 		switch (BindDesc.Type)
 		{
 		case COMPUSHADY_D3D_SIT_CBUFFER:
-			ResourceBinding.Type = ECompushadySharedResourceType::UniformBuffer;
+			ResourceBinding.Type = ECompushadyShaderResourceType::UniformBuffer;
 			CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_TEXTURE:
-			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
+			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadyShaderResourceType::Buffer : ECompushadyShaderResourceType::Texture;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_SAMPLER:
-			ResourceBinding.Type = ECompushadySharedResourceType::Sampler;
+			ResourceBinding.Type = ECompushadyShaderResourceType::Sampler;
 			SamplerMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_BYTEADDRESS:
-			ResourceBinding.Type = ECompushadySharedResourceType::ByteAddressBuffer;
+			ResourceBinding.Type = ECompushadyShaderResourceType::ByteAddressBuffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_STRUCTURED:
-			ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
+			ResourceBinding.Type = ECompushadyShaderResourceType::StructuredBuffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_TBUFFER:
-			ResourceBinding.Type = ECompushadySharedResourceType::Buffer;
+			ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_RTACCELERATIONSTRUCTURE:
-			ResourceBinding.Type = ECompushadySharedResourceType::RayTracingAccelerationStructure;
+			ResourceBinding.Type = ECompushadyShaderResourceType::RayTracingAccelerationStructure;
 			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_UAV_RWTYPED:
-			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadySharedResourceType::Buffer : ECompushadySharedResourceType::Texture;
+			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadyShaderResourceType::Buffer : ECompushadyShaderResourceType::Texture;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_UAV_FEEDBACKTEXTURE:
-			ResourceBinding.Type = ECompushadySharedResourceType::Texture;
+			ResourceBinding.Type = ECompushadyShaderResourceType::Texture;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED:
 		case COMPUSHADY_D3D_SIT_UAV_APPEND_STRUCTURED:
 		case COMPUSHADY_D3D_SIT_UAV_CONSUME_STRUCTURED:
 		case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-			ResourceBinding.Type = ECompushadySharedResourceType::StructuredBuffer;
+			ResourceBinding.Type = ECompushadyShaderResourceType::StructuredBuffer;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		case COMPUSHADY_D3D_SIT_UAV_RWBYTEADDRESS:
-			ResourceBinding.Type = ECompushadySharedResourceType::ByteAddressBuffer;
+			ResourceBinding.Type = ECompushadyShaderResourceType::ByteAddressBuffer;
 			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
 			break;
 		default:
