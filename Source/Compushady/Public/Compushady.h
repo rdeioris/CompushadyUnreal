@@ -24,6 +24,11 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 #define COMPUSHADY_CREATE_BUFFER RHICmdList.CreateBuffer
 #define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
 #define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
+#elif ENGINE_MINOR_VERSION == 5
+#define COMPUSHADY_UE_VERSION 55
+#define COMPUSHADY_CREATE_BUFFER RHICmdList.CreateBuffer
+#define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
+#define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #endif
 #endif
 
@@ -33,7 +38,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 
 namespace Compushady
 {
-	enum class ECompushadySharedResourceType : uint8
+	enum class ECompushadyShaderResourceType : uint8
 	{
 		UniformBuffer,
 		Buffer,
@@ -49,7 +54,7 @@ namespace Compushady
 		uint32 BindingIndex;
 		uint32 SlotIndex;
 		FString Name;
-		ECompushadySharedResourceType Type;
+		ECompushadyShaderResourceType Type;
 	};
 
 	struct FCompushadyShaderSemantic

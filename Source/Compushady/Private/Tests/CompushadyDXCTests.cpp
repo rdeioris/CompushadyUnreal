@@ -150,11 +150,11 @@ bool FCompushadyDXCTest_Bindings::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Bindings.SRVs.Num()"), ShaderBindings.SRVs.Num(), 2);
 	TestEqual(TEXT("Bindings.UAVs.Num()"), ShaderBindings.UAVs.Num(), 2);
 
-	TestEqual(TEXT("Bindings.CBVs[0].Type"), ShaderBindings.CBVs[0].Type, Compushady::ECompushadySharedResourceType::UniformBuffer);
-	TestEqual(TEXT("Bindings.SRVs[0].Type"), ShaderBindings.SRVs[0].Type, Compushady::ECompushadySharedResourceType::Buffer);
-	TestEqual(TEXT("Bindings.SRVs[1].Type"), ShaderBindings.SRVs[1].Type, Compushady::ECompushadySharedResourceType::Texture);
-	TestEqual(TEXT("Bindings.UAVs[0].Type"), ShaderBindings.UAVs[0].Type, Compushady::ECompushadySharedResourceType::Texture);
-	TestEqual(TEXT("Bindings.UAVs[1].Type"), ShaderBindings.UAVs[1].Type, Compushady::ECompushadySharedResourceType::Buffer);
+	TestEqual(TEXT("Bindings.CBVs[0].Type"), ShaderBindings.CBVs[0].Type, Compushady::ECompushadyShaderResourceType::UniformBuffer);
+	TestEqual(TEXT("Bindings.SRVs[0].Type"), ShaderBindings.SRVs[0].Type, Compushady::ECompushadyShaderResourceType::Buffer);
+	TestEqual(TEXT("Bindings.SRVs[1].Type"), ShaderBindings.SRVs[1].Type, Compushady::ECompushadyShaderResourceType::Texture);
+	TestEqual(TEXT("Bindings.UAVs[0].Type"), ShaderBindings.UAVs[0].Type, Compushady::ECompushadyShaderResourceType::Texture);
+	TestEqual(TEXT("Bindings.UAVs[1].Type"), ShaderBindings.UAVs[1].Type, Compushady::ECompushadyShaderResourceType::Buffer);
 
 	return true;
 }
