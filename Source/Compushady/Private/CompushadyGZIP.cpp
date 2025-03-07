@@ -2,6 +2,7 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyTypes.h"
+#include "Misc/Compression.h"
 
 bool Compushady::Utils::GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>& UncompressedData)
 {

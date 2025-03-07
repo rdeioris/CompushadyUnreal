@@ -5,6 +5,8 @@
 #if WITH_EDITOR
 #include "Interfaces/IPluginManager.h"
 #endif
+#include "HAL/PlatformProcess.h"
+#include "Misc/Paths.h"
 
 namespace Compushady
 {

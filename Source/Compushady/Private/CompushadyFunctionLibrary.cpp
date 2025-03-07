@@ -8,6 +8,11 @@
 #include "AudioBusSubsystem.h"
 #include "CompushadyAudioSubsystem.h"
 #include "CompushadySoundWave.h"
+#include "Misc/FileHelper.h"
+#include "TextureResource.h"
+#include "StaticMeshResources.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
 
 UCompushadyCBV* UCompushadyFunctionLibrary::CreateCompushadyCBV(const FString& Name, const int64 Size)
 {

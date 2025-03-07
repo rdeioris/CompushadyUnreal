@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "K2Node.h"
+#include "Input/Reply.h"
+#include "Input/Events.h"
+#include "Runtime/SlateCore/Public/Layout/Geometry.h"
 #include "CompushadyK2Node_MakeStringBase.generated.h"
 
 /**

@@ -11,6 +11,9 @@
 #include "IImageWrapperModule.h"
 #include "Engine/Canvas.h"
 #include "Serialization/ArrayWriter.h"
+#include "Misc/FileHelper.h"
+#include "TextureResource.h"
+#include "RHIStaticStates.h"
 
 FTextureRHIRef UCompushadyResource::GetTextureRHI() const
 {

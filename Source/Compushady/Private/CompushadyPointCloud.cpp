@@ -1,6 +1,7 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyTypes.h"
+#include "Runtime/Core/Public/Async/ParallelFor.h"
 
 bool Compushady::PointCloud::LoadLASToFloatArray(const TArray<uint8>& Data, TArray<float>& Floats, const bool bIncludeColors)
 {

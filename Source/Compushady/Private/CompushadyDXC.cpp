@@ -4,7 +4,6 @@
 
 #if PLATFORM_WINDOWS
 #include "Windows/WindowsHWrapper.h"
-
 #include "Windows/AllowWindowsPlatformTypes.h"
 #if COMPUSHADY_UE_VERSION <= 53
 #include "Windows/PreWindowsApi.h"
@@ -63,6 +62,11 @@ enum _COMPUSHADY_D3D_SHADER_INPUT_TYPE
 #endif
 
 #include "Serialization/ArrayWriter.h"
+#include "Misc/Paths.h"
+#include "RHIDefinitions.h"
+#include "RHIResources.h"
+#include "HAL/PlatformProcess.h"
+#include "DynamicRHI.h"
 
 namespace Compushady
 {

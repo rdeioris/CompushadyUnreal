@@ -27,6 +27,7 @@
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Async/Async.h"
 #include "CompushadyFunctionLibrary.generated.h"
 
 

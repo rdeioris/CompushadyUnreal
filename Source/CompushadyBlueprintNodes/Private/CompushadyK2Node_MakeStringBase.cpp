@@ -9,6 +9,8 @@
 #include "KismetNodes/SGraphNodeK2Base.h"
 #include "K2Node_CallFunction.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Layout/SBox.h"
 
 FText UCompushadyK2Node_MakeStringBase::GetMenuCategory() const
 {

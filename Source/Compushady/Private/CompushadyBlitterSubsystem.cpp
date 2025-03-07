@@ -9,6 +9,7 @@
 #include "SceneViewExtension.h"
 #include "FXRenderingUtils.h"
 #include "CompushadyBlendable.h"
+#include "RHIUniformBufferLayoutInitializer.h"
 
 struct FCompushadyBlitterDrawable
 {

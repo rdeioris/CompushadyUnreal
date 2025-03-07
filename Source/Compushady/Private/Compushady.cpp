@@ -1,6 +1,10 @@
 // Copyright 2023 - Roberto De Ioris.
 
 #include "Compushady.h"
+#include "ShaderCore.h"
+#include "Misc/SecureHash.h"
+#include "Misc/Paths.h"
+#include "Misc/FileHelper.h"
 
 #define LOCTEXT_NAMESPACE "FCompushadyModule"
 
@@ -17,6 +21,8 @@ DEFINE_LOG_CATEGORY(LogCompushady);
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Layout/SScrollBar.h"
 #include "Widgets/Text/SMultiLineEditableText.h"
+#include "Misc/FileHelper.h"
+#include "Widgets/Text/STextBlock.h"
 #endif
 
 namespace Compushady
