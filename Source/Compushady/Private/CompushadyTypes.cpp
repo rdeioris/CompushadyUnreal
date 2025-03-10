@@ -10,6 +10,7 @@
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "Engine/Canvas.h"
+#include "FXRenderingUtils.h"
 #include "Serialization/ArrayWriter.h"
 
 FTextureRHIRef UCompushadyResource::GetTextureRHI() const
@@ -1303,16 +1304,22 @@ namespace Compushady
 					}
 					return ResourceArray.CBVs[Index]->GetRHI();
 				},
-				[&](const int32 Index) -> TPair<FShaderResourceViewRHIRef, FTextureRHIRef>// SRV
+				[&](const int32 Index) -> TPair<FShaderResourceViewRHIRef, FTextureRHIRef> // SRV
 				{
-					if (!ResourceArray.SRVs[Index]->IsSceneTexture())
+					if (ResourceArray.SRVs[Index]->IsRayTracingAccelerationStructure())
 					{
-						RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
-						return { ResourceArray.SRVs[Index]->GetRHI() , nullptr };
+						FSceneInterface* SceneInterface = ResourceArray.SRVs[Index]->GetSceneForRayTracingAccelerationStructure();
+						if (UE::FXRenderingUtils::RayTracing::HasRayTracingScene(SceneInterface))
+						{
+							FRHIShaderResourceView* RayTracingSceneView = UE::FXRenderingUtils::RayTracing::GetRayTracingSceneView(RHICmdList, SceneInterface);
+							return { RayTracingSceneView, nullptr };
+						}
+						return { nullptr, nullptr };
 					}
-					else
+					else if (ResourceArray.SRVs[Index]->IsSceneTexture())
 					{
 						TPair<FShaderResourceViewRHIRef, FTextureRHIRef> SRVOrTexture = ResourceArray.SRVs[Index]->GetRHI(SceneTextures);
+						UE_LOG(LogTemp, Warning, TEXT("SRVOrTexture %p %p"), SRVOrTexture.Key.GetReference(), SRVOrTexture.Value.GetReference());
 						if (SRVOrTexture.Value)
 						{
 							RHICmdList.Transition(FRHITransitionInfo(SRVOrTexture.Value, ERHIAccess::Unknown, ERHIAccess::SRVMask));
@@ -1325,6 +1332,11 @@ namespace Compushady
 #endif
 						}
 						return SRVOrTexture;
+					}
+					else
+					{
+						RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+						return { ResourceArray.SRVs[Index]->GetRHI(), nullptr };
 					}
 				},
 				[&](const int32 Index) // UAV
@@ -2346,7 +2358,7 @@ bool Compushady::Utils::FinalizeShader(TArray<uint8>& ByteCode, const FString& T
 			return FinalizeShader(ByteCode, TargetProfile, ShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false);
 		}
 
-		if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
 		{
 			return false;
 		}

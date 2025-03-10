@@ -1,8 +1,10 @@
-// Copyright 2023-2024 - Roberto De Ioris.
+// Copyright 2023-2025 - Roberto De Ioris.
 
 
 #include "CompushadyCompute.h"
 #include "Compushady.h"
+#include "FXSystem.h"
+#include "EngineModule.h"
 #include "Serialization/ArrayWriter.h"
 
 bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
@@ -35,7 +37,7 @@ bool UCompushadyCompute::InitFromDXIL(const TArray<uint8>& ShaderCode, FString& 
 	TArray<uint8> ByteCode = ShaderCode;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
 
-	if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
 	{
 		return false;
 	}
@@ -88,6 +90,48 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 		{
 			Dispatch_RenderThread(RHICmdList, ResourceArray, XYZ);
 		}, OnSignaled);
+}
+
+void UCompushadyCompute::DispatchPostOpaqueRender_Delegate(FPostOpaqueRenderParameters& Parameters)
+{
+	Parameters.GraphBuilder->AddPass(RDG_EVENT_NAME("UCompushadyCompute::DispatchPostOpaqueRender"), ERDGPassFlags::None, [this](FRHICommandList& RHICmdList)
+		{
+			Dispatch_RenderThread(RHICmdList, PostOpaqueRenderResourceArray, PostOpaqueRenderXYZ);
+		});
+
+	Parameters.GraphBuilder->FlushSetupQueue();
+	GetRendererModule().RemovePostOpaqueRenderDelegate(PostOpaqueRenderDelegateHandle);
+	BeginFence(PostOpaqueRenderOnSignaled);
+}
+
+void UCompushadyCompute::DispatchPostOpaqueRender(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
+{
+	if (IsRunning())
+	{
+		OnSignaled.ExecuteIfBound(false, "The Compute is already running");
+		return;
+	}
+
+	if (XYZ.X <= 0 || XYZ.Y <= 0 || XYZ.Z <= 0)
+	{
+		OnSignaled.ExecuteIfBound(false, FString::Printf(TEXT("Invalid ThreadGroupCount %s"), *XYZ.ToString()));
+		return;
+	}
+
+	FString ErrorMessages;
+	if (!Compushady::Utils::ValidateResourceBindings(ResourceArray, ResourceBindings, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
+	}
+
+	TrackResources(ResourceArray);
+
+	PostOpaqueRenderResourceArray = ResourceArray;
+	PostOpaqueRenderXYZ = XYZ;
+	PostOpaqueRenderOnSignaled = OnSignaled;
+
+	PostOpaqueRenderDelegateHandle = GetRendererModule().RegisterPostOpaqueRenderDelegate(FPostOpaqueRenderDelegate::CreateUObject(this, &UCompushadyCompute::DispatchPostOpaqueRender_Delegate));
 }
 
 void UCompushadyCompute::DispatchAndProfile(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaledAndProfiled& OnSignaledAndProfiled)
@@ -174,6 +218,20 @@ void UCompushadyCompute::DispatchByMap(const TMap<FString, TScriptInterface<ICom
 	}
 
 	Dispatch(ResourceArray, XYZ, OnSignaled);
+}
+
+void UCompushadyCompute::DispatchByMapPostOpaqueRender(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
+{
+	FCompushadyResourceArray ResourceArray;
+	FString ErrorMessages;
+
+	if (!Compushady::Utils::ValidateResourceBindingsMap(ResourceMap, ResourceBindings, ResourceArray, ErrorMessages))
+	{
+		OnSignaled.ExecuteIfBound(false, ErrorMessages);
+		return;
+	}
+
+	DispatchPostOpaqueRender(ResourceArray, XYZ, OnSignaled);
 }
 
 bool UCompushadyCompute::DispatchByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, FString& ErrorMessages)

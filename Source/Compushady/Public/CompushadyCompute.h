@@ -31,11 +31,17 @@ public:
 	UFUNCTION(BlueprintCallable, meta=(AutoCreateRefTerm = "ResourceArray,OnSignaled"),Category="Compushady")
 	void Dispatch(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
 
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
+	void DispatchPostOpaqueRender(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
+
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray"), Category = "Compushady")
 	bool DispatchSync(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap,OnSignaled"), Category = "Compushady")
 	void DispatchByMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
+
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap,OnSignaled"), Category = "Compushady")
+	void DispatchByMapPostOpaqueRender(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceMap"), Category = "Compushady")
 	bool DispatchByMapSync(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FIntVector XYZ, FString& ErrorMessages);
@@ -75,6 +81,8 @@ public:
 	void Dispatch_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, const FIntVector& XYZ);
 	void DispatchIndirect_RenderThread(FRHICommandList& RHICmdList, const FCompushadyResourceArray& ResourceArray, FBufferRHIRef BufferRHIRef, const int32 Offset);
 
+	void DispatchPostOpaqueRender_Delegate(FPostOpaqueRenderParameters& Parameters);
+
 	/* The following block is mainly used for unit testing */
 	UFUNCTION()
 	void StoreLastSignal(bool bSuccess, const FString& ErrorMessage);
@@ -88,6 +96,12 @@ protected:
 	FComputeShaderRHIRef ComputeShaderRef;
 
 	FIntVector ThreadGroupSize;
+
+	FDelegateHandle PostOpaqueRenderDelegateHandle;
+
+	FCompushadyResourceArray PostOpaqueRenderResourceArray;
+	FIntVector PostOpaqueRenderXYZ;
+	FCompushadySignaled PostOpaqueRenderOnSignaled;
 };
 
 USTRUCT(BlueprintType)

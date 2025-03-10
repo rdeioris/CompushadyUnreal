@@ -431,6 +431,29 @@ public:
 	}
 
 	template<typename DELEGATE, typename... TArgs>
+	void EnqueueToGPUPostOpaqueRender(TFunction<void(FRHICommandListImmediate& RHICmdList, UWorld* World)> InFunction, UWorld* World, const DELEGATE& OnSignaled, TArgs & ... Args)
+	{
+		IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>("Renderer");
+
+		FDelegateHandle DelegateHandle = RendererModule->RegisterPostOpaqueRenderDelegate(FPostOpaqueRenderDelegate::CreateLambda([InFunction](FPostOpaqueRenderParameters& Parameters, UWorld* World)
+			{
+				FRHICommandListImmediate& RHICmdList = Parameters.GraphBuilder->RHICmdList;
+
+				Parameters.GraphBuilder->FlushSetupQueue();
+				UE_LOG(LogTemp, Warning, TEXT("EnqueueToGPUPostOpaqueRender() BEFORE"));
+				InFunction(RHICmdList, World);
+				UE_LOG(LogTemp, Warning, TEXT("EnqueueToGPUPostOpaqueRender() AFTER"));
+				RHICmdList.SubmitAndBlockUntilGPUIdle();
+			}, World));
+
+		//BeginFence(OnSignaled, Args...);
+
+		UE_LOG(LogTemp, Warning, TEXT("EnqueueToGPUPostOpaqueRender() DONE"));
+
+		//RendererModule->RemovePostOpaqueRenderDelegate(DelegateHandle);
+	}
+
+	template<typename DELEGATE, typename... TArgs>
 	void EnqueueToGPUAndProfile(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const DELEGATE& OnSignaledAndProfiled, TArgs & ... Args)
 	{
 		bRunning = true;
@@ -661,7 +684,7 @@ namespace Compushady
 		COMPUSHADY_API FVertexShaderRHIRef CreateVertexShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API FPixelShaderRHIRef CreatePixelShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
-		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const FString& TargetProfile = "cs_6_0");
+		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages, const FString& TargetProfile = "cs_6_5");
 		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 		COMPUSHADY_API FComputeShaderRHIRef CreateComputeShaderFromSPIRVBlob(const TArray<uint8>& ShaderByteCode, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);
 		COMPUSHADY_API FMeshShaderRHIRef CreateMeshShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages);

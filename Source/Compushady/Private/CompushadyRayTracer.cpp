@@ -6,8 +6,9 @@
 #include "Compushady.h"
 #include "Serialization/ArrayWriter.h"
 #include "FXRenderingUtils.h"
+#include "RayTracingShaderBindingLayout.h"
 
-bool UCompushadyRayTracer::InitFromHLSL(const TArray<uint8>& RayGenShaderCode, const FString& RayGenShaderEntryPoint, const TArray<uint8>& RayMissShaderCode, const FString& RayMissShaderEntryPoint, const TArray<uint8>& RayHitGroupShaderCode, const FString& RayHitGroupShaderEntryPoint, FString& ErrorMessages)
+bool UCompushadyRayTracer::InitFromHLSL(const TArray<uint8>& RayGenShaderCode, const FString& RayGenShaderEntryPoint, const TArray<uint8>& RayHitGroupShaderCode, const FString& RayHitGroupShaderEntryPoint, const TArray<uint8>& RayMissShaderCode, const FString& RayMissShaderEntryPoint, FString& ErrorMessages)
 {
 	RHIInterfaceType = RHIGetInterfaceType();
 
@@ -18,16 +19,39 @@ bool UCompushadyRayTracer::InitFromHLSL(const TArray<uint8>& RayGenShaderCode, c
 		return false;
 	}
 
-	TArray<uint8> RayMissShaderByteCode;
-	Compushady::FCompushadyShaderResourceBindings RayMissShaderResourceBindings;
-	if (!Compushady::CompileHLSL(RayMissShaderCode, RayMissShaderEntryPoint, "lib_6_3", RayMissShaderByteCode, ErrorMessages, false))
+	Compushady::FCompushadyShaderResourceBinding Binding;
+	Binding.Name = "scene";
+	Binding.Type = Compushady::ECompushadyShaderResourceType::RayTracingAccelerationStructure;
+	RayGenShaderResourceBindings.SRVs.Add(Binding);
+
+	FIntVector ThreadGroupSize;
+	if (!Compushady::FixupDXIL(RayGenShaderByteCode, RayGenShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{
 		return false;
 	}
 
 	TArray<uint8> RayHitGroupShaderByteCode;
 	Compushady::FCompushadyShaderResourceBindings RayHitGroupShaderResourceBindings;
+
 	if (!Compushady::CompileHLSL(RayHitGroupShaderCode, RayHitGroupShaderEntryPoint, "lib_6_3", RayHitGroupShaderByteCode, ErrorMessages, false))
+	{
+		return false;
+	}
+
+	if (!Compushady::FixupDXIL(RayHitGroupShaderByteCode, RayHitGroupShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
+	{
+		return false;
+	}
+
+	TArray<uint8> RayMissShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings RayMissShaderResourceBindings;
+
+	if (!Compushady::CompileHLSL(RayMissShaderCode, RayMissShaderEntryPoint, "lib_6_3", RayMissShaderByteCode, ErrorMessages, false))
+	{
+		return false;
+	}
+
+	if (!Compushady::FixupDXIL(RayMissShaderByteCode, RayMissShaderResourceBindings, ThreadGroupSize, ErrorMessages, true))
 	{
 		return false;
 	}
@@ -112,11 +136,17 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 	FRHIRayTracingShader* RayGenShaderTable[] = { RayGenShaderRef };
 	PipelineStateInitializer.SetRayGenShaderTable(RayGenShaderTable);
 
+	FRHIRayTracingShader* RayHitGroupShaderTable[] = { RayHitGroupShaderRef };
+	PipelineStateInitializer.SetHitGroupTable(RayHitGroupShaderTable);
+
 	FRHIRayTracingShader* RayMissShaderTable[] = { RayMissShaderRef };
 	PipelineStateInitializer.SetMissShaderTable(RayMissShaderTable);
 
-	FRHIRayTracingShader* RayHitGroupShaderTable[] = { RayHitGroupShaderRef };
-	PipelineStateInitializer.SetHitGroupTable(RayHitGroupShaderTable);
+	PipelineStateInitializer.MaxPayloadSizeInBytes = 4;
+
+	//PipelineStateInitializer.ShaderBindingLayout = &RayTracing::GetShaderBindingLayout(EShaderPlatform::SP_PCD3D_SM6)->RHILayout;
+
+	MaxLocalBindingDataSize = PipelineStateInitializer.GetMaxLocalBindingDataSize();
 
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateRayTracerPipelineState)(
 		[this](FRHICommandListImmediate& RHICmdList)
@@ -135,7 +165,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 	return true;
 }
 
-void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
+void UCompushadyRayTracer::DispatchRays(UObject* WorldContextObject, const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
 {
 #if COMPUSHADY_UE_VERSION >= 53
 	if (IsRunning())
@@ -159,12 +189,34 @@ void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& Resource
 
 	TrackResources(ResourceArray);
 
-	EnqueueToGPU(
-		[this, XYZ, ResourceArray](FRHICommandListImmediate& RHICmdList)
+	IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>("Renderer");
+
+	RendererModule->RegisterPostOpaqueRenderDelegate(FPostOpaqueRenderDelegate::CreateLambda([this, WorldContextObject, XYZ, ResourceArray](FPostOpaqueRenderParameters& Parameters)
 		{
-			FRayTracingShaderBindings Bindings;
-			RHICmdList.RayTraceDispatch(PipelineState, RayGenShaderRef, UE::FXRenderingUtils::RayTracing::GetRayTracingScene(GetWorld()->Scene), Bindings, XYZ.X, XYZ.Y);
-		}, OnSignaled);
+			FRHICommandListImmediate& RHICmdList = Parameters.GraphBuilder->RHICmdList;
+			FSceneInterface* Scene = WorldContextObject->GetWorld()->Scene;
+
+			FShaderBindingTableRHIRef DummyTable = UE::FXRenderingUtils::RayTracing::CreateShaderBindingTable(RHICmdList, Scene, MaxLocalBindingDataSize);
+			FRayTracingShaderBindings Bindings2;
+			if (UE::FXRenderingUtils::RayTracing::HasRayTracingScene(Scene))
+			{
+				//const int32 NumTotalBindings = 1;
+				//const uint32 MergedBindingsSize = sizeof(FRayTracingLocalShaderBindings) * NumTotalBindings;
+				//FRayTracingLocalShaderBindings* Bindings = (FRayTracingLocalShaderBindings*)RHICmdList.Alloc(MergedBindingsSize, alignof(FRayTracingLocalShaderBindings));
+				RHICmdList.SetRayTracingHitGroups(
+					DummyTable,
+					PipelineState,
+					0, nullptr, false);
+				RHICmdList.SetRayTracingMissShader(DummyTable, 0, PipelineState, 0, 0, nullptr, 0);
+				RHICmdList.CommitShaderBindingTable(DummyTable);
+				FRHIBatchedShaderParameters& GlobalResources = RHICmdList.GetScratchShaderParameters();
+				GlobalResources.SetShaderResourceViewParameter(0, UE::FXRenderingUtils::RayTracing::GetRayTracingSceneView(Scene));
+				//DummyTable->SetCommitted(true);
+				//RHICmdList.CommitRayTracingBindings(UE::FXRenderingUtils::RayTracing::GetRayTracingScene(Scene));
+				RHICmdList.RayTraceDispatch(PipelineState, RayGenShaderRef, DummyTable, GlobalResources, XYZ.X, XYZ.Y);
+				UE_LOG(LogTemp, Error, TEXT("RHICmdList.RayTraceDispatch()"));
+			}
+		}));
 #endif
 }
 

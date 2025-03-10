@@ -111,31 +111,29 @@ bool UCompushadySRV::InitializeFromSceneTexture(const ECompushadySceneTexture In
 	return true;
 }
 
-bool UCompushadySRV::InitializeFromWorldSceneAccelerationStructure(UWorld* World)
+void UCompushadySRV::UpdateRayTracingAccelerationStructure(FPostOpaqueRenderParameters& Parameters, UWorld* World)
 {
-#if COMPUSHADY_UE_VERSION >= 53
 	FSceneInterface* Scene = World->Scene;
 
 	if (!UE::FXRenderingUtils::RayTracing::HasRayTracingScene(Scene))
 	{
-		return false;
+		return;
 	}
 
-	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
-		[this, Scene](FRHICommandListImmediate& RHICmdList)
-		{
-			SRVRHIRef = UE::FXRenderingUtils::RayTracing::GetRayTracingSceneView(RHICmdList, Scene);
-		});
+	FRHICommandListImmediate& RHICmdList = Parameters.GraphBuilder->RHICmdList;
 
-	FlushRenderingCommands();
+	SRVRHIRef = UE::FXRenderingUtils::RayTracing::GetRayTracingSceneView(RHICmdList, Scene);
 
-	if (!SRVRHIRef)
-	{
-		return false;
-	}
+	UE_LOG(LogTemp, Warning, TEXT("UCompushadySRV::UpdateRayTracingAccelerationStructure %d %p"), IsInGameThread(), SRVRHIRef.GetReference());
+}
 
-	RHITransitionInfo = FRHITransitionInfo(UE::FXRenderingUtils::RayTracing::GetRayTracingScene(Scene), ERHIAccess::Unknown, ERHIAccess::BVHRead);
+bool UCompushadySRV::InitializeFromWorldSceneAccelerationStructure(UWorld* World)
+{
+#if COMPUSHADY_UE_VERSION >= 53
+	WorldForRayTracingAccelerationStructure = World;
+	/*IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>("Renderer");
 
+	RendererModule->RegisterPostOpaqueRenderDelegate(FPostOpaqueRenderDelegate::CreateUObject(this, &UCompushadySRV::UpdateRayTracingAccelerationStructure, World));*/
 	return true;
 #else
 	return false;
@@ -226,4 +224,9 @@ FShaderResourceViewRHIRef UCompushadySRV::GetRHI() const
 bool UCompushadySRV::IsSceneTexture() const
 {
 	return SceneTexture != ECompushadySceneTexture::None;
+}
+
+bool UCompushadySRV::IsRayTracingAccelerationStructure() const
+{
+	return WorldForRayTracingAccelerationStructure != nullptr;
 }
