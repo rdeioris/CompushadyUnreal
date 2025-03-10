@@ -17,10 +17,10 @@ class COMPUSHADY_API UCompushadyRayTracer : public UObject, public ICompushadyPi
 	GENERATED_BODY()
 
 public:
-	bool InitFromHLSL(const TArray<uint8>& RayGenShaderCode, const FString& RayGenShaderEntryPoint, const TArray<uint8>& RayMissShaderCode, const FString& RayMissShaderEntryPoint, const TArray<uint8>& RayHitGroupShaderCode, const FString& RayHitGroupShaderEntryPoint, FString& ErrorMessages);
+	bool InitFromHLSL(const TArray<uint8>& RayGenShaderCode, const FString& RayGenShaderEntryPoint, const TArray<uint8>& RayHitGroupShaderCode, const FString& RayHitGroupShaderEntryPoint, const TArray<uint8>& RayMissShaderCode, const FString& RayMissShaderEntryPoint, FString& ErrorMessages);
 
-	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
-	void DispatchRays(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject", AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
+	void DispatchRays(UObject* WorldContextObject, const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	bool IsRunning() const;
@@ -52,4 +52,5 @@ protected:
 	FRayTracingShaderRHIRef RayHitGroupShaderRef;
 	FRayTracingPipelineStateInitializer PipelineStateInitializer;
 	FRayTracingPipelineState* PipelineState = nullptr;
+	uint32 MaxLocalBindingDataSize = 0;
 };

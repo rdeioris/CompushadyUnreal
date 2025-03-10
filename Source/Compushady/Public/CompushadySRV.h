@@ -28,9 +28,17 @@ public:
 
 	bool IsSceneTexture() const;
 
+	void UpdateRayTracingAccelerationStructure(FPostOpaqueRenderParameters& Parameters, UWorld* World);
+
+	bool IsRayTracingAccelerationStructure() const;
+
+	FSceneInterface* GetSceneForRayTracingAccelerationStructure() const { return WorldForRayTracingAccelerationStructure->Scene; }
+
 protected:
 	FShaderResourceViewRHIRef SRVRHIRef;
 
 	ECompushadySceneTexture SceneTexture = ECompushadySceneTexture::None;
+
+	UWorld* WorldForRayTracingAccelerationStructure = nullptr;
 	
 };
