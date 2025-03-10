@@ -100,8 +100,7 @@ void UCompushadyCompute::DispatchPostOpaqueRender_Delegate(FPostOpaqueRenderPara
 		});
 
 	Parameters.GraphBuilder->FlushSetupQueue();
-	GetRendererModule().RemovePostOpaqueRenderDelegate(PostOpaqueRenderDelegateHandle);
-	BeginFence(PostOpaqueRenderOnSignaled);
+	BeginFence(PostOpaqueRenderOnSignaled, PostOpaqueRenderDelegateHandle);
 }
 
 void UCompushadyCompute::DispatchPostOpaqueRender(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)

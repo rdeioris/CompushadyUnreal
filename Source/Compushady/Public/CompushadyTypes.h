@@ -10,6 +10,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
 #include "MediaTexture.h"
+#include "EngineModule.h"
 #include "CompushadyTypes.generated.h"
 
 /**
@@ -382,6 +383,19 @@ public:
 		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
 			{
 				bRunning = false;
+				OnSignaled.ExecuteIfBound(true, "");
+				OnSignalReceived();
+			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
+	}
+
+	void BeginFence(const FCompushadySignaled& OnSignaled, FDelegateHandle PostOpaqueRenderDelegateHandle)
+	{
+		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
+		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
+		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, PostOpaqueRenderDelegateHandle]
+			{
+				bRunning = false;
+				GetRendererModule().RemovePostOpaqueRenderDelegate(PostOpaqueRenderDelegateHandle);
 				OnSignaled.ExecuteIfBound(true, "");
 				OnSignalReceived();
 			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
