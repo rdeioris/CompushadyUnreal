@@ -394,8 +394,8 @@ public:
 		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
 		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, PostOpaqueRenderDelegateHandle]
 			{
-				bRunning = false;
 				GetRendererModule().RemovePostOpaqueRenderDelegate(PostOpaqueRenderDelegateHandle);
+				bRunning = false;
 				OnSignaled.ExecuteIfBound(true, "");
 				OnSignalReceived();
 			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
