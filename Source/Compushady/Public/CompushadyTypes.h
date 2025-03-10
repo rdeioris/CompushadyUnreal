@@ -12,6 +12,7 @@
 #include "MediaTexture.h"
 #include "Runtime/RenderCore/Public/GlobalRenderResources.h"
 #include "EngineModule.h"
+#include "RenderGraphBuilder.h"
 #include "CompushadyTypes.generated.h"
 
 /**

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CompushadyTypes.h"
 #include "UObject/NoExportTypes.h"
+#include "Engine/World.h"
 #include "CompushadySRV.generated.h"
 
 /**
