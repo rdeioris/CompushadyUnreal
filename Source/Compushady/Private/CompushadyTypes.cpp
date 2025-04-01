@@ -1747,10 +1747,14 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	for (int32 Index = 0; Index < InBindings.CBVs.Num(); Index++)
 	{
 		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.CBVs[Index];
+#if COMPUSHADY_UE_VERSION < 55
 		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumCBVs)
 		{
 			OutBindings.NumCBVs = ShaderResourceBinding.SlotIndex + 1;
 		}
+#else
+		OutBindings.NumCBVs++;
+#endif
 
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
@@ -1785,10 +1789,14 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	for (int32 Index = 0; Index < InBindings.SRVs.Num(); Index++)
 	{
 		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.SRVs[Index];
+#if COMPUSHADY_UE_VERSION < 55
 		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumSRVs)
 		{
 			OutBindings.NumSRVs = ShaderResourceBinding.SlotIndex + 1;
 		}
+#else
+		OutBindings.NumSRVs++;
+#endif
 
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
@@ -1803,10 +1811,14 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	for (int32 Index = 0; Index < InBindings.UAVs.Num(); Index++)
 	{
 		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.UAVs[Index];
+#if COMPUSHADY_UE_VERSION < 55
 		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumUAVs)
 		{
 			OutBindings.NumUAVs = ShaderResourceBinding.SlotIndex + 1;
 		}
+#else
+		OutBindings.NumUAVs++;
+#endif
 
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
@@ -1821,10 +1833,14 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	for (int32 Index = 0; Index < InBindings.Samplers.Num(); Index++)
 	{
 		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.Samplers[Index];
+#if COMPUSHADY_UE_VERSION < 55
 		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumSamplers)
 		{
 			OutBindings.NumSamplers = ShaderResourceBinding.SlotIndex + 1;
 		}
+#else
+		OutBindings.NumSamplers++;
+#endif
 
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
