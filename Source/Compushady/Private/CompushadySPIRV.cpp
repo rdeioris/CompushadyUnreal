@@ -254,6 +254,11 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 	int32 StorageStructuredBufferType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::StorageBuffer);
 	int32 SamplerType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::Sampler);
 	int32 RayTracingAccelerationStructureType = VulkanShaderHeader.GlobalDescriptorTypes.Add(EVulkanBindingType::AccelerationStructure);
+#else
+	uint32 CBVSlotCounter = 0;
+	uint32 SRVSlotCounter = 0;
+	uint32 UAVSlotCounter = 0;
+	uint32 SamplerSlotCounter = 0;
 #endif
 
 	for (const TPair<uint32, FCompushadySpirVDecoration>& Pair : Bindings)
@@ -287,7 +292,8 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 					BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 					ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
 					ResourceBinding.BindingIndex = Pair.Value.Binding;
-					ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
+					ResourceBinding.SlotIndex = CBVSlotCounter++;
+					VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 					FVulkanShaderHeader::FUniformBufferInfo UniformBufferInfo = {};
 					UniformBufferInfo.ConstantDataOriginalBindingIndex = Pair.Value.Binding;
@@ -313,8 +319,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 								BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 								ResourceBinding.Type = ECompushadyShaderResourceType::Texture;
-								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								ResourceBinding.SlotIndex = SRVSlotCounter++;
+								VulkanShaderHeader.Bindings.Add(BindingInfo);
 
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
@@ -336,8 +343,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 								BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 								ResourceBinding.Type = ECompushadyShaderResourceType::Texture;
-								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								ResourceBinding.SlotIndex = UAVSlotCounter++;
+								VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -361,8 +369,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 								BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 								ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
-								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								ResourceBinding.SlotIndex = SRVSlotCounter++;
+								VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -383,8 +392,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 								BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 								ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
-								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
+								ResourceBinding.SlotIndex = UAVSlotCounter++;
+								VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -407,8 +417,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 						FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 						BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
 						ResourceBinding.Type = ECompushadyShaderResourceType::Sampler;
-						ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 						ResourceBinding.BindingIndex = Pair.Value.Binding;
+						ResourceBinding.SlotIndex = SamplerSlotCounter++;
+						VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 						FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 						GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -429,8 +440,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 						FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 						BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 						ResourceBinding.Type = ECompushadyShaderResourceType::RayTracingAccelerationStructure;
-						ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 						ResourceBinding.BindingIndex = Pair.Value.Binding;
+						ResourceBinding.SlotIndex = SRVSlotCounter++;
+						VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 						FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 						GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -457,7 +469,8 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			ResourceBinding.Type = ECompushadyShaderResourceType::UniformBuffer;
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
-			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
+			ResourceBinding.SlotIndex = CBVSlotCounter++;
+			VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 			FVulkanShaderHeader::FUniformBufferInfo UniformBufferInfo = {};
 			UniformBufferInfo.ConstantDataOriginalBindingIndex = Pair.Value.Binding;
@@ -476,8 +489,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 			BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 			ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
-			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			ResourceBinding.SlotIndex = SRVSlotCounter++;
+			VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -497,8 +511,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 			BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 			ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
-			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			ResourceBinding.SlotIndex = UAVSlotCounter++;
+			VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -518,8 +533,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 			BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
-			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			ResourceBinding.SlotIndex = SRVSlotCounter++;
+			VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -541,8 +557,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 			BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
-			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			ResourceBinding.SlotIndex = UAVSlotCounter++;
+			VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -562,8 +579,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 			BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			ResourceBinding.Type = ECompushadyShaderResourceType::Texture;
-			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			ResourceBinding.SlotIndex = SRVSlotCounter++;
+			VulkanShaderHeader.Bindings.Add(BindingInfo);
 
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
@@ -584,11 +602,9 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			FVulkanShaderHeader::FBindingInfo BindingInfo = {};
 			BindingInfo.DescriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			ResourceBinding.Type = ECompushadyShaderResourceType::Texture;
-			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
-			FVulkanShaderHeader::FUniformBufferInfo BufferInfo;
-			BufferInfo.bHasResources = 1;
-			VulkanShaderHeader.UniformBufferInfos.Add(BufferInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
+			ResourceBinding.SlotIndex = UAVSlotCounter++;
+			VulkanShaderHeader.Bindings.Add(BindingInfo);
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
