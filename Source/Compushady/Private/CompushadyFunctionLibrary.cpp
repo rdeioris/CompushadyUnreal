@@ -2074,7 +2074,6 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromResource(UCom
 		return nullptr;
 	}
 
-
 	return CompushadySRV;
 }
 
