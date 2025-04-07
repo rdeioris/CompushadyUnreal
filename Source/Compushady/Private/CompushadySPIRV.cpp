@@ -1,4 +1,4 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2025 - Roberto De Ioris.
 
 #include "Compushady.h"
 
