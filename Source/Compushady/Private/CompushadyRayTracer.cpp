@@ -56,7 +56,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 
 	TArray<uint8> RGSByteCode;
 	FSHAHash RGSHash;
-	if (!Compushady::ToUnrealShader(RayGenShaderByteCode, RGSByteCode, RayGenResourceBindings.NumCBVs, RayGenResourceBindings.NumSRVs, RayGenResourceBindings.NumUAVs, RayGenResourceBindings.NumSamplers, RGSHash))
+	//if (!Compushady::ToUnrealShader(RayGenShaderByteCode, RGSByteCode, RayGenResourceBindings.NumCBVs, RayGenResourceBindings.NumSRVs, RayGenResourceBindings.NumUAVs, RayGenResourceBindings.NumSamplers, RGSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the RayGen Shader";
 		return false;
@@ -75,7 +75,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 
 	TArray<uint8> RMSByteCode;
 	FSHAHash RMSHash;
-	if (!Compushady::ToUnrealShader(RayMissShaderByteCode, RMSByteCode, RayMissResourceBindings.NumCBVs, RayMissResourceBindings.NumSRVs, RayMissResourceBindings.NumUAVs, RayMissResourceBindings.NumSamplers, RMSHash))
+	//if (!Compushady::ToUnrealShader(RayMissShaderByteCode, RMSByteCode, RayMissResourceBindings.NumCBVs, RayMissResourceBindings.NumSRVs, RayMissResourceBindings.NumUAVs, RayMissResourceBindings.NumSamplers, RMSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the RayMiss Shader";
 		return false;
@@ -94,7 +94,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 
 	TArray<uint8> RHGSByteCode;
 	FSHAHash RHGSHash;
-	if (!Compushady::ToUnrealShader(RayHitGroupShaderByteCode, RHGSByteCode, RayHitGroupResourceBindings.NumCBVs, RayHitGroupResourceBindings.NumSRVs, RayHitGroupResourceBindings.NumUAVs, RayHitGroupResourceBindings.NumSamplers, RHGSHash))
+	//if (!Compushady::ToUnrealShader(RayHitGroupShaderByteCode, RHGSByteCode, RayHitGroupResourceBindings.NumCBVs, RayHitGroupResourceBindings.NumSRVs, RayHitGroupResourceBindings.NumUAVs, RayHitGroupResourceBindings.NumSamplers, RHGSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the RayHitGroup Shader";
 		return false;

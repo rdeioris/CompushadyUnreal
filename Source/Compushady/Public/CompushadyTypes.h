@@ -123,8 +123,6 @@ struct FCompushadyResourceBindings
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<FString, FCompushadyResourceBinding> CBVsMap;
 
-	uint32 NumCBVs = 0;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> CBVsSlotMap;
 
@@ -137,8 +135,6 @@ struct FCompushadyResourceBindings
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> SRVsSlotMap;
 
-	uint32 NumSRVs = 0;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TArray<FCompushadyResourceBinding> UAVs;
 
@@ -148,8 +144,6 @@ struct FCompushadyResourceBindings
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> UAVsSlotMap;
 
-	uint32 NumUAVs = 0;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TArray<FCompushadyResourceBinding> Samplers;
 
@@ -158,8 +152,6 @@ struct FCompushadyResourceBindings
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> SamplersSlotMap;
-
-	uint32 NumSamplers = 0;
 
 	TArray<Compushady::FCompushadyShaderSemantic> InputSemantics;
 	TArray<Compushady::FCompushadyShaderSemantic> OutputSemantics;

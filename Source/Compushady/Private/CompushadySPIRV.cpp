@@ -13,12 +13,36 @@
 #include "VulkanShaderResources.h"
 
 
-bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& TargetProfile, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 	TMap<uint32, FCompushadyShaderResourceBinding> CBVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> SRVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> SamplerMapping;
+
+#if COMPUSHADY_UE_VERSION >= 55
+	int32 DescriptorSet = ShaderStage::EStage::Compute;
+	if (TargetProfile.StartsWith("vs_"))
+	{
+		DescriptorSet = ShaderStage::EStage::Vertex;
+	}
+	else if (TargetProfile.StartsWith("ps_"))
+	{
+		DescriptorSet = ShaderStage::EStage::Pixel;
+	}
+	else if (TargetProfile.StartsWith("gs_"))
+	{
+		DescriptorSet = ShaderStage::EStage::Geometry;
+	}
+	else if (TargetProfile.StartsWith("ms_"))
+	{
+		DescriptorSet = ShaderStage::EStage::Mesh;
+	}
+	else if (TargetProfile.StartsWith("ts_"))
+	{
+		DescriptorSet = ShaderStage::EStage::Task;
+	}
+#endif
 
 	// SPIR-V is generally managed as an array of 32bit words
 	TArrayView<uint32> SpirV = TArrayView<uint32>((uint32*)ByteCode.GetData(), ByteCode.Num() / sizeof(uint32));
@@ -288,6 +312,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 					BufferInfo.bHasResources = 1;
 					VulkanShaderHeader.UniformBufferInfos.Add(BufferInfo);
 					SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+					SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 					CBVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
 				}
 			}
@@ -304,6 +329,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			BufferInfo.bHasResources = 1;
 			VulkanShaderHeader.UniformBufferInfos.Add(BufferInfo);
 			SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+			SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 			CBVMapping.Add(ResourceBinding.BindingIndex, ResourceBinding);
 		}
 	}
@@ -361,6 +387,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
 								SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+								SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
@@ -385,6 +412,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
 								SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+								SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -411,6 +439,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
 								SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+								SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -433,6 +462,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 								ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 								ResourceBinding.BindingIndex = Pair.Value.Binding;
 								SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+								SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 								FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 								GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -457,6 +487,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 						ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 						ResourceBinding.BindingIndex = Pair.Value.Binding;
 						SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+						SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 						FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 						GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -479,6 +510,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 						ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 						ResourceBinding.BindingIndex = Pair.Value.Binding;
 						SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+						SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 						FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 						GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -520,6 +552,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+			SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -541,6 +574,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+			SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -562,6 +596,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+			SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -585,6 +620,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+			SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -606,6 +642,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+			SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -627,6 +664,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 			ResourceBinding.SlotIndex = VulkanShaderHeader.Bindings.Add(BindingInfo);
 			ResourceBinding.BindingIndex = Pair.Value.Binding;
 			SpirV[Pair.Value.BindingIndexOffset] = ResourceBinding.SlotIndex;
+			SpirV[Pair.Value.DescriptorSetOffset] = DescriptorSet;
 #else
 			FVulkanShaderHeader::FGlobalInfo GlobalInfo = {};
 			GlobalInfo.OriginalBindingIndex = Pair.Value.Binding;
@@ -764,7 +802,7 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBi
 	return true;
 }
 #else
-bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
+bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& TargetProfile, FCompushadyShaderResourceBindings& ShaderResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 	return false;
 }
