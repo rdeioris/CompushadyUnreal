@@ -1320,7 +1320,7 @@ namespace Compushady
 						else if (SRVOrTexture.Key)
 						{
 #if COMPUSHADY_UE_VERSION > 52
-							FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
+							//FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
 							//RHICmdList.Transition(FRHITransitionInfo(TextureToTransition, ERHIAccess::Unknown, ERHIAccess::SRVMask));
 #endif
 						}
@@ -1738,7 +1738,7 @@ bool Compushady::Utils::ValidateResourceBindingsMap(const TMap<FString, TScriptI
 	return true;
 }
 
-bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages)
+bool Compushady::Utils::CreateResourceBindings(const Compushady::FCompushadyShaderResourceBindings& InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages)
 {
 	// configure CBV resource bindings
 	for (int32 Index = 0; Index < InBindings.CBVs.Num(); Index++)
@@ -1776,7 +1776,7 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	// configure SRV resource bindings
 	for (int32 Index = 0; Index < InBindings.SRVs.Num(); Index++)
 	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.SRVs[Index];
+		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.SRVs[Index];
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
@@ -1789,7 +1789,7 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	// configure UAV resource bindings
 	for (int32 Index = 0; Index < InBindings.UAVs.Num(); Index++)
 	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.UAVs[Index];
+		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.UAVs[Index];
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
@@ -1802,7 +1802,7 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	// configure Samplers resource bindings
 	for (int32 Index = 0; Index < InBindings.Samplers.Num(); Index++)
 	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.Samplers[Index];
+		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.Samplers[Index];
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;

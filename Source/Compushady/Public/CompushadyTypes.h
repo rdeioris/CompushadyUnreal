@@ -645,7 +645,7 @@ namespace Compushady
 {
 	namespace Utils
 	{
-		COMPUSHADY_API bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
+		COMPUSHADY_API bool CreateResourceBindings(const Compushady::FCompushadyShaderResourceBindings& InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
 		COMPUSHADY_API bool ValidateResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API bool ValidateResourceBindingsMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FCompushadyResourceBindings& ResourceBindings, FCompushadyResourceArray& ResourceArray, FString& ErrorMessages);
 
