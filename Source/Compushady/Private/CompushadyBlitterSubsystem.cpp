@@ -380,7 +380,7 @@ void UCompushadyBlitterSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 		"Texture2D<float4> texture0;"
 		"SamplerState sampler0;"
 		"struct Input { float4 position : SV_Position; float2 uv : UV; };"
-		"float4 main(Input i) : SV_Target0 { return texture0.Sample(sampler0, i.uv) + texture0[uint2(i.uv * float2(256, 64))] + float4(0, 0, 0, 1); }",
+		"float4 main(Input i) : SV_Target0 { return texture0.Sample(sampler0, i.uv); }",
 		"main", PSResourceBindings, ErrorMessages);
 
 	if (!PixelShaderRef)
