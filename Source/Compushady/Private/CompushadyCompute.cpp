@@ -5,6 +5,7 @@
 #include "Compushady.h"
 #include "FXSystem.h"
 #include "EngineModule.h"
+#include "HAL/Event.h"
 #include "Serialization/ArrayWriter.h"
 
 bool UCompushadyCompute::InitFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FString& ErrorMessages)
@@ -94,12 +95,25 @@ void UCompushadyCompute::Dispatch(const FCompushadyResourceArray& ResourceArray,
 
 void UCompushadyCompute::DispatchPostOpaqueRender_Delegate(FPostOpaqueRenderParameters& Parameters)
 {
+	//FEvent* PassSignalEvent = FPlatformProcess::GetSynchEventFromPool(false);
 	Parameters.GraphBuilder->AddPass(RDG_EVENT_NAME("UCompushadyCompute::DispatchPostOpaqueRender"), ERDGPassFlags::None, [this](FRHICommandList& RHICmdList)
 		{
 			Dispatch_RenderThread(RHICmdList, PostOpaqueRenderResourceArray, PostOpaqueRenderXYZ);
 		});
 
-	Parameters.GraphBuilder->FlushSetupQueue();
+	//Parameters.GraphBuilder->FlushSetupQueue();
+	//PassSignalEvent->Wait();
+	//FPlatformProcess::ReturnSynchEventToPool(PassSignalEvent);
+
+	//Dispatch_RenderThread(Parameters.GraphBuilder->RHICmdList, PostOpaqueRenderResourceArray, PostOpaqueRenderXYZ);
+	//Parameters.GraphBuilder->RHICmdList.ImmediateFlush(EImmediateFlushType::DispatchToRHIThread);
+	//Parameters.GraphBuilder->
+
+	/*FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([this]
+		{
+			FlushRenderingCommands();
+		}, TStatId(), nullptr, ENamedThreads::GameThread);
+	FTaskGraphInterface::Get().WaitUntilTaskCompletes(Task);*/
 	BeginFence(PostOpaqueRenderOnSignaled, PostOpaqueRenderDelegateHandle);
 }
 

@@ -217,7 +217,7 @@ bool UCompushadyFunctionLibrary::CompileHLSLToSPIRVBlob(const FString& HLSL, con
 	// we need a copy as we want the original spirv bytecode
 	TArray<uint8> BlobTempCopy = Blob;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::FixupSPIRV(BlobTempCopy, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::FixupSPIRV(BlobTempCopy, TargetProfile, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
 		return false;
 	}
@@ -238,7 +238,7 @@ bool UCompushadyFunctionLibrary::CompileGLSLToSPIRVBlob(const FString& HLSL, con
 	// we need a copy as we want the original spirv bytecode
 	TArray<uint8> BlobTempCopy = Blob;
 	Compushady::FCompushadyShaderResourceBindings ShaderResourceBindings;
-	if (!Compushady::FixupSPIRV(BlobTempCopy, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+	if (!Compushady::FixupSPIRV(BlobTempCopy, TargetProfile, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 	{
 		return false;
 	}
@@ -898,6 +898,61 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromImag
 		{
 			FUpdateTextureRegion2D UpdateTextureRegion2D(0, 0, 0, 0, ImageWrapper->GetWidth(), ImageWrapper->GetHeight());
 			RHICmdList.UpdateTexture2D(TextureRHIRef, 0, UpdateTextureRegion2D, ImageWrapper->GetWidth() * GPixelFormats[PixelFormat].BlockBytes, UncompressedBytes.GetData());
+		});
+
+	FlushRenderingCommands();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromTexture(TextureRHIRef))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVTexture2DFromRandomStream(const FString& Name, const int32 Width, const int32 Height, const EPixelFormat Format, const FRandomStream& RandomStream)
+{
+	if (!GPixelFormats[Format].Supported)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Unsupported Texture Format %s"), GetPixelFormatString(Format));
+		return nullptr;
+	}
+
+	if (Width <= 0 || Height <= 0)
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> ImageData;
+	ImageData.AddUninitialized(Width * Height * GPixelFormats[Format].BlockBytes);
+	for (int32 ByteIndex = 0; ByteIndex < ImageData.Num(); ByteIndex++)
+	{
+		ImageData[ByteIndex] = static_cast<uint8>(RandomStream.RandRange(0, 255));
+	}
+
+	FRHITextureCreateDesc TextureCreateDesc = FRHITextureCreateDesc::Create2D(*Name, Width, Height, Format);
+	TextureCreateDesc.SetFlags(ETextureCreateFlags::ShaderResource);
+	FTextureRHIRef TextureRHIRef = nullptr;
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateTexture)(
+		[&TextureRHIRef, &TextureCreateDesc](FRHICommandListImmediate& RHICmdList)
+		{
+			TextureRHIRef = RHICreateTexture(TextureCreateDesc);
+		});
+
+	FlushRenderingCommands();
+
+	if (!TextureRHIRef.IsValid() || !TextureRHIRef->IsValid())
+	{
+		return nullptr;
+	}
+
+	ENQUEUE_RENDER_COMMAND(DoCompushadyUpdateTexture2D)(
+		[TextureRHIRef, Width, Height, Format, &ImageData](FRHICommandListImmediate& RHICmdList)
+		{
+			FUpdateTextureRegion2D UpdateTextureRegion2D(0, 0, 0, 0, Width, Height);
+			RHICmdList.UpdateTexture2D(TextureRHIRef, 0, UpdateTextureRegion2D, Width * GPixelFormats[Format].BlockBytes, ImageData.GetData());
 		});
 
 	FlushRenderingCommands();
@@ -2073,7 +2128,6 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromResource(UCom
 	{
 		return nullptr;
 	}
-
 
 	return CompushadySRV;
 }

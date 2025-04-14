@@ -133,7 +133,7 @@ public:
 				},
 				[&](const int32 Index) -> TPair<FShaderResourceViewRHIRef, FTextureRHIRef>
 				{
-					RHICmdList.Transition(FRHITransitionInfo(Drawable.Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+					//RHICmdList.Transition(FRHITransitionInfo(Drawable.Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
 					return { Drawable.SRV, Drawable.SRV ? nullptr : Drawable.Texture };
 				},
 				[](const int32 Index)
@@ -153,7 +153,7 @@ public:
 				},
 				[&](const int32 Index) -> TPair<FShaderResourceViewRHIRef, FTextureRHIRef>
 				{
-					RHICmdList.Transition(FRHITransitionInfo(Drawable.Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+					//RHICmdList.Transition(FRHITransitionInfo(Drawable.Texture, ERHIAccess::Unknown, ERHIAccess::SRVMask));
 					return { Drawable.SRV, Drawable.SRV ? nullptr : Drawable.Texture };
 				},
 				[](const int32 Index)

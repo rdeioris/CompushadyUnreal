@@ -1312,9 +1312,9 @@ namespace Compushady
 					if (ResourceArray.SRVs[Index]->IsRayTracingAccelerationStructure())
 					{
 						FSceneInterface* SceneInterface = ResourceArray.SRVs[Index]->GetSceneForRayTracingAccelerationStructure();
-						if (UE::FXRenderingUtils::RayTracing::HasRayTracingScene(SceneInterface))
+						if (UE::FXRenderingUtils::RayTracing::HasDualityRayTracingScene(SceneInterface))
 						{
-							FRHIShaderResourceView* RayTracingSceneView = UE::FXRenderingUtils::RayTracing::GetRayTracingSceneView(RHICmdList, SceneInterface);
+							FRHIShaderResourceView* RayTracingSceneView = UE::FXRenderingUtils::RayTracing::GetDualityRayTracingSceneView(RHICmdList, SceneInterface);
 							return { RayTracingSceneView, nullptr };
 						}
 						return { nullptr, nullptr };
@@ -1330,7 +1330,7 @@ namespace Compushady
 						else if (SRVOrTexture.Key)
 						{
 #if COMPUSHADY_UE_VERSION > 52
-							FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
+							//FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
 							//RHICmdList.Transition(FRHITransitionInfo(TextureToTransition, ERHIAccess::Unknown, ERHIAccess::SRVMask));
 #endif
 						}
@@ -1753,17 +1753,12 @@ bool Compushady::Utils::ValidateResourceBindingsMap(const TMap<FString, TScriptI
 	return true;
 }
 
-bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages)
+bool Compushady::Utils::CreateResourceBindings(const Compushady::FCompushadyShaderResourceBindings& InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages)
 {
 	// configure CBV resource bindings
 	for (int32 Index = 0; Index < InBindings.CBVs.Num(); Index++)
 	{
 		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.CBVs[Index];
-		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumCBVs)
-		{
-			OutBindings.NumCBVs = ShaderResourceBinding.SlotIndex + 1;
-		}
-
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
@@ -1775,7 +1770,7 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	}
 
 	// check for holes in the CBVs
-	for (int32 Index = 0; Index < static_cast<int32>(OutBindings.NumCBVs); Index++)
+	for (int32 Index = 0; Index < OutBindings.CBVs.Num(); Index++)
 	{
 		bool bFound = false;
 		for (const FCompushadyResourceBinding& Binding : OutBindings.CBVs)
@@ -1796,12 +1791,7 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	// configure SRV resource bindings
 	for (int32 Index = 0; Index < InBindings.SRVs.Num(); Index++)
 	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.SRVs[Index];
-		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumSRVs)
-		{
-			OutBindings.NumSRVs = ShaderResourceBinding.SlotIndex + 1;
-		}
-
+		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.SRVs[Index];
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
@@ -1814,12 +1804,7 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	// configure UAV resource bindings
 	for (int32 Index = 0; Index < InBindings.UAVs.Num(); Index++)
 	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.UAVs[Index];
-		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumUAVs)
-		{
-			OutBindings.NumUAVs = ShaderResourceBinding.SlotIndex + 1;
-		}
-
+		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.UAVs[Index];
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
@@ -1832,12 +1817,7 @@ bool Compushady::Utils::CreateResourceBindings(Compushady::FCompushadyShaderReso
 	// configure Samplers resource bindings
 	for (int32 Index = 0; Index < InBindings.Samplers.Num(); Index++)
 	{
-		Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.Samplers[Index];
-		if (ShaderResourceBinding.SlotIndex + 1 > OutBindings.NumSamplers)
-		{
-			OutBindings.NumSamplers = ShaderResourceBinding.SlotIndex + 1;
-		}
-
+		const Compushady::FCompushadyShaderResourceBinding& ShaderResourceBinding = InBindings.Samplers[Index];
 		FCompushadyResourceBinding ResourceBinding;
 		ResourceBinding.BindingIndex = ShaderResourceBinding.BindingIndex;
 		ResourceBinding.SlotIndex = ShaderResourceBinding.SlotIndex;
@@ -2374,7 +2354,7 @@ bool Compushady::Utils::FinalizeShader(TArray<uint8>& ByteCode, const FString& T
 	}
 	else if (RHIInterfaceType == ERHIInterfaceType::Vulkan)
 	{
-		if (!Compushady::FixupSPIRV(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
+		if (!Compushady::FixupSPIRV(ByteCode, TargetProfile, ShaderResourceBindings, ThreadGroupSize, ErrorMessages))
 		{
 			return false;
 		}

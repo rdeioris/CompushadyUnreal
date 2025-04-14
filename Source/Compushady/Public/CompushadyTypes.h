@@ -126,8 +126,6 @@ struct FCompushadyResourceBindings
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<FString, FCompushadyResourceBinding> CBVsMap;
 
-	uint32 NumCBVs = 0;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> CBVsSlotMap;
 
@@ -140,8 +138,6 @@ struct FCompushadyResourceBindings
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> SRVsSlotMap;
 
-	uint32 NumSRVs = 0;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TArray<FCompushadyResourceBinding> UAVs;
 
@@ -151,8 +147,6 @@ struct FCompushadyResourceBindings
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> UAVsSlotMap;
 
-	uint32 NumUAVs = 0;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TArray<FCompushadyResourceBinding> Samplers;
 
@@ -161,8 +155,6 @@ struct FCompushadyResourceBindings
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly, Category = "Compushady")
 	TMap<int32, FCompushadyResourceBinding> SamplersSlotMap;
-
-	uint32 NumSamplers = 0;
 
 	TArray<Compushady::FCompushadyShaderSemantic> InputSemantics;
 	TArray<Compushady::FCompushadyShaderSemantic> OutputSemantics;
@@ -394,13 +386,14 @@ public:
 	{
 		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
 		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
-		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, PostOpaqueRenderDelegateHandle]
+		FGraphEventRef Task = FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, PostOpaqueRenderDelegateHandle]
 			{
 				GetRendererModule().RemovePostOpaqueRenderDelegate(PostOpaqueRenderDelegateHandle);
 				bRunning = false;
 				OnSignaled.ExecuteIfBound(true, "");
 				OnSignalReceived();
 			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
+		
 	}
 
 	void BeginFence(const FCompushadySignaledAndProfiled& OnSignaledAndProfiled)
@@ -692,7 +685,7 @@ namespace Compushady
 {
 	namespace Utils
 	{
-		COMPUSHADY_API bool CreateResourceBindings(Compushady::FCompushadyShaderResourceBindings InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
+		COMPUSHADY_API bool CreateResourceBindings(const Compushady::FCompushadyShaderResourceBindings& InBindings, FCompushadyResourceBindings& OutBindings, FString& ErrorMessages);
 		COMPUSHADY_API bool ValidateResourceBindings(const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages);
 		COMPUSHADY_API bool ValidateResourceBindingsMap(const TMap<FString, TScriptInterface<ICompushadyBindable>>& ResourceMap, const FCompushadyResourceBindings& ResourceBindings, FCompushadyResourceArray& ResourceArray, FString& ErrorMessages);
 
