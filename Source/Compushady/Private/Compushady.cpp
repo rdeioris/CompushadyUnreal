@@ -55,12 +55,13 @@ namespace Compushady
 
 		FShaderCodePackedResourceCounts PackedResourceCounts = {};
 		// TODO : fix it
-		PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::GlobalUniformBuffer;
-		//PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::BindlessResources | EShaderResourceUsageFlags::BindlessSamplers;
-		PackedResourceCounts.NumCBs = NumCBVs;
-		PackedResourceCounts.NumSRVs = NumSRVs;
-		PackedResourceCounts.NumUAVs = NumUAVs;
-		PackedResourceCounts.NumSamplers = NumSamplers;
+		//PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::GlobalUniformBuffer | EShaderResourceUsageFlags::BindlessResources;
+		PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::BindlessResources | EShaderResourceUsageFlags::BindlessSamplers;
+		//PackedResourceCounts.UsageFlags = EShaderResourceUsageFlags::GlobalUniformBuffer;
+		//PackedResourceCounts.NumCBs = NumCBVs;
+		//PackedResourceCounts.NumSRVs = NumSRVs;
+		//PackedResourceCounts.NumUAVs = NumUAVs;
+		//PackedResourceCounts.NumSamplers = NumSamplers;
 		ShaderCode.AddOptionalData<FShaderCodePackedResourceCounts>(PackedResourceCounts);
 
 		FShaderCodeResourceMasks ResourceMasks = {};

@@ -2081,6 +2081,43 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromHLSL(const TArray<uint8
 	return MeshShaderRef;
 }
 
+FRayTracingShaderRHIRef Compushady::Utils::CreateRayGenShaderFromHLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	const FString TargetProfile = "lib_6_6";
+
+	TArray<uint8> RayGenShaderByteCode;
+	Compushady::FCompushadyShaderResourceBindings RayGenShaderResourceBindings;
+	if (!Compushady::CompileHLSL(ShaderCode, EntryPoint, TargetProfile, RayGenShaderByteCode, ErrorMessages, false))
+	{
+		return nullptr;
+	}
+
+	FIntVector ThreadGroupSize;
+	if (!Compushady::Utils::FinalizeShader(RayGenShaderByteCode, TargetProfile, RayGenShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false))
+	{
+		return nullptr;
+	}
+
+	TArray<uint8> RGSByteCode;
+	FSHAHash RGSHash;
+	if (!Compushady::ToUnrealShader(RayGenShaderByteCode, RGSByteCode, RayGenShaderResourceBindings.CBVs.Num(), RayGenShaderResourceBindings.SRVs.Num(), RayGenShaderResourceBindings.UAVs.Num(), RayGenShaderResourceBindings.Samplers.Num(), RGSHash))
+	{
+		ErrorMessages = "Unable to add Unreal metadata to the raygen shader";
+		return nullptr;
+	}
+
+	FRayTracingShaderRHIRef RayGenShaderRef = RHICreateRayTracingShader(RGSByteCode, RGSHash, EShaderFrequency::SF_RayGen);
+	if (!RayGenShaderRef.IsValid() || !RayGenShaderRef->IsValid())
+	{
+		ErrorMessages = "Unable to create RayGen Shader";
+		return nullptr;
+	}
+
+	RayGenShaderRef->SetHash(RGSHash);
+
+	return RayGenShaderRef;
+}
+
 FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const TArray<uint8>& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
 {
 	const FString TargetProfile = "ms_6_5";
@@ -2201,6 +2238,13 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromHLSL(const FString& Sha
 	TArray<uint8> ShaderCodeBytes;
 	StringToShaderCode(ShaderCode, ShaderCodeBytes);
 	return CreateMeshShaderFromHLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ThreadGroupSize, ErrorMessages);
+}
+
+FRayTracingShaderRHIRef Compushady::Utils::CreateRayGenShaderFromHLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FString& ErrorMessages)
+{
+	TArray<uint8> ShaderCodeBytes;
+	StringToShaderCode(ShaderCode, ShaderCodeBytes);
+	return CreateRayGenShaderFromHLSL(ShaderCodeBytes, EntryPoint, ResourceBindings, ErrorMessages);
 }
 
 FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const FString& ShaderCode, const FString& EntryPoint, FCompushadyResourceBindings& ResourceBindings, FIntVector& ThreadGroupSize, FString& ErrorMessages)
@@ -2344,10 +2388,10 @@ bool Compushady::Utils::FinalizeShader(TArray<uint8>& ByteCode, const FString& T
 				return false;
 			}
 
-			return FinalizeShader(ByteCode, TargetProfile, ShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, false);
+			return FinalizeShader(ByteCode, TargetProfile, ShaderResourceBindings, ResourceBindings, ThreadGroupSize, ErrorMessages, TargetProfile.StartsWith("lib_"));
 		}
 
-		if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages, false))
+		if (!Compushady::FixupDXIL(ByteCode, ShaderResourceBindings, ThreadGroupSize, ErrorMessages, TargetProfile.StartsWith("lib_")))
 		{
 			return false;
 		}

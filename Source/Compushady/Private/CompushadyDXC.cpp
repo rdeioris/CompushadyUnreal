@@ -1,6 +1,7 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2025 - Roberto De Ioris.
 
 #include "Compushady.h"
+#include "RayTracingPayloadType.h"
 
 #if PLATFORM_WINDOWS
 #include "Windows/WindowsHWrapper.h"
@@ -466,7 +467,49 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 	TMap<uint32, FCompushadyShaderResourceBinding> UAVMapping;
 	TMap<uint32, FCompushadyShaderResourceBinding> SamplerMapping;
 
-	if (!bIsLibrary)
+	TArray<D3D12_SHADER_INPUT_BIND_DESC> BindDescs;
+	TArray<FString> BindNameStorage;
+
+	if (bIsLibrary)
+	{
+		ID3D12LibraryReflection* LibraryReflection;
+		DxcBuffer ReflectionBuffer;
+		ReflectionBuffer.Ptr = ByteCode.GetData();
+		ReflectionBuffer.Size = ByteCode.Num();
+		ReflectionBuffer.Encoding = 0;
+		HRESULT HR = DXC::Utils->CreateReflection(&ReflectionBuffer, __uuidof(ID3D12LibraryReflection), reinterpret_cast<void**>(&LibraryReflection));
+
+		if (!SUCCEEDED(HR))
+		{
+			ErrorMessages = "Unable to create library reflection";
+			return false;
+		}
+
+		D3D12_LIBRARY_DESC LibraryDesc;
+		LibraryReflection->GetDesc(&LibraryDesc);
+		if (LibraryDesc.FunctionCount < 1)
+		{
+			ErrorMessages = "Unable to find first library function";
+			LibraryReflection->Release();
+			return false;
+		}
+
+		ID3D12FunctionReflection* FunctionReflection = LibraryReflection->GetFunctionByIndex(0);
+		D3D12_FUNCTION_DESC FunctionDesc;
+		FunctionReflection->GetDesc(&FunctionDesc);
+
+		for (uint32 Index = 0; Index < FunctionDesc.BoundResources; Index++)
+		{
+			D3D12_SHADER_INPUT_BIND_DESC BindDesc;
+			FunctionReflection->GetResourceBindingDesc(Index, &BindDesc);
+			// annoying but we want to release the reflection data asap
+			BindNameStorage.Add(UTF8_TO_TCHAR(BindDesc.Name));
+			BindDescs.Add(MoveTemp(BindDesc));
+		}
+
+		LibraryReflection->Release();
+	}
+	else
 	{
 		ID3D12ShaderReflection* ShaderReflection;
 
@@ -505,87 +548,13 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 			}
 		}
 
-		/*
-			D3D_SIT_CBUFFER
-			D3D_SIT_TBUFFER
-			D3D_SIT_TEXTURE
-			D3D_SIT_SAMPLER
-			D3D_SIT_UAV_RWTYPED
-			D3D_SIT_STRUCTURED
-			D3D_SIT_UAV_RWSTRUCTURED
-			D3D_SIT_BYTEADDRESS
-			D3D_SIT_UAV_RWBYTEADDRESS
-			D3D_SIT_UAV_APPEND_STRUCTURED
-			D3D_SIT_UAV_CONSUME_STRUCTURED
-			D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
-			D3D_SIT_RTACCELERATIONSTRUCTURE
-			D3D_SIT_UAV_FEEDBACKTEXTURE
-		*/
-
 		for (uint32 Index = 0; Index < ShaderDesc.BoundResources; Index++)
 		{
 			D3D12_SHADER_INPUT_BIND_DESC BindDesc;
 			ShaderReflection->GetResourceBindingDesc(Index, &BindDesc);
-
-			FCompushadyShaderResourceBinding ResourceBinding;
-			ResourceBinding.BindingIndex = BindDesc.BindPoint;
-			ResourceBinding.SlotIndex = ResourceBinding.BindingIndex;
-			ResourceBinding.Name = BindDesc.Name;
-
-			switch (BindDesc.Type)
-			{
-			case COMPUSHADY_D3D_SIT_CBUFFER:
-				ResourceBinding.Type = ECompushadyShaderResourceType::UniformBuffer;
-				CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_TEXTURE:
-				ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadyShaderResourceType::Buffer : ECompushadyShaderResourceType::Texture;
-				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_SAMPLER:
-				ResourceBinding.Type = ECompushadyShaderResourceType::Sampler;
-				SamplerMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_BYTEADDRESS:
-				ResourceBinding.Type = ECompushadyShaderResourceType::ByteAddressBuffer;
-				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_STRUCTURED:
-				ResourceBinding.Type = ECompushadyShaderResourceType::StructuredBuffer;
-				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_TBUFFER:
-				ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
-				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_RTACCELERATIONSTRUCTURE:
-				ResourceBinding.Type = ECompushadyShaderResourceType::RayTracingAccelerationStructure;
-				SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_UAV_RWTYPED:
-				ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadyShaderResourceType::Buffer : ECompushadyShaderResourceType::Texture;
-				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_UAV_FEEDBACKTEXTURE:
-				ResourceBinding.Type = ECompushadyShaderResourceType::Texture;
-				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED:
-			case COMPUSHADY_D3D_SIT_UAV_APPEND_STRUCTURED:
-			case COMPUSHADY_D3D_SIT_UAV_CONSUME_STRUCTURED:
-			case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
-				ResourceBinding.Type = ECompushadyShaderResourceType::StructuredBuffer;
-				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			case COMPUSHADY_D3D_SIT_UAV_RWBYTEADDRESS:
-				ResourceBinding.Type = ECompushadyShaderResourceType::ByteAddressBuffer;
-				UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
-				break;
-			default:
-				ErrorMessages = FString::Printf(TEXT("Unsupported resource type for %s"), UTF8_TO_TCHAR(BindDesc.Name));
-				ShaderReflection->Release();
-				return false;
-			}
+			// annoying but we want to release the reflection data asap
+			BindNameStorage.Add(UTF8_TO_TCHAR(BindDesc.Name));
+			BindDescs.Add(MoveTemp(BindDesc));
 		}
 
 		UINT TGX, TGY, TGZ;
@@ -593,6 +562,87 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 		ThreadGroupSize = FIntVector(TGX, TGY, TGZ);
 
 		ShaderReflection->Release();
+	}
+
+	/*
+		D3D_SIT_CBUFFER
+		D3D_SIT_TBUFFER
+		D3D_SIT_TEXTURE
+		D3D_SIT_SAMPLER
+		D3D_SIT_UAV_RWTYPED
+		D3D_SIT_STRUCTURED
+		D3D_SIT_UAV_RWSTRUCTURED
+		D3D_SIT_BYTEADDRESS
+		D3D_SIT_UAV_RWBYTEADDRESS
+		D3D_SIT_UAV_APPEND_STRUCTURED
+		D3D_SIT_UAV_CONSUME_STRUCTURED
+		D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER
+		D3D_SIT_RTACCELERATIONSTRUCTURE
+		D3D_SIT_UAV_FEEDBACKTEXTURE
+	*/
+
+	for (int32 Index = 0; Index < BindDescs.Num(); Index++)
+	{
+		D3D12_SHADER_INPUT_BIND_DESC& BindDesc = BindDescs[Index];
+
+		FCompushadyShaderResourceBinding ResourceBinding;
+		ResourceBinding.BindingIndex = 0;// BindDesc.BindPoint;
+		ResourceBinding.SlotIndex = ResourceBinding.BindingIndex;
+		ResourceBinding.Name = BindNameStorage[Index];
+
+		switch (BindDesc.Type)
+		{
+		case COMPUSHADY_D3D_SIT_CBUFFER:
+			ResourceBinding.Type = ECompushadyShaderResourceType::UniformBuffer;
+			CBVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_TEXTURE:
+			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadyShaderResourceType::Buffer : ECompushadyShaderResourceType::Texture;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_SAMPLER:
+			ResourceBinding.Type = ECompushadyShaderResourceType::Sampler;
+			SamplerMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_BYTEADDRESS:
+			ResourceBinding.Type = ECompushadyShaderResourceType::ByteAddressBuffer;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_STRUCTURED:
+			ResourceBinding.Type = ECompushadyShaderResourceType::StructuredBuffer;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_TBUFFER:
+			ResourceBinding.Type = ECompushadyShaderResourceType::Buffer;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_RTACCELERATIONSTRUCTURE:
+			ResourceBinding.Type = ECompushadyShaderResourceType::RayTracingAccelerationStructure;
+			SRVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_UAV_RWTYPED:
+			ResourceBinding.Type = BindDesc.Dimension == D3D_SRV_DIMENSION::D3D_SRV_DIMENSION_BUFFER ? ECompushadyShaderResourceType::Buffer : ECompushadyShaderResourceType::Texture;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_UAV_FEEDBACKTEXTURE:
+			ResourceBinding.Type = ECompushadyShaderResourceType::Texture;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED:
+		case COMPUSHADY_D3D_SIT_UAV_APPEND_STRUCTURED:
+		case COMPUSHADY_D3D_SIT_UAV_CONSUME_STRUCTURED:
+		case COMPUSHADY_D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+			ResourceBinding.Type = ECompushadyShaderResourceType::StructuredBuffer;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		case COMPUSHADY_D3D_SIT_UAV_RWBYTEADDRESS:
+			ResourceBinding.Type = ECompushadyShaderResourceType::ByteAddressBuffer;
+			UAVMapping.Add(BindDesc.BindPoint, ResourceBinding);
+			break;
+		default:
+			ErrorMessages = FString::Printf(TEXT("Unsupported resource type for %s"), *ResourceBinding.Name);
+			return false;
+		}
 	}
 
 	FShaderResourceTable ShaderResourceTable;
@@ -606,7 +656,7 @@ bool Compushady::FixupDXIL(TArray<uint8>& ByteCode, FCompushadyShaderResourceBin
 		FString EmptyEntryPoint = "";
 		Writer << EmptyEntryPoint;
 		Writer << EmptyEntryPoint;
-		int32 PayloadType = 32;
+		int32 PayloadType = static_cast<int32>(ERayTracingPayloadType::RayTracingMaterial);
 		Writer << PayloadType;
 		int32 PayloadSize = 4;
 		Writer << PayloadSize;
