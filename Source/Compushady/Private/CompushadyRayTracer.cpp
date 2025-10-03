@@ -137,7 +137,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 
 void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
 {
-#if COMPUSHADY_UE_VERSION >= 53
+#if COMPUSHADY_UE_VERSION >= 53 && RHI_RAYTRACING
 	if (IsRunning())
 	{
 		OnSignaled.ExecuteIfBound(false, "The RayTracer is already running");

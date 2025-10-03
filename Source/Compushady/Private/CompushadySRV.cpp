@@ -113,7 +113,7 @@ bool UCompushadySRV::InitializeFromSceneTexture(const ECompushadySceneTexture In
 
 bool UCompushadySRV::InitializeFromWorldSceneAccelerationStructure(UWorld* World)
 {
-#if COMPUSHADY_UE_VERSION >= 53
+#if COMPUSHADY_UE_VERSION >= 53 && RHI_RAYTRACING
 	FSceneInterface* Scene = World->Scene;
 
 	if (!UE::FXRenderingUtils::RayTracing::HasRayTracingScene(Scene))
