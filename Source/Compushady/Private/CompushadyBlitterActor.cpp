@@ -11,6 +11,8 @@
 #include "FXRenderingUtils.h"
 #include "CompushadyBlendable.h"
 
+#include "Misc/Optional.h"
+
 struct FCompushadyBlitterDrawable
 {
 	FGuid Guid;
@@ -42,12 +44,13 @@ protected:
 		return CurrentViewRect;
 	};
 public:
-	FCompushadyBlitterViewExtension(const FAutoRegister& AutoRegister, FVertexShaderRHIRef InVertexShaderRef, const FCompushadyResourceBindings& InVSResourceBindings, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings) :
+	FCompushadyBlitterViewExtension(const FAutoRegister& AutoRegister, UWorld* InWorld, FVertexShaderRHIRef InVertexShaderRef, const FCompushadyResourceBindings& InVSResourceBindings, FPixelShaderRHIRef InPixelShaderRef, const FCompushadyResourceBindings& InPSResourceBindings) :
 		FSceneViewExtensionBase(AutoRegister),
 		VertexShaderRef(InVertexShaderRef),
 		VSResourceBindings(InVSResourceBindings),
 		PixelShaderRef(InPixelShaderRef),
-		PSResourceBindings(InPSResourceBindings)
+		PSResourceBindings(InPSResourceBindings),
+		World(InWorld)
 	{
 		// ensure 16 bytes alignment!
 		FRHIUniformBufferLayoutInitializer LayoutInitializer(nullptr, 96);
@@ -56,6 +59,14 @@ public:
 
 		FSamplerStateInitializerRHI SamplerStateInitializer(ESamplerFilter::SF_Bilinear, ESamplerAddressMode::AM_Clamp, ESamplerAddressMode::AM_Clamp, ESamplerAddressMode::AM_Clamp);
 		SamplerStateRef = RHICreateSamplerState(SamplerStateInitializer);
+
+		FSceneViewExtensionIsActiveFunctor IsActiveFunctor;
+		IsActiveFunctor.IsActiveFunction = [this](const ISceneViewExtension* SceneViewExtension, const FSceneViewExtensionContext& Context) -> TOptional<bool>
+			{
+				TOptional<bool> IsActive = World == Context.GetWorld();
+				return IsActive;
+			};
+		IsActiveThisFrameFunctions.Add(IsActiveFunctor);
 	}
 
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
@@ -415,6 +426,8 @@ protected:
 
 	FMatrix CurrentViewMatrix;
 	FMatrix CurrentProjectionMatrix;
+
+	UWorld* World;
 };
 
 
@@ -461,7 +474,7 @@ void ACompushadyBlitterActor::BeginPlay()
 		return;
 	}
 
-	ViewExtension = FSceneViewExtensions::NewExtension<FCompushadyBlitterViewExtension>(VertexShaderRef, VSResourceBindings, PixelShaderRef, PSResourceBindings);
+	ViewExtension = FSceneViewExtensions::NewExtension<FCompushadyBlitterViewExtension>(GetWorld(), VertexShaderRef, VSResourceBindings, PixelShaderRef, PSResourceBindings);
 
 }
 
