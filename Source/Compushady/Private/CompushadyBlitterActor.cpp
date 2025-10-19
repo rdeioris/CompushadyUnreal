@@ -487,7 +487,7 @@ FGuid ACompushadyBlitterActor::AddDrawable(UCompushadyResource* Resource, const 
 		Drawable.SRV = SRV->GetRHI();
 	}
 	Drawable.Quad = Quad;
-	if (Drawable.Quad.IsNearlyZero())
+	if (FVector2D(Drawable.Quad.Z, Drawable.Quad.W).IsNearlyZero())
 	{
 		Drawable.Quad = FVector4(0, 0, 1, 1);
 	}
@@ -512,7 +512,7 @@ FGuid ACompushadyBlitterActor::AddBeforePostProcessingDrawable(UCompushadyResour
 		Drawable.SRV = SRV->GetRHI();
 	}
 	Drawable.Quad = Quad;
-	if (Drawable.Quad.IsNearlyZero())
+	if (FVector2D(Drawable.Quad.Z, Drawable.Quad.W).IsNearlyZero())
 	{
 		Drawable.Quad = FVector4(0, 0, 1, 1);
 	}
@@ -537,7 +537,7 @@ FGuid ACompushadyBlitterActor::AddAfterMotionBlurDrawable(UCompushadyResource* R
 		Drawable.SRV = SRV->GetRHI();
 	}
 	Drawable.Quad = Quad;
-	if (Drawable.Quad.IsNearlyZero())
+	if (FVector2D(Drawable.Quad.Z, Drawable.Quad.W).IsNearlyZero())
 	{
 		Drawable.Quad = FVector4(0, 0, 1, 1);
 	}

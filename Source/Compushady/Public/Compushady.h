@@ -11,22 +11,22 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 #if ENGINE_MAJOR_VERSION == 5
 #if ENGINE_MINOR_VERSION == 2
 #define COMPUSHADY_UE_VERSION 52
-#define COMPUSHADY_CREATE_BUFFER RHICreateBuffer
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
 #define COMPUSHADY_CREATE_SRV RHICreateShaderResourceView
 #define COMPUSHADY_CREATE_UAV RHICreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 3
 #define COMPUSHADY_UE_VERSION 53
-#define COMPUSHADY_CREATE_BUFFER RHICmdList.CreateBuffer
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
 #define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
 #define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 4
 #define COMPUSHADY_UE_VERSION 54
-#define COMPUSHADY_CREATE_BUFFER RHICmdList.CreateBuffer
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
 #define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
 #define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 5
 #define COMPUSHADY_UE_VERSION 55
-#define COMPUSHADY_CREATE_BUFFER RHICmdList.CreateBuffer
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
 #define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
 #define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 6
