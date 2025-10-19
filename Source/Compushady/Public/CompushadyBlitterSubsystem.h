@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/EngineSubsystem.h"
-#include "CompushadyRasterizer.h"
+#include "CompushadyBlitterActor.h"
 #include "CompushadyBlitterSubsystem.generated.h"
 
 USTRUCT()
@@ -29,8 +29,6 @@ struct FCompushadyBlitterRasterizer
 	int32 NumInstances;
 };
 
-class ICompushadyTransientBlendable;
-
 UCLASS()
 class COMPUSHADY_API UCompushadyBlitterSubsystem : public UWorldSubsystem
 {
@@ -43,30 +41,28 @@ public:
 	bool ShouldCreateSubsystem(UObject* Outer) const override;
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
+	FGuid AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void AddBeforePostProcessingDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
+	FGuid AddBeforePostProcessingDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
+	FGuid AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	void RemoveDrawable(const FGuid& Guid);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const FMatrix& GetViewMatrix();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
+	const FMatrix& GetProjectionMatrix();
 
 	FGuid AddViewExtension(TSharedPtr<ICompushadyTransientBlendable, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack);
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	void RemoveViewExtension(const FGuid& Guid);
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
-	const FMatrix& GetViewMatrix() const;
-	
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
-	const FMatrix& GetProjectionMatrix() const;
-
 protected:
-	TSharedPtr<class FCompushadyBlitterViewExtension, ESPMode::ThreadSafe> ViewExtension;
+	ACompushadyBlitterActor* BlitterActor = nullptr;
 
-	TMap<FGuid, TSharedPtr<ICompushadyTransientBlendable, ESPMode::ThreadSafe>> AdditionalViewExtensions;
+	ACompushadyBlitterActor* GetBlitterActor();
 
-	UPROPERTY()
-	TMap<FGuid, TScriptInterface<IBlendableInterface>> TrackedBlendables;
 };

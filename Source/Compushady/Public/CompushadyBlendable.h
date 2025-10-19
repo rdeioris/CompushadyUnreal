@@ -102,7 +102,7 @@ public:
 	bool UpdateComputeResourcesByMapAdvanced(const TMap<FString, TScriptInterface<ICompushadyBindable>>& InResourceMap, const FIntVector& InXYZ, const FCompushadyBlendableMatricesConfig& BlendableMatricesConfig, FString& ErrorMessages);
 
 	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
-	FGuid AddToBlitter(UObject* WorldContextObject, const int32 Priority = 0);
+	FGuid AddToBlitter(UObject* WorldContextObject, const int32 Priority = 0, class ACompushadyBlitterActor* BlitterActor = nullptr);
 
 	FPixelShaderRHIRef GetPixelShader() const;
 

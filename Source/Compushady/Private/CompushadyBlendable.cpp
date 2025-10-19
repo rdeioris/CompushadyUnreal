@@ -291,6 +291,8 @@ public:
 		}
 	}
 
+	virtual ~FCompushadyViewExtension() {}
+
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {}
 	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override
 	{
@@ -602,7 +604,7 @@ public:
 					ERDGPassFlags::None,
 					[this, ViewRect, VertexShader, InputSceneTextures](FRHICommandList& RHICmdList)
 					{
-						FTexture2DRHIRef RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
+						FRHITexture* RenderTarget = InputSceneTextures->GetContents()->SceneColorTexture->GetRHI();
 
 						FCompushadySceneTextures SceneTextures = {};
 						FillSceneTextures(SceneTextures, RHICmdList, InputSceneTextures->GetContents()->SceneColorTexture->GetRHI(), InputSceneTextures->GetContents());
@@ -852,7 +854,7 @@ FPixelShaderRHIRef UCompushadyBlendable::GetPixelShader() const
 	return PixelShaderRef;
 }
 
-FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int32 Priority)
+FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int32 Priority, class ACompushadyBlitterActor* BlitterActor)
 {
 #if COMPUSHADY_UE_VERSION >= 53
 	TSharedPtr<FCompushadyPostProcess, ESPMode::ThreadSafe> NewViewExtension = nullptr;
@@ -880,7 +882,15 @@ FGuid UCompushadyBlendable::AddToBlitter(UObject* WorldContextObject, const int3
 
 	NewViewExtension->IsActiveThisFrameFunctions.Add(MoveTemp(PPActiveFunctor));
 
-	FGuid Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension, this);
+	FGuid Guid;
+	if (BlitterActor)
+	{
+		Guid = BlitterActor->AddViewExtension(NewViewExtension, this);
+	}
+	else
+	{
+		Guid = WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddViewExtension(NewViewExtension, this);
+	}
 	NewViewExtension->SetPriority(Priority);
 	return Guid;
 #else

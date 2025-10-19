@@ -41,8 +41,7 @@ FBufferRHIRef UCompushadyResource::GetUploadBuffer(FRHICommandListImmediate& RHI
 	if (!UploadBufferRHIRef.IsValid() || !UploadBufferRHIRef->IsValid())
 	{
 		const ERHIInterfaceType RHIInterfaceType = RHIGetInterfaceType();
-		FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
-		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(BufferRHIRef->GetSize(), RHIInterfaceType == ERHIInterfaceType::Vulkan ? EBufferUsageFlags::VertexBuffer : EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__Upload"), BufferRHIRef->GetDebugName()), BufferRHIRef->GetSize(), RHIInterfaceType == ERHIInterfaceType::Vulkan ? EBufferUsageFlags::VertexBuffer : EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc);
 	}
 
 	return UploadBufferRHIRef;
@@ -1495,8 +1494,7 @@ void UCompushadyResource::CopyToBuffer(UCompushadyResource* DestinationBuffer, c
 			else
 			{
 				// as unreal makes heavy reuse of resources, we need to rely on a temp UAV buffer
-				FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
-				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__TempBuffer"), DestinationBuffer->GetBufferRHI()->GetDebugName()), RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc);
 				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
@@ -1576,8 +1574,8 @@ bool UCompushadyResource::CopyToBufferSync(UCompushadyResource* DestinationBuffe
 			else
 			{
 				// as unreal makes heavy reuse of resources, we need to rely on a temp UAV buffer
-				FRHIResourceCreateInfo ResourceCreateInfo(TEXT(""));
-				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc, ResourceCreateInfo);
+				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__TempBuffer"), DestinationBuffer->GetBufferRHI()->GetDebugName()), RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc);
+
 				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 

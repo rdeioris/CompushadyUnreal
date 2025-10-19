@@ -346,8 +346,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBuffer(const FStr
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Size, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask);
 		});
 
 	FlushRenderingCommands();
@@ -378,8 +377,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVBuffer(const FStr
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Size, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::UAVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::UAVMask);
 		});
 
 	FlushRenderingCommands();
@@ -410,8 +408,7 @@ UCompushadyUAV* UCompushadyFunctionLibrary::CreateCompushadyUAVStructuredBuffer(
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Size, Stride](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Size, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::UAVCompute);
 		});
 
 	FlushRenderingCommands();
@@ -1202,8 +1199,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromCurveFl
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Data, Steps](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Steps * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, sizeof(float), ERHIAccess::UAVCompute, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Steps * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, sizeof(float), ERHIAccess::UAVCompute);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -1374,8 +1370,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromFloatAr
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Data, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -1409,8 +1404,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVBufferFromByteArr
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Data, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Data.Num(), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::VertexBuffer, GPixelFormats[PixelFormat].BlockBytes, ERHIAccess::SRVMask);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -1472,8 +1466,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Data, Stride](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::SRVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Data.Num() * sizeof(float), EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::SRVMask);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData(), BufferRHIRef->GetSize());
 			RHICmdList.UnlockBuffer(BufferRHIRef);
@@ -1507,8 +1500,7 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVStructuredBufferF
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateBuffer)(
 		[&BufferRHIRef, Name, Data, Stride, Offset](FRHICommandListImmediate& RHICmdList)
 		{
-			FRHIResourceCreateInfo ResourceCreateInfo(*Name);
-			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(Data.Num() - Offset, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::SRVMask, ResourceCreateInfo);
+			BufferRHIRef = COMPUSHADY_CREATE_BUFFER(*Name, Data.Num() - Offset, EBufferUsageFlags::ShaderResource | EBufferUsageFlags::StructuredBuffer, Stride, ERHIAccess::SRVMask);
 			void* LockedData = RHICmdList.LockBuffer(BufferRHIRef, 0, BufferRHIRef->GetSize(), EResourceLockMode::RLM_WriteOnly);
 			FMemory::Memcpy(LockedData, Data.GetData() + Offset, BufferRHIRef->GetSize() - Offset);
 			RHICmdList.UnlockBuffer(BufferRHIRef);
