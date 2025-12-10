@@ -37,6 +37,7 @@ bool UCompushadyRayTracer::InitFromHLSL(const TArray<uint8>& RayGenShaderCode, c
 
 bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderByteCode, TArray<uint8>& RayMissShaderByteCode, TArray<uint8>& RayHitGroupShaderByteCode, Compushady::FCompushadyShaderResourceBindings RGShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings RMShaderResourceBindings, Compushady::FCompushadyShaderResourceBindings RHGShaderResourceBindings, FString& ErrorMessages)
 {
+#if 0
 	if (!Compushady::Utils::CreateResourceBindings(RGShaderResourceBindings, RayGenResourceBindings, ErrorMessages))
 	{
 		return false;
@@ -94,6 +95,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 
 	TArray<uint8> RHGSByteCode;
 	FSHAHash RHGSHash;
+
 	//if (!Compushady::ToUnrealShader(RayHitGroupShaderByteCode, RHGSByteCode, RayHitGroupResourceBindings.NumCBVs, RayHitGroupResourceBindings.NumSRVs, RayHitGroupResourceBindings.NumUAVs, RayHitGroupResourceBindings.NumSamplers, RHGSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the RayHitGroup Shader";
@@ -133,6 +135,8 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 	}
 
 	return true;
+#endif
+	return false;
 }
 
 void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled)
@@ -163,7 +167,12 @@ void UCompushadyRayTracer::DispatchRays(const FCompushadyResourceArray& Resource
 		[this, XYZ, ResourceArray](FRHICommandListImmediate& RHICmdList)
 		{
 			FRayTracingShaderBindings Bindings;
+#if COMPUSHADY_UE_VERSION >= 57
+			// currently unsupported
+			RHICmdList.RayTraceDispatch(PipelineState, RayGenShaderRef, nullptr, Bindings, XYZ.X, XYZ.Y);
+#else
 			RHICmdList.RayTraceDispatch(PipelineState, RayGenShaderRef, UE::FXRenderingUtils::RayTracing::GetRayTracingScene(GetWorld()->Scene), Bindings, XYZ.X, XYZ.Y);
+#endif
 		}, OnSignaled);
 #endif
 }
