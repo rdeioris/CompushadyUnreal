@@ -6,6 +6,7 @@
 #include "Compushady.h"
 #include "Serialization/ArrayWriter.h"
 #include "FXRenderingUtils.h"
+#include "Engine/World.h"
 
 bool UCompushadyRayTracer::InitFromHLSL(const TArray<uint8>& RayGenShaderCode, const FString& RayGenShaderEntryPoint, const TArray<uint8>& RayMissShaderCode, const FString& RayMissShaderEntryPoint, const TArray<uint8>& RayHitGroupShaderCode, const FString& RayHitGroupShaderEntryPoint, FString& ErrorMessages)
 {

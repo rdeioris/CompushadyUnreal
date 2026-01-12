@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "CompushadyBlitterActor.h"
+#include "Subsystems/WorldSubsystem.h"
 #include "CompushadyBlitterSubsystem.generated.h"
 
 USTRUCT()

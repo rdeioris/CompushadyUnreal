@@ -1,6 +1,8 @@
 // Copyright 2023-2025 - Roberto De Ioris.
 
 #include "CompushadyBlitterSubsystem.h"
+#include "Engine/World.h"
+
 
 bool UCompushadyBlitterSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {

@@ -1,6 +1,7 @@
 // Copyright 2023-2025 - Roberto De Ioris.
 
 #include "CompushadyBlitterActor.h"
+#include "RHIUniformBufferLayoutInitializer.h"
 #if COMPUSHADY_UE_VERSION >= 53
 #include "PostProcess/PostProcessMaterialInputs.h"
 #include "ScreenPass.h"

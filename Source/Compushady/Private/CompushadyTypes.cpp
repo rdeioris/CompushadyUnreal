@@ -11,6 +11,9 @@
 #include "IImageWrapperModule.h"
 #include "Engine/Canvas.h"
 #include "Serialization/ArrayWriter.h"
+#include "Misc/FileHelper.h"
+#include "RHIStaticStates.h"
+
 
 FTextureRHIRef UCompushadyResource::GetTextureRHI() const
 {
@@ -1494,7 +1497,7 @@ void UCompushadyResource::CopyToBuffer(UCompushadyResource* DestinationBuffer, c
 			else
 			{
 				// as unreal makes heavy reuse of resources, we need to rely on a temp UAV buffer
-				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__TempBuffer"), DestinationBuffer->GetBufferRHI()->GetDebugName()), RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc);
+				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__TempBuffer"), *DestinationBuffer->GetName()), RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc);
 				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopyDest));
 
@@ -1574,7 +1577,7 @@ bool UCompushadyResource::CopyToBufferSync(UCompushadyResource* DestinationBuffe
 			else
 			{
 				// as unreal makes heavy reuse of resources, we need to rely on a temp UAV buffer
-				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__TempBuffer"), DestinationBuffer->GetBufferRHI()->GetDebugName()), RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc);
+				FBufferRHIRef TempBuffer = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__TempBuffer"), *DestinationBuffer->GetName()), RequiredSize, EBufferUsageFlags::UnorderedAccess, DestinationBuffer->GetBufferRHI()->GetStride(), ERHIAccess::CopySrc);
 
 				RHICmdList.Transition(FRHITransitionInfo(GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopyDest));
