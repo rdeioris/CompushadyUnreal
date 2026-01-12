@@ -41,7 +41,7 @@ FBufferRHIRef UCompushadyResource::GetUploadBuffer(FRHICommandListImmediate& RHI
 	if (!UploadBufferRHIRef.IsValid() || !UploadBufferRHIRef->IsValid())
 	{
 		const ERHIInterfaceType RHIInterfaceType = RHIGetInterfaceType();
-		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__Upload"), BufferRHIRef->GetDebugName()), BufferRHIRef->GetSize(), RHIInterfaceType == ERHIInterfaceType::Vulkan ? EBufferUsageFlags::VertexBuffer : EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc);
+		UploadBufferRHIRef = COMPUSHADY_CREATE_BUFFER(*FString::Printf(TEXT("%s__Upload"), *GetName()), BufferRHIRef->GetSize(), RHIInterfaceType == ERHIInterfaceType::Vulkan ? EBufferUsageFlags::VertexBuffer : EBufferUsageFlags::Dynamic, BufferRHIRef->GetStride(), ERHIAccess::CopySrc);
 	}
 
 	return UploadBufferRHIRef;
