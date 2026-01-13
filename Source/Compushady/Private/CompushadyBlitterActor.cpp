@@ -490,7 +490,7 @@ FGuid ACompushadyBlitterActor::AddDrawable(UCompushadyResource* Resource, const 
 {
 	if (!ViewExtension || !Resource || !Resource->GetTextureRHI())
 	{
-		return FGuid::FGuid();
+		return FGuid();
 	}
 
 	FCompushadyBlitterDrawable Drawable;
@@ -515,7 +515,7 @@ FGuid ACompushadyBlitterActor::AddBeforePostProcessingDrawable(UCompushadyResour
 {
 	if (!ViewExtension || !Resource || !Resource->GetTextureRHI())
 	{
-		return FGuid::FGuid();
+		return FGuid();
 	}
 
 	FCompushadyBlitterDrawable Drawable;
@@ -540,7 +540,7 @@ FGuid ACompushadyBlitterActor::AddAfterMotionBlurDrawable(UCompushadyResource* R
 {
 	if (!ViewExtension || !Resource || !Resource->GetTextureRHI())
 	{
-		return FGuid::FGuid();
+		return FGuid();
 	}
 
 	FCompushadyBlitterDrawable Drawable;
