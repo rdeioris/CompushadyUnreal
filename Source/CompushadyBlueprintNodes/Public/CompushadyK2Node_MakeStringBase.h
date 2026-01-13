@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "K2Node.h"
+#include "Input/Reply.h"
 #include "CompushadyK2Node_MakeStringBase.generated.h"
 
 /**

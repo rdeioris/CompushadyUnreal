@@ -2,6 +2,12 @@
 
 #include "Compushady.h"
 
+#if PLATFORM_WINDOWS
+#include "Windows/WindowsPlatformProcess.h"
+#endif
+
+#include "Misc/Paths.h"
+
 #if WITH_EDITOR
 #include "Interfaces/IPluginManager.h"
 #endif

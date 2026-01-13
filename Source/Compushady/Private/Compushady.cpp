@@ -2,6 +2,9 @@
 
 #include "Compushady.h"
 
+#include "Misc/FileHelper.h"
+#include "Widgets/Text/STextBlock.h"
+
 #define LOCTEXT_NAMESPACE "FCompushadyModule"
 
 DEFINE_LOG_CATEGORY(LogCompushady);
@@ -18,6 +21,8 @@ DEFINE_LOG_CATEGORY(LogCompushady);
 #include "Widgets/Layout/SScrollBar.h"
 #include "Widgets/Text/SMultiLineEditableText.h"
 #endif
+
+#include "ShaderCore.h"
 
 namespace Compushady
 {

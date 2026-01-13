@@ -10,6 +10,10 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/TextureRenderTarget2DArray.h"
 #include "MediaTexture.h"
+
+#include "GlobalRenderResources.h"
+#include "TextureResource.h"
+
 #include "CompushadyTypes.generated.h"
 
 /**
