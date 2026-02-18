@@ -4,6 +4,7 @@
 
 #if PLATFORM_WINDOWS
 #include "Windows/WindowsHWrapper.h"
+#include "Windows/WindowsPlatformProcess.h"
 
 #include "Windows/AllowWindowsPlatformTypes.h"
 #if COMPUSHADY_UE_VERSION <= 53
@@ -11,6 +12,11 @@
 #endif
 #include "Microsoft/COMPointer.h"
 #endif
+
+#include "Misc/Paths.h"
+#include "RHIDefinitions.h"
+#include "RHIResources.h"
+#include "DynamicRHI.h"
 
 THIRD_PARTY_INCLUDES_START
 #if PLATFORM_LINUX || PLATFORM_ANDROID || PLATFORM_MAC

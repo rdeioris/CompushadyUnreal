@@ -1,6 +1,8 @@
 // Copyright 2023-2025 - Roberto De Ioris.
 
 #include "CompushadyBlitterSubsystem.h"
+#include "Engine/World.h"
+
 
 bool UCompushadyBlitterSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
@@ -31,7 +33,7 @@ FGuid UCompushadyBlitterSubsystem::AddDrawable(UCompushadyResource* Resource, co
 	ACompushadyBlitterActor* CompushadyBlitterActor = GetBlitterActor();
 	if (!CompushadyBlitterActor)
 	{
-		return FGuid::FGuid();
+		return FGuid();
 	}
 	return CompushadyBlitterActor->AddDrawable(Resource, Quad, KeepAspectRatio);
 }
@@ -41,7 +43,7 @@ FGuid UCompushadyBlitterSubsystem::AddBeforePostProcessingDrawable(UCompushadyRe
 	ACompushadyBlitterActor* CompushadyBlitterActor = GetBlitterActor();
 	if (!CompushadyBlitterActor)
 	{
-		return FGuid::FGuid();
+		return FGuid();
 	}
 	return CompushadyBlitterActor->AddBeforePostProcessingDrawable(Resource, Quad, KeepAspectRatio);
 }
@@ -51,7 +53,7 @@ FGuid UCompushadyBlitterSubsystem::AddAfterMotionBlurDrawable(UCompushadyResourc
 	ACompushadyBlitterActor* CompushadyBlitterActor = GetBlitterActor();
 	if (!CompushadyBlitterActor)
 	{
-		return FGuid::FGuid();
+		return FGuid();
 	}
 	return CompushadyBlitterActor->AddAfterMotionBlurDrawable(Resource, Quad, KeepAspectRatio);
 }
@@ -91,7 +93,7 @@ FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<ICompushadyTransi
 	ACompushadyBlitterActor* CompushadyBlitterActor = GetBlitterActor();
 	if (!CompushadyBlitterActor)
 	{
-		return FGuid::FGuid();
+		return FGuid();
 	}
 	return CompushadyBlitterActor->AddViewExtension(InViewExtension, BlendableToTrack);
 }

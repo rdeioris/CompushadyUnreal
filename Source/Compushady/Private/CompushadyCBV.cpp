@@ -3,6 +3,7 @@
 #include "CompushadyCBV.h"
 #include "Compushady.h"
 #include "Kismet/GameplayStatics.h"
+#include "RHIUniformBufferLayoutInitializer.h"
 #if COMPUSHADY_UE_VERSION >= 54
 #include "Blueprint/BlueprintExceptionInfo.h"
 #endif

@@ -4,6 +4,7 @@
 #include "CompushadyAudioSubsystem.h"
 #include "AudioDeviceManager.h"
 #include "AudioMixerDevice.h"
+#include "Engine/World.h"
 
 bool UCompushadyAudioSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {

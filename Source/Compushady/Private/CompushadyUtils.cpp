@@ -1,6 +1,7 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 #include "CompushadyTypes.h"
+#include "Async/ParallelFor.h"
 
 bool Compushady::Utils::SplitToFloats(const TArray<FString>& Lines, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty, TArray<float>& Values, int32& Stride)
 {

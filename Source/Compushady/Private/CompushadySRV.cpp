@@ -2,6 +2,7 @@
 
 #include "CompushadySRV.h"
 #include "FXRenderingUtils.h"
+#include "Engine/World.h"
 
 bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 {
