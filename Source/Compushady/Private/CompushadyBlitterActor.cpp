@@ -64,6 +64,11 @@ public:
 		FSceneViewExtensionIsActiveFunctor IsActiveFunctor;
 		IsActiveFunctor.IsActiveFunction = [this](const ISceneViewExtension* SceneViewExtension, const FSceneViewExtensionContext& Context) -> TOptional<bool>
 			{
+				// do not render if no viewport is available (like when doing scene captures)
+				if (!Context.Viewport)
+				{
+					return false;
+				}
 				TOptional<bool> IsActive = World == Context.GetWorld();
 				return IsActive;
 			};
