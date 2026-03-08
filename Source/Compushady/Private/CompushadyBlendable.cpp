@@ -1,4 +1,4 @@
-// Copyright 2023 - Roberto De Ioris.
+// Copyright 2023-2026 - Roberto De Ioris.
 
 
 #include "CompushadyBlendable.h"

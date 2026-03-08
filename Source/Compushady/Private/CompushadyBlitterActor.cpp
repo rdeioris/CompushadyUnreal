@@ -1,8 +1,9 @@
-// Copyright 2023-2025 - Roberto De Ioris.
+// Copyright 2023-2026 - Roberto De Ioris.
 
 #include "CompushadyBlitterActor.h"
-#include "RHIUniformBufferLayoutInitializer.h"
+
 #if COMPUSHADY_UE_VERSION >= 53
+#include "RHIUniformBufferLayoutInitializer.h"
 #include "PostProcess/PostProcessMaterialInputs.h"
 #include "ScreenPass.h"
 #endif
@@ -40,7 +41,11 @@ protected:
 		FIntRect CurrentViewRect = View.UnconstrainedViewRect;
 		if (bBeforeUpscaling && View.bIsViewInfo)
 		{
+#if COMPUSHADY_UE_VERSION >= 53
 			CurrentViewRect = UE::FXRenderingUtils::GetRawViewRectUnsafe(View);
+#else
+			CurrentViewRect = View.UnscaledViewRect;
+#endif
 		}
 		return CurrentViewRect;
 	};
