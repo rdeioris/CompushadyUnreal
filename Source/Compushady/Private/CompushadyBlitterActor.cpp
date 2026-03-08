@@ -315,7 +315,11 @@ public:
 		return Output;
 	}
 
+#if COMPUSHADY_UE_VERSION >= 55
+	void SubscribeToPostProcessingPass(EPostProcessingPass Pass, const FSceneView& InView, FPostProcessingPassDelegateArray& InOutPassCallbacks, bool bIsPassEnabled) override
+#else
 	void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled) override
+#endif
 	{
 		if (Pass == EPostProcessingPass::MotionBlur && bIsPassEnabled && AfterMotionBlurDrawables.Num() > 0)
 		{
