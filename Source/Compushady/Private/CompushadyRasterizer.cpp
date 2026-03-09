@@ -104,7 +104,7 @@ bool UCompushadyRasterizer::CreateMSPSRasterizerPipeline(const FCompushadyRaster
 
 	for (const Compushady::FCompushadyShaderSemantic& Semantic : PSResourceBindings.InputSemantics)
 	{
-		if (!VSResourceBindings.OutputSemantics.Contains(Semantic))
+		if (!MSResourceBindings.OutputSemantics.Contains(Semantic))
 		{
 			ErrorMessages = FString::Printf(TEXT("Unknown/Unaligned input semantic in pixel shader: %s/%d (register: %u mask: 0x%x)"), *Semantic.Name, Semantic.Index, Semantic.Register, Semantic.Mask);
 			return false;
