@@ -326,6 +326,9 @@ public:
 	static UCompushadySRV* CreateCompushadySRVFromStaticMeshTangentBuffer(UStaticMesh* StaticMesh, int32& NumVertices, const int32 LOD = 0);
 
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	static UCompushadySRV* CreateCompushadySRVFromStaticMeshUVBuffer(UStaticMesh* StaticMesh, int32& NumVertices, int32& NumUVs, const int32 LOD = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyCompute* CreateCompushadyComputeFromGLSLString(const FString& ShaderSource, FString& ErrorMessages, const FString& EntryPoint = "main");
 
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "RasterizerConfig"), Category = "Compushady")

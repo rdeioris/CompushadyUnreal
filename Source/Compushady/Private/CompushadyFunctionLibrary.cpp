@@ -1972,6 +1972,54 @@ UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshPos
 	return CompushadySRV;
 }
 
+UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshUVBuffer(UStaticMesh* StaticMesh, int32& NumVertices, int32& NumUVs, const int32 LOD)
+{
+	if (!StaticMesh)
+	{
+		return nullptr;
+	}
+
+	FStaticMeshRenderData* RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		StaticMesh->InitResources();
+		FlushRenderingCommands();
+	}
+
+	RenderData = StaticMesh->GetRenderData();
+	if (!RenderData)
+	{
+		UE_LOG(LogCompushady, Error, TEXT("No RenderData for StaticMesh"));
+		return nullptr;
+	}
+
+	if (!RenderData->LODResources.IsValidIndex(LOD))
+	{
+		UE_LOG(LogCompushady, Error, TEXT("Invalid LOD index for StaticMesh"));
+		return nullptr;
+	}
+
+	const FStaticMeshLODResources& Resources = RenderData->LODResources[LOD];
+
+	if (!Resources.VertexBuffers.StaticMeshVertexBuffer.TexCoordVertexBuffer.IsInitialized())
+	{
+		UE_LOG(LogCompushady, Error, TEXT("TexCoordVertexBuffer is not initialized"));
+		return nullptr;
+	}
+
+	NumVertices = Resources.VertexBuffers.StaticMeshVertexBuffer.GetNumVertices();
+
+	NumUVs = Resources.VertexBuffers.StaticMeshVertexBuffer.GetNumTexCoords();
+
+	UCompushadySRV* CompushadySRV = NewObject<UCompushadySRV>();
+	if (!CompushadySRV->InitializeFromBuffer(Resources.VertexBuffers.StaticMeshVertexBuffer.TexCoordVertexBuffer.VertexBufferRHI, Resources.VertexBuffers.StaticMeshVertexBuffer.GetUseFullPrecisionUVs() ? EPixelFormat::PF_R32_FLOAT : EPixelFormat::PF_R16F))
+	{
+		return nullptr;
+	}
+
+	return CompushadySRV;
+}
+
 UCompushadySRV* UCompushadyFunctionLibrary::CreateCompushadySRVFromStaticMeshTangentBuffer(UStaticMesh* StaticMesh, int32& NumTangents, const int32 LOD)
 {
 	if (!StaticMesh)
