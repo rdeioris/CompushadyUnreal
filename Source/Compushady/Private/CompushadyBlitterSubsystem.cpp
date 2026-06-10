@@ -28,14 +28,14 @@ ACompushadyBlitterActor* UCompushadyBlitterSubsystem::GetBlitterActor()
 	return BlitterActor;
 }
 
-FGuid UCompushadyBlitterSubsystem::AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyBlitterSubsystem::AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label)
 {
 	ACompushadyBlitterActor* CompushadyBlitterActor = GetBlitterActor();
 	if (!CompushadyBlitterActor)
 	{
 		return FGuid();
 	}
-	return CompushadyBlitterActor->AddDrawable(Resource, Quad, KeepAspectRatio);
+	return CompushadyBlitterActor->AddDrawable(Resource, Quad, KeepAspectRatio, Label);
 }
 
 FGuid UCompushadyBlitterSubsystem::AddBeforePostProcessingDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
@@ -99,9 +99,9 @@ FGuid UCompushadyBlitterSubsystem::AddViewExtension(TSharedPtr<ICompushadyTransi
 }
 
 // let's put them here to avoid circular includes
-FGuid UCompushadyResource::Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid UCompushadyResource::Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label)
 {
-	return WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddDrawable(this, Quad, KeepAspectRatio);
+	return WorldContextObject->GetWorld()->GetSubsystem<UCompushadyBlitterSubsystem>()->AddDrawable(this, Quad, KeepAspectRatio, Label);
 }
 
 FGuid UCompushadyResource::DrawBeforePostProcessing(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
