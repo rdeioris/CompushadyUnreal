@@ -25,6 +25,31 @@
 			"Name": "CompushadyBlueprintNodes",
 			"Type": "UncookedOnly",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CompushadyNiagara",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "CompushadyFileFormats",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CompushadyBlitter",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CompushadyAudio",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CompushadyShared",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
@@ -42,6 +67,10 @@
 			"Name": "AMFCodecs",
 			"Enabled": true,
 			"PlatformDenyList": [ "Linux", "Android" ]
+		},
+		{
+			"Name": "Niagara",
+			"Enabled": true
 		}
 	]
 }

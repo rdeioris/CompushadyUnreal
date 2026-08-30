@@ -1,0 +1,72 @@
+// Copyright 2023-2026 - Roberto De Ioris.
+//
+// HLSL template for UNiagaraDataInterfaceCompushady.
+// {ParameterName} is substituted with the per-instance DI symbol by AppendTemplateHLSL().
+//
+// Fully generic: the buffer is just a flat Buffer<float>. Every accessor takes a raw float
+// index into the buffer and returns its natural type. All layout math (stride, position/color
+// offsets, particle count) is the caller's responsibility, done in the Niagara graph.
+
+Buffer<float> {ParameterName}_FloatBuffer;
+
+float LoadFloatSafe_{ParameterName}(int FloatIndex)
+{
+	// Lower-bound guard; the upper bound relies on the RHI's robust buffer access
+	// (out-of-range typed-buffer reads return 0).
+	if (FloatIndex < 0)
+	{
+		return 0.0f;
+	}
+	return {ParameterName}_FloatBuffer[FloatIndex];
+}
+
+void GetFloat_{ParameterName}(int FloatIndex, out float Out_Value)
+{
+	Out_Value = LoadFloatSafe_{ParameterName}(FloatIndex);
+}
+
+// Integer read: reinterpret the raw 32 bits at FloatIndex as a signed int. The typed R32
+// load is bit-preserving, so a value the compute shader stored with asfloat(myInt) comes
+// back exactly. (There is no unsigned type in the Niagara graph; a uint value rides on this
+// same int output bit-for-bit - interpret it as unsigned on the consuming side.)
+void GetInt_{ParameterName}(int FloatIndex, out int Out_Value)
+{
+	Out_Value = asint(LoadFloatSafe_{ParameterName}(FloatIndex));
+}
+
+void GetFloat2_{ParameterName}(int FloatIndex, out float2 Out_Value)
+{
+	Out_Value = float2(
+		LoadFloatSafe_{ParameterName}(FloatIndex + 0),
+		LoadFloatSafe_{ParameterName}(FloatIndex + 1));
+}
+
+void GetFloat3_{ParameterName}(int FloatIndex, out float3 Out_Value)
+{
+	Out_Value = float3(
+		LoadFloatSafe_{ParameterName}(FloatIndex + 0),
+		LoadFloatSafe_{ParameterName}(FloatIndex + 1),
+		LoadFloatSafe_{ParameterName}(FloatIndex + 2));
+}
+
+void GetFloat4_{ParameterName}(int FloatIndex, out float4 Out_Value)
+{
+	Out_Value = float4(
+		LoadFloatSafe_{ParameterName}(FloatIndex + 0),
+		LoadFloatSafe_{ParameterName}(FloatIndex + 1),
+		LoadFloatSafe_{ParameterName}(FloatIndex + 2),
+		LoadFloatSafe_{ParameterName}(FloatIndex + 3));
+}
+
+// Position output: reads 3 floats starting at FloatIndex. The Niagara signature types this
+// output as a Position (not a Vector), so the pin connects straight to Particles.Position.
+void GetPosition_{ParameterName}(int FloatIndex, out float3 Out_Value)
+{
+	GetFloat3_{ParameterName}(FloatIndex, Out_Value);
+}
+
+// Color output: reads 4 floats starting at FloatIndex, typed as a LinearColor in the signature.
+void GetColor_{ParameterName}(int FloatIndex, out float4 Out_Value)
+{
+	GetFloat4_{ParameterName}(FloatIndex, Out_Value);
+}

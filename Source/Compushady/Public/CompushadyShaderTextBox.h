@@ -24,9 +24,11 @@ public:
 
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
+	// Returns the current shader source text entered in the text box.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FString GetSource() const;
 
+	// Replaces the shader source text displayed in the text box with the given string.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void SetSource(const FString& Source);
 

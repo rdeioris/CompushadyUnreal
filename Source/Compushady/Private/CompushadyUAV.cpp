@@ -16,7 +16,7 @@ bool UCompushadyUAV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	EnqueueToGPUSync(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			UAVRHIRef = COMPUSHADY_CREATE_UAV(TextureRHIRef);
+			UAVRHIRef = COMPUSHADY_CREATE_UAV_TEXTURE(TextureRHIRef);
 		});
 
 	if (!UAVRHIRef)
@@ -46,7 +46,7 @@ bool UCompushadyUAV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 	EnqueueToGPUSync(
 		[this, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			UAVRHIRef = COMPUSHADY_CREATE_UAV(BufferRHIRef, static_cast<uint8>(PixelFormat));
+			UAVRHIRef = COMPUSHADY_CREATE_UAV_BUFFER_TYPED(BufferRHIRef, static_cast<uint8>(PixelFormat));
 		});
 
 	if (!UAVRHIRef)
@@ -81,7 +81,7 @@ bool UCompushadyUAV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 	EnqueueToGPUSync(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			UAVRHIRef = COMPUSHADY_CREATE_UAV(BufferRHIRef, false, false);
+			UAVRHIRef = COMPUSHADY_CREATE_UAV_BUFFER(BufferRHIRef);
 		});
 
 	if (!UAVRHIRef)

@@ -8,38 +8,80 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 
+// ------------------------------------------------------------------------------------------------
+// Cross-version RHI shims.
+//
+// COMPUSHADY_UE_VERSION is the engine version as a two-digit number (5.7 -> 57). Resource creation
+// changed shape a few times, so the create helpers below expand differently per engine "era":
+//   * 5.2            : global RHICreate* entry points, loose-argument view/buffer creation.
+//   * 5.3 - 5.5      : the same loose-argument creation, but moved onto the command list (RHICmdList).
+//   * 5.6 and later  : buffers use FRHIBufferCreateDesc, and the loose-argument CreateShaderResourceView
+//                      / CreateUnorderedAccessView overloads were deprecated in favour of ones taking an
+//                      FRHIViewDesc. From 5.6 we therefore build the FRHIViewDesc explicitly (mirroring
+//                      exactly what the engine's now-deprecated back-compat wrappers did), which is what
+//                      silences the 5.6/5.7/5.8 deprecation warnings.
+//
+// The SRV/UAV creators are split per view shape (whole texture, texture-from-CreateInfo, pre-built
+// view desc, typed buffer, structured/raw buffer) because the modern API needs a distinct FRHIViewDesc
+// for each. All command-list forms expect a variable named RHICmdList to be in scope at the call site.
+// ------------------------------------------------------------------------------------------------
 #if ENGINE_MAJOR_VERSION == 5
 #if ENGINE_MINOR_VERSION == 2
 #define COMPUSHADY_UE_VERSION 52
-#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
-#define COMPUSHADY_CREATE_SRV RHICreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 3
 #define COMPUSHADY_UE_VERSION 53
-#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
-#define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 4
 #define COMPUSHADY_UE_VERSION 54
-#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
-#define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 5
 #define COMPUSHADY_UE_VERSION 55
-#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
-#define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 6
 #define COMPUSHADY_UE_VERSION 56
-#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIBufferCreateDesc ResourceCreateInfo = FRHIBufferCreateDesc::Create(Name, Size, Stride, Flags).SetInitialState(InitialState); return RHICmdList.CreateBuffer(ResourceCreateInfo);}()
-#define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
 #elif ENGINE_MINOR_VERSION == 7
 #define COMPUSHADY_UE_VERSION 57
-#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIBufferCreateDesc ResourceCreateInfo = FRHIBufferCreateDesc::Create(Name, Size, Stride, Flags).SetInitialState(InitialState); return RHICmdList.CreateBuffer(ResourceCreateInfo);}()
-#define COMPUSHADY_CREATE_SRV RHICmdList.CreateShaderResourceView
-#define COMPUSHADY_CREATE_UAV RHICmdList.CreateUnorderedAccessView
+#elif ENGINE_MINOR_VERSION == 8
+#define COMPUSHADY_UE_VERSION 58
 #endif
+#endif
+
+// ---- buffer creation ----
+#if COMPUSHADY_UE_VERSION == 52
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
+#elif COMPUSHADY_UE_VERSION >= 53 && COMPUSHADY_UE_VERSION <= 55
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
+#elif COMPUSHADY_UE_VERSION >= 56
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIBufferCreateDesc ResourceCreateInfo = FRHIBufferCreateDesc::Create(Name, Size, Stride, Flags).SetInitialState(InitialState); return RHICmdList.CreateBuffer(ResourceCreateInfo);}()
+#endif
+
+// ---- SRV / UAV creation ----
+#if COMPUSHADY_UE_VERSION == 52
+#define COMPUSHADY_CREATE_SRV_TEXTURE(Texture)                     RHICreateShaderResourceView(Texture, 0)
+#define COMPUSHADY_CREATE_SRV_TEXTURE_INFO(Texture, Info)          RHICreateShaderResourceView(Texture, Info)
+#define COMPUSHADY_CREATE_SRV_TEXTURE_VIEWDESC(Texture, ViewDesc)  RHICreateShaderResourceView(Texture, ViewDesc)
+#define COMPUSHADY_CREATE_SRV_BUFFER_TYPED(Buffer, Stride, Format) RHICreateShaderResourceView(Buffer, Stride, Format)
+#define COMPUSHADY_CREATE_SRV_BUFFER(Buffer)                       RHICreateShaderResourceView(Buffer)
+#define COMPUSHADY_CREATE_UAV_TEXTURE(Texture)                     RHICreateUnorderedAccessView(Texture)
+#define COMPUSHADY_CREATE_UAV_BUFFER_TYPED(Buffer, Format)         RHICreateUnorderedAccessView(Buffer, Format)
+#define COMPUSHADY_CREATE_UAV_BUFFER(Buffer)                       RHICreateUnorderedAccessView(Buffer, false, false)
+#elif COMPUSHADY_UE_VERSION >= 53 && COMPUSHADY_UE_VERSION <= 55
+#define COMPUSHADY_CREATE_SRV_TEXTURE(Texture)                     RHICmdList.CreateShaderResourceView(Texture, 0)
+#define COMPUSHADY_CREATE_SRV_TEXTURE_INFO(Texture, Info)          RHICmdList.CreateShaderResourceView(Texture, Info)
+#define COMPUSHADY_CREATE_SRV_TEXTURE_VIEWDESC(Texture, ViewDesc)  RHICmdList.CreateShaderResourceView(Texture, ViewDesc)
+#define COMPUSHADY_CREATE_SRV_BUFFER_TYPED(Buffer, Stride, Format) RHICmdList.CreateShaderResourceView(Buffer, Stride, Format)
+#define COMPUSHADY_CREATE_SRV_BUFFER(Buffer)                       RHICmdList.CreateShaderResourceView(Buffer)
+#define COMPUSHADY_CREATE_UAV_TEXTURE(Texture)                     RHICmdList.CreateUnorderedAccessView(Texture)
+#define COMPUSHADY_CREATE_UAV_BUFFER_TYPED(Buffer, Format)         RHICmdList.CreateUnorderedAccessView(Buffer, Format)
+#define COMPUSHADY_CREATE_UAV_BUFFER(Buffer)                       RHICmdList.CreateUnorderedAccessView(Buffer, false, false)
+#elif COMPUSHADY_UE_VERSION >= 56
+// FRHIViewDesc-based creation (loose-argument overloads deprecated in 5.6). These mirror the engine's
+// own back-compat wrappers so behaviour is identical, but call the non-deprecated overloads directly.
+#define COMPUSHADY_CREATE_SRV_TEXTURE(Texture)                     RHICmdList.CreateShaderResourceView((Texture), FRHIViewDesc::CreateTextureSRV().SetDimensionFromTexture(Texture).SetMipRange(0, 1))
+#define COMPUSHADY_CREATE_SRV_TEXTURE_INFO(Texture, Info)          RHICmdList.CreateShaderResourceView((Texture), FRHIViewDesc::CreateTextureSRV().SetDimensionFromTexture(Texture).SetFormat((Info).Format).SetMipRange((Info).MipLevel, (Info).NumMipLevels).SetDisableSRGB((Info).SRGBOverride == SRGBO_ForceDisable).SetArrayRange((Info).FirstArraySlice, (Info).NumArraySlices).SetPlane((Info).MetaData))
+#define COMPUSHADY_CREATE_SRV_TEXTURE_VIEWDESC(Texture, ViewDesc)  RHICmdList.CreateShaderResourceView((Texture), ViewDesc)
+#define COMPUSHADY_CREATE_SRV_BUFFER_TYPED(Buffer, Stride, Format) RHICmdList.CreateShaderResourceView((Buffer), FRHIViewDesc::CreateBufferSRV().SetType(FRHIViewDesc::EBufferType::Typed).SetFormat(EPixelFormat(Format)))
+#define COMPUSHADY_CREATE_SRV_BUFFER(Buffer)                       RHICmdList.CreateShaderResourceView((Buffer), FRHIViewDesc::CreateBufferSRV().SetTypeFromBuffer(Buffer))
+#define COMPUSHADY_CREATE_UAV_TEXTURE(Texture)                     RHICmdList.CreateUnorderedAccessView((Texture), FRHIViewDesc::CreateTextureUAV().SetDimensionFromTexture(Texture).SetMipLevel(0))
+#define COMPUSHADY_CREATE_UAV_BUFFER_TYPED(Buffer, Format)         RHICmdList.CreateUnorderedAccessView((Buffer), FRHIViewDesc::CreateBufferUAV().SetType(FRHIViewDesc::EBufferType::Typed).SetFormat(EPixelFormat(Format)))
+#define COMPUSHADY_CREATE_UAV_BUFFER(Buffer)                       RHICmdList.CreateUnorderedAccessView((Buffer), FRHIViewDesc::CreateBufferUAV().SetTypeFromBuffer(Buffer).SetAtomicCounter(false).SetAppendBuffer(false))
 #endif
 
 #if PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_WINDOWS

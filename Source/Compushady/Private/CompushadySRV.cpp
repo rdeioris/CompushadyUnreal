@@ -16,7 +16,7 @@ bool UCompushadySRV::InitializeFromTexture(FTextureRHIRef InTextureRHIRef)
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			SRVRHIRef = COMPUSHADY_CREATE_SRV(TextureRHIRef, 0);
+			SRVRHIRef = COMPUSHADY_CREATE_SRV_TEXTURE(TextureRHIRef);
 		});
 
 	FlushRenderingCommands();
@@ -80,7 +80,7 @@ bool UCompushadySRV::InitializeFromTextureAdvanced(FTextureRHIRef InTextureRHIRe
 			SRVCreateInfo.NumArraySlices = SlicesNum;
 			SRVCreateInfo.MipLevel = MipLevel;
 			SRVCreateInfo.NumMipLevels = MipsNum;
-			SRVRHIRef = COMPUSHADY_CREATE_SRV(TextureRHIRef, SRVCreateInfo);
+			SRVRHIRef = COMPUSHADY_CREATE_SRV_TEXTURE_INFO(TextureRHIRef, SRVCreateInfo);
 		});
 
 	FlushRenderingCommands();
@@ -155,7 +155,7 @@ bool UCompushadySRV::InitializeFromBuffer(FBufferRHIRef InBufferRHIRef, const EP
 	ENQUEUE_RENDER_COMMAND(DoCompushadyCreateShaderResourceView)(
 		[this, PixelFormat](FRHICommandListImmediate& RHICmdList)
 		{
-			SRVRHIRef = COMPUSHADY_CREATE_SRV(BufferRHIRef, GPixelFormats[PixelFormat].BlockBytes, PixelFormat);
+			SRVRHIRef = COMPUSHADY_CREATE_SRV_BUFFER_TYPED(BufferRHIRef, GPixelFormats[PixelFormat].BlockBytes, PixelFormat);
 		});
 
 	FlushRenderingCommands();
@@ -193,7 +193,7 @@ bool UCompushadySRV::InitializeFromStructuredBuffer(FBufferRHIRef InBufferRHIRef
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
 
-			SRVRHIRef = COMPUSHADY_CREATE_SRV(BufferRHIRef);
+			SRVRHIRef = COMPUSHADY_CREATE_SRV_BUFFER(BufferRHIRef);
 
 		});
 

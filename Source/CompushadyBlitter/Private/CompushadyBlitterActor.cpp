@@ -1,6 +1,7 @@
 // Copyright 2023-2026 - Roberto De Ioris.
 
 #include "CompushadyBlitterActor.h"
+#include "CompushadyBlitter.h"
 
 #if COMPUSHADY_UE_VERSION >= 53
 #include "RHIUniformBufferLayoutInitializer.h"
@@ -471,7 +472,7 @@ void ACompushadyBlitterActor::BeginPlay()
 
 	if (!VertexShaderRef)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
+		UE_LOG(LogCompushadyBlitter, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
 		return;
 	}
 
@@ -485,7 +486,7 @@ void ACompushadyBlitterActor::BeginPlay()
 
 	if (!PixelShaderRef)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
+		UE_LOG(LogCompushadyBlitter, Error, TEXT("Unable to initialize Compushady Blitter: %s"), *ErrorMessages);
 		return;
 	}
 

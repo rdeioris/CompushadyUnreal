@@ -10,7 +10,7 @@
 class ICompushadyTransientBlendable;
 
 UCLASS()
-class COMPUSHADY_API ACompushadyBlitterActor : public AActor
+class COMPUSHADYBLITTER_API ACompushadyBlitterActor : public AActor
 {
 	GENERATED_BODY()
 	
@@ -26,29 +26,37 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	// Registers a Compushady resource to be blitted as a quad over the viewport after the scene is rendered; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
+	// Registers a Compushady resource to be blitted as a quad onto the scene color before post-processing runs; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddBeforePostProcessingDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
+	// Registers a Compushady resource to be blitted as a quad onto the scene right after the motion blur pass; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
+	// Removes a previously added drawable identified by its handle from all blit stages.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void RemoveDrawable(const FGuid& Guid);
 
+	// Returns the view matrix captured from the last rendered view, or the identity matrix if the blitter is not initialized.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	const FMatrix& GetViewMatrix() const;
 
+	// Returns the projection matrix captured from the last rendered view, or the identity matrix if the blitter is not initialized.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	const FMatrix& GetProjectionMatrix() const;
 
 	FGuid AddViewExtension(TSharedPtr<ICompushadyTransientBlendable, ESPMode::ThreadSafe> InViewExtension, TScriptInterface<IBlendableInterface> BlendableToTrack);
 
+	// Disables and removes a tracked view extension (blendable) identified by its handle.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void RemoveViewExtension(const FGuid& Guid);
 
+	// Removes a blendable previously added to the blitter by its handle (alias of RemoveViewExtension).
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void RemoveBlendable(const FGuid& Guid);
 

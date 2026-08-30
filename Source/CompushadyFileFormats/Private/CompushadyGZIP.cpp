@@ -1,7 +1,7 @@
 
 // Copyright 2023-2024 - Roberto De Ioris.
 
-#include "CompushadyTypes.h"
+#include "CompushadyFileFormats.h"
 
 #include "Misc/Compression.h"
 
@@ -18,13 +18,13 @@ bool Compushady::Utils::GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>&
 			uint16* FExtraXLen = (uint16*)(&Data.GetData()[StartOfBuffer]);
 			if (StartOfBuffer + 2 >= Data.Num())
 			{
-				UE_LOG(LogCompushady, Error, TEXT("Invalid Gzip FEXTRA header."));
+				UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid Gzip FEXTRA header."));
 				return false;
 			}
 			StartOfBuffer += 2 + *FExtraXLen;
 			if (StartOfBuffer >= Data.Num())
 			{
-				UE_LOG(LogCompushady, Error, TEXT("Invalid Gzip FEXTRA XLEN."));
+				UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid Gzip FEXTRA XLEN."));
 				return false;
 			}
 		}
@@ -37,13 +37,13 @@ bool Compushady::Utils::GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>&
 				StartOfBuffer++;
 				if (StartOfBuffer >= Data.Num())
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Invalid Gzip FNAME header."));
+					UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid Gzip FNAME header."));
 					return false;
 				}
 			}
 			if (++StartOfBuffer >= Data.Num())
 			{
-				UE_LOG(LogCompushady, Error, TEXT("Invalid Gzip FNAME header."));
+				UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid Gzip FNAME header."));
 				return false;
 			}
 		}
@@ -56,13 +56,13 @@ bool Compushady::Utils::GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>&
 				StartOfBuffer++;
 				if (StartOfBuffer >= Data.Num())
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Invalid Gzip FCOMMENT header."));
+					UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid Gzip FCOMMENT header."));
 					return false;
 				}
 			}
 			if (++StartOfBuffer >= Data.Num())
 			{
-				UE_LOG(LogCompushady, Error, TEXT("Invalid Gzip FCOMMENT header."));
+				UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid Gzip FCOMMENT header."));
 				return false;
 			}
 		}
@@ -72,7 +72,7 @@ bool Compushady::Utils::GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>&
 		{
 			if (StartOfBuffer + 2 >= Data.Num())
 			{
-				UE_LOG(LogCompushady, Error, TEXT("Invalid Gzip FHCRC header."));
+				UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid Gzip FHCRC header."));
 				return false;
 			}
 			StartOfBuffer += 2;
@@ -81,7 +81,7 @@ bool Compushady::Utils::GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>&
 		UncompressedData.AddUninitialized(*GzipOriginalSize);
 		if (!FCompression::UncompressMemory(NAME_Zlib, UncompressedData.GetData(), *GzipOriginalSize, &Data.GetData()[StartOfBuffer], Data.Num() - StartOfBuffer - 8, COMPRESS_NoFlags, -15))
 		{
-			UE_LOG(LogCompushady, Error, TEXT("Unable to uncompress Gzip data."));
+			UE_LOG(LogCompushadyFileFormats, Error, TEXT("Unable to uncompress Gzip data."));
 			return false;
 		}
 

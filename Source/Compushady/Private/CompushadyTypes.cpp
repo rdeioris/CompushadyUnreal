@@ -3,6 +3,7 @@
 
 #include "CompushadyTypes.h"
 #include "CompushadyCBV.h"
+#include "CompushadyGPUFencePoller.h"
 #include "CompushadySampler.h"
 #include "CompushadySRV.h"
 #include "CompushadyUAV.h"
@@ -207,130 +208,6 @@ EPixelFormat UCompushadyResource::GetTexturePixelFormat() const
 	return EPixelFormat::PF_Unknown;
 }
 
-bool UCompushadyResource::ReadbackTextureToPNGFileSync(const FString& Filename, FString& ErrorMessages)
-{
-	if (!IsValidTexture())
-	{
-		ErrorMessages = "The resource is not a valid Texture";
-		return false;
-	}
-
-	if (GetTextureRHI()->GetDesc().Format != EPixelFormat::PF_B8G8R8A8 && GetTextureRHI()->GetDesc().Format != EPixelFormat::PF_R8G8B8A8)
-	{
-		ErrorMessages = "Only RGBA8 and BGRA8 textures are supported";
-		return false;
-	}
-
-	auto PngWriter = [this, Filename](const void* Data, const uint32 Stride)
-		{
-			const FIntVector Size = GetTextureSize();
-			IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
-
-			TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
-			if (ImageWrapper.IsValid())
-			{
-				if (ImageWrapper->SetRaw(Data, Size.X * Size.Y * GPixelFormats[GetTextureRHI()->GetDesc().Format].BlockBytes,
-					Size.X, Size.Y, GetTextureRHI()->GetDesc().Format == EPixelFormat::PF_B8G8R8A8 ? ERGBFormat::BGRA : ERGBFormat::RGBA, 8))
-				{
-
-					TArray64<uint8> CompressedBytes = ImageWrapper->GetCompressed();
-					FFileHelper::SaveArrayToFile(CompressedBytes, *Filename);
-				}
-			}
-		};
-
-	return MapTextureSliceAndExecuteSync(PngWriter, 0);
-}
-
-bool UCompushadyResource::ReadbackTextureToTIFFFileSync(const FString& Filename, const FString& ImageDescription, FString& ErrorMessages)
-{
-	if (!IsValidTexture())
-	{
-		ErrorMessages = "The resource is not a valid Texture";
-		return false;
-	}
-
-	auto TIFFWriter = [this, Filename, ImageDescription](const void* Data, const uint32 Stride)
-		{
-			const FIntVector Size = GetTextureSize();
-			const EPixelFormat PixelFormat = GetTextureRHI()->GetDesc().Format;
-			TArray<uint8> TIFF;
-			if (Compushady::Utils::GenerateTIFF(Data, Stride, Size.X, Size.Y, PixelFormat, ImageDescription, TIFF))
-			{
-				FFileHelper::SaveArrayToFile(TIFF, *Filename);
-			}
-		};
-
-	return MapTextureSliceAndExecuteSync(TIFFWriter, 0);
-}
-
-bool UCompushadyResource::ReadbackBufferToWAVFileSync(const FString& Filename, const int64 Offset, const int64 Size, const int32 SampleRate, const int32 NumChannels, const EPixelFormat PixelFormat, const ECompushadyWAVFormat WAVFormat, FString& ErrorMessages)
-{
-	if (!IsValidBuffer())
-	{
-		ErrorMessages = "The resource is not a valid Buffer";
-		return false;
-	}
-
-	int64 WantedSize = Size;
-	if (WantedSize == 0)
-	{
-		WantedSize = GetBufferSize();
-	}
-
-	if (Offset < 0 || Offset + WantedSize > GetBufferSize())
-	{
-		ErrorMessages = "Invalid Buffer offset";
-		return false;
-	}
-
-	if (!GPixelFormats[PixelFormat].Supported)
-	{
-		ErrorMessages = FString::Printf(TEXT("Unsupported Pixel Format %s"), GetPixelFormatString(PixelFormat));
-		return false;
-	}
-
-	if (PixelFormat == EPixelFormat::PF_R32_FLOAT)
-	{
-		auto WAVWriter = [Filename, NumChannels, SampleRate, Offset, WantedSize](const void* Data)
-			{
-				TArray<uint8> WAV;
-				const uint32 WantedSize32 = WantedSize;
-				const uint32 OverallFileSize = 12 + 24 + 8 + WantedSize;
-				WAV.Append({ 0x52, 0x49, 0x46, 0x46 }); // RIFF
-				WAV.Append(reinterpret_cast<const uint8*>(&OverallFileSize), sizeof(uint32)); // file size - 8
-				WAV.Append({ 0x57, 0x41, 0x56, 0x45 }); // WAVE
-
-				WAV.Append({ 0x66, 0x6D, 0x74, 0x20 }); // fmt
-				WAV.Append({ 0x10, 0, 0, 0 }); // chunk size (16)
-				WAV.Append({ 3, 0 }); // Audio format (float)
-				const uint16 NumChannels16 = NumChannels;
-				const uint32 SampleRate32 = SampleRate;
-				const uint16 BytesPerBlock = sizeof(float) * NumChannels;
-				const uint32 BytesPerSec = SampleRate * BytesPerBlock;
-				const uint16 BitsPerSample = 32;
-				WAV.Append(reinterpret_cast<const uint8*>(&NumChannels16), sizeof(uint16)); // Number of channels
-				WAV.Append(reinterpret_cast<const uint8*>(&SampleRate32), sizeof(uint32)); // Sample rate
-				WAV.Append(reinterpret_cast<const uint8*>(&BytesPerSec), sizeof(uint32)); // Number of bytes to read per second
-				WAV.Append(reinterpret_cast<const uint8*>(&BytesPerBlock), sizeof(uint16)); // Number of bytes per block
-				WAV.Append(reinterpret_cast<const uint8*>(&BitsPerSample), sizeof(uint16)); // Number of bits per sample
-
-				WAV.Append({ 0x64, 0x61, 0x74, 0x61 }); // data
-				WAV.Append(reinterpret_cast<const uint8*>(&WantedSize32), sizeof(uint32)); // SampledData size
-
-				WAV.Append(reinterpret_cast<const uint8*>(Data) + Offset, WantedSize);
-
-				FFileHelper::SaveArrayToFile(WAV, *Filename);
-
-				return true;
-			};
-		return MapReadAndExecuteSync(WAVWriter);
-	}
-
-	ErrorMessages = FString::Printf(TEXT("Unsupported Pixel Format %s"), GetPixelFormatString(PixelFormat));
-	return false;
-}
-
 void UCompushadyResource::ReadbackBufferToFile(const FString& Filename, const int64 Offset, const int64 Size, const FCompushadySignaled& OnSignaled)
 {
 	auto FileWriter = [this, Filename, Size, Offset](const void* Data)
@@ -387,18 +264,49 @@ void UCompushadyResource::ReadbackBufferToFloatArray(const int32 Offset, const i
 		return;
 	}
 
-	EnqueueToGPU(
-		[this, Offset, Elements](FRHICommandListImmediate& RHICmdList)
+	if (!IsValidBuffer())
+	{
+		TArray<float> Values;
+		OnSignaled.ExecuteIfBound(false, Values, "The Resource is in invalid state or is not mappable");
+		return;
+	}
+
+	bRunning = true;
+
+	const uint32 CopySize = BufferRHIRef->GetSize();
+	FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyReadbackBufferToFloatArray"));
+
+	// Render thread: copy into the staging buffer and signal the fence. No BlockUntilGPUIdle().
+	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBufferToFloatArray)(
+		[this, SignalFence, CopySize](FRHICommandListImmediate& RHICmdList)
 		{
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-			WaitForGPU(RHICmdList);
-			uint8* Data = reinterpret_cast<uint8*>(RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize()));
-			ReadbackCacheFloats.Empty(Elements);
-			ReadbackCacheFloats.Append(reinterpret_cast<const float*>(Data) + Offset, Elements);
-			RHICmdList.UnlockStagingBuffer(StagingBuffer);
-		}, OnSignaled, ReadbackCacheFloats);
+			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, CopySize);
+			RHICmdList.WriteGPUFence(SignalFence.GetReference());
+		});
+
+	// Game thread (GPU copy done): lock with the signalled fence, copy out the floats, unlock,
+	// then fire the payload delegate. No stall.
+	FCompushadyGPUFencePoller::Get().RegisterFence(SignalFence, [this, Offset, Elements, OnSignaled, SignalFence, CopySize]()
+		{
+			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
+			uint8* Data = reinterpret_cast<uint8*>(RHILockStagingBuffer(StagingBuffer.GetReference(), SignalFence.GetReference(), 0, CopySize));
+			if (Data)
+			{
+				ReadbackCacheFloats.Empty(Elements);
+				ReadbackCacheFloats.Append(reinterpret_cast<const float*>(Data) + Offset, Elements);
+				RHIUnlockStagingBuffer(StagingBuffer.GetReference());
+				bRunning = false;
+				OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
+			}
+			else
+			{
+				bRunning = false;
+				OnSignaled.ExecuteIfBound(false, ReadbackCacheFloats, "Unable to map the staging buffer for reading");
+			}
+			OnSignalReceived();
+		}, this);
 }
 
 bool UCompushadyResource::ReadbackBufferToFloatArraySync(const int64 Offset, const int64 Elements, TArray<float>& Floats, FString& ErrorMessages)
@@ -841,6 +749,21 @@ void UCompushadyResource::OnSignalReceived()
 
 }
 
+void UCompushadyResource::SetSharedHandle(void* InHandle)
+{
+	// Replace any previously exported handle. (CloseSharedHandle lives in the isolated TU
+	// CompushadyResourceSharedHandle.cpp, which owns the platform CloseHandle/close call.)
+	CloseSharedHandle();
+
+	SharedHandle = InHandle;
+}
+
+void UCompushadyResource::BeginDestroy()
+{
+	CloseSharedHandle();
+	Super::BeginDestroy();
+}
+
 FIntVector UCompushadyResource::GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const
 {
 	if (IsValidTexture())
@@ -932,29 +855,51 @@ void UCompushadyResource::MapReadAndExecute(TFunction<void(const void*)> InFunct
 
 	if (IsValidBuffer())
 	{
+		bRunning = true;
+
+		const uint32 CopySize = BufferRHIRef->GetSize();
+		FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyMapReadAndExecute"));
+
+		// Render thread: copy the buffer into the staging buffer and signal the fence.
+		// No BlockUntilGPUIdle() here - we no longer stall the render thread waiting for the copy.
 		ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackBuffer)(
-			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			[this, SignalFence, CopySize](FRHICommandListImmediate& RHICmdList)
 			{
 				FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 				RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
-				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-				WaitForGPU(RHICmdList);
-				void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
+				RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, CopySize);
+				RHICmdList.WriteGPUFence(SignalFence.GetReference());
+			});
+
+		// Game thread: the poller fires this once the GPU has actually finished the copy (fence
+		// signalled). Only then do we lock the staging buffer - RHILockStagingBuffer() with an
+		// already-signalled fence returns immediately without a GPU stall (this is exactly the
+		// pattern used by the engine's own FRHIGPUBufferReadback). InFunction now runs on the game
+		// thread, alongside OnSignaled, instead of on the render thread.
+		FCompushadyGPUFencePoller::Get().RegisterFence(SignalFence, [this, InFunction, OnSignaled, SignalFence, CopySize]()
+			{
+				FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
+				void* Data = RHILockStagingBuffer(StagingBuffer.GetReference(), SignalFence.GetReference(), 0, CopySize);
 				if (Data)
 				{
 					InFunction(Data);
-					RHICmdList.UnlockStagingBuffer(StagingBuffer);
+					RHIUnlockStagingBuffer(StagingBuffer.GetReference());
+					bRunning = false;
+					OnSignaled.ExecuteIfBound(true, "");
 				}
-				WaitForGPU(RHICmdList);
-			});
+				else
+				{
+					bRunning = false;
+					OnSignaled.ExecuteIfBound(false, "Unable to map the staging buffer for reading");
+				}
+				OnSignalReceived();
+			}, this);
 	}
 	else
 	{
 		OnSignaled.ExecuteIfBound(false, "The Resource is in invalid state or is not mappable");
 		return;
 	}
-
-	BeginFence(OnSignaled);
 }
 
 void UCompushadyResource::MapWriteAndExecute(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled)
@@ -1009,8 +954,12 @@ bool UCompushadyResource::MapReadAndExecuteSync(TFunction<bool(const void*)> InF
 			FStagingBufferRHIRef StagingBuffer = GetStagingBuffer();
 			RHICmdList.Transition(FRHITransitionInfo(BufferRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.CopyToStagingBuffer(BufferRHIRef, StagingBuffer, 0, BufferRHIRef->GetSize());
-			WaitForGPU(RHICmdList);
-			void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, nullptr, 0, BufferRHIRef->GetSize());
+			// Targeted wait: submit, then block only on this copy's fence (not a full BlockUntilGPUIdle drain).
+			FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyMapReadAndExecuteSync"));
+			RHICmdList.WriteGPUFence(SignalFence.GetReference());
+			RHICmdList.SubmitCommandsAndFlushGPU();
+			SignalFence->Wait(RHICmdList, RHICmdList.GetGPUMask());
+			void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, SignalFence.GetReference(), 0, BufferRHIRef->GetSize());
 			if (Data)
 			{
 				bSuccess = InFunction(Data);
@@ -1107,11 +1056,15 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
 			RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 			RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
-			WaitForGPU(RHICmdList);
+			// Targeted wait: submit, then block only on this copy's fence (not a full BlockUntilGPUIdle drain).
+			FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyMapTextureSliceAndExecuteSync"));
+			RHICmdList.WriteGPUFence(SignalFence.GetReference());
+			RHICmdList.SubmitCommandsAndFlushGPU();
+			SignalFence->Wait(RHICmdList, RHICmdList.GetGPUMask());
 			int32 Width = 0;
 			int32 Height = 0;
 			void* Data = nullptr;
-			RHICmdList.MapStagingSurface(ReadbackTexture, Data, Width, Height);
+			RHICmdList.MapStagingSurface(ReadbackTexture, SignalFence.GetReference(), Data, Width, Height);
 			if (Data)
 			{
 				InFunction(Data, Width * GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes);
@@ -1120,6 +1073,76 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 		});
 
 	return true;
+}
+
+void UCompushadyResource::MapTextureSliceAndExecute(TFunction<void(const void*, const int32)> InFunction, const int32 Slice, const FCompushadySignaled& OnSignaled)
+{
+	if (IsRunning())
+	{
+		OnSignaled.ExecuteIfBound(false, "The Resource is already being processed by another task");
+		return;
+	}
+
+	if (!IsValidTexture())
+	{
+		OnSignaled.ExecuteIfBound(false, "The resource is not a valid Texture");
+		return;
+	}
+
+	bRunning = true;
+
+	FRHICopyTextureInfo CopyTextureInfo;
+	CopyTextureInfo.Size.X = TextureRHIRef->GetSizeX();
+	CopyTextureInfo.Size.Y = TextureRHIRef->GetSizeY();
+	CopyTextureInfo.Size.Z = 1;
+
+	const ETextureDimension Dimension = TextureRHIRef->GetDesc().Dimension;
+	if (Dimension == ETextureDimension::Texture2DArray)
+	{
+		CopyTextureInfo.SourceSliceIndex = Slice;
+	}
+	else if (Dimension == ETextureDimension::Texture3D)
+	{
+		CopyTextureInfo.SourcePosition.Z = Slice;
+	}
+
+	const int32 BlockBytes = GPixelFormats[TextureRHIRef->GetFormat()].BlockBytes;
+	FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyMapTextureSlice"));
+
+	// Render thread: copy the slice into the CPU-readback texture and signal the fence. No stall.
+	ENQUEUE_RENDER_COMMAND(DoCompushadyReadbackTexture)(
+		[this, CopyTextureInfo, SignalFence](FRHICommandListImmediate& RHICmdList)
+		{
+			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
+			RHICmdList.Transition(FRHITransitionInfo(TextureRHIRef, ERHIAccess::Unknown, ERHIAccess::CopySrc));
+			RHICmdList.CopyTexture(TextureRHIRef, ReadbackTexture, CopyTextureInfo);
+			RHICmdList.WriteGPUFence(SignalFence.GetReference());
+		});
+
+	// Game thread (GPU copy done): map the staging surface with the already-signalled fence,
+	// hand the data to InFunction, unmap, then complete. No BlockUntilGPUIdle anywhere.
+	FCompushadyGPUFencePoller::Get().RegisterFence(SignalFence, [this, InFunction, OnSignaled, SignalFence, BlockBytes]()
+		{
+			FTextureRHIRef ReadbackTexture = GetReadbackTexture();
+			void* Data = nullptr;
+			int32 Width = 0;
+			int32 Height = 0;
+			FRHICommandListImmediate& RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+			RHICmdList.MapStagingSurface(ReadbackTexture, SignalFence.GetReference(), Data, Width, Height);
+			if (Data)
+			{
+				InFunction(Data, Width * BlockBytes);
+				RHICmdList.UnmapStagingSurface(ReadbackTexture);
+				bRunning = false;
+				OnSignaled.ExecuteIfBound(true, "");
+			}
+			else
+			{
+				bRunning = false;
+				OnSignaled.ExecuteIfBound(false, "Unable to map the staging surface for reading");
+			}
+			OnSignalReceived();
+		}, this);
 }
 
 namespace Compushady
@@ -1296,6 +1319,44 @@ namespace Compushady
 		template<typename SHADER_TYPE>
 		void SetupParameters(FRHICommandList& RHICmdList, SHADER_TYPE Shader, const FCompushadyResourceArray& ResourceArray, const FCompushadyResourceBindings& ResourceBindings, const FCompushadySceneTextures& SceneTextures, const bool bSyncCBV)
 		{
+			// Gather every SRV/UAV transition and issue them as one batched barrier before binding,
+			// instead of a separate RHICmdList.Transition() per resource. Access states are unchanged
+			// (SRVMask / UAVMask), so the emitted barriers - including UAV->UAV barriers between
+			// back-to-back dispatches - are identical; only the number of Transition() calls drops to one.
+			TArray<FRHITransitionInfo, TInlineAllocator<16>> Transitions;
+
+			// Scene-texture SRVs must be resolved via GetRHI(SceneTextures); cache the result so we do
+			// not resolve twice (once to gather the transition, once to bind below).
+			TArray<TPair<FShaderResourceViewRHIRef, FTextureRHIRef>, TInlineAllocator<8>> SceneSRVs;
+			SceneSRVs.SetNum(ResourceArray.SRVs.Num());
+
+			for (int32 Index = 0; Index < ResourceArray.SRVs.Num(); Index++)
+			{
+				if (!ResourceArray.SRVs[Index]->IsSceneTexture())
+				{
+					Transitions.Add(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
+				}
+				else
+				{
+					TPair<FShaderResourceViewRHIRef, FTextureRHIRef> SRVOrTexture = ResourceArray.SRVs[Index]->GetRHI(SceneTextures);
+					SceneSRVs[Index] = SRVOrTexture;
+					if (SRVOrTexture.Value)
+					{
+						Transitions.Add(FRHITransitionInfo(SRVOrTexture.Value, ERHIAccess::Unknown, ERHIAccess::SRVMask));
+					}
+				}
+			}
+
+			for (int32 Index = 0; Index < ResourceArray.UAVs.Num(); Index++)
+			{
+				Transitions.Add(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
+			}
+
+			if (Transitions.Num() > 0)
+			{
+				RHICmdList.Transition(MakeArrayView(Transitions));
+			}
+
 			SetupParametersRHI(RHICmdList, Shader, ResourceBindings,
 				[&](const int32 Index) // CBV
 				{
@@ -1309,29 +1370,12 @@ namespace Compushady
 				{
 					if (!ResourceArray.SRVs[Index]->IsSceneTexture())
 					{
-						RHICmdList.Transition(ResourceArray.SRVs[Index]->GetRHITransitionInfo());
 						return { ResourceArray.SRVs[Index]->GetRHI() , nullptr };
 					}
-					else
-					{
-						TPair<FShaderResourceViewRHIRef, FTextureRHIRef> SRVOrTexture = ResourceArray.SRVs[Index]->GetRHI(SceneTextures);
-						if (SRVOrTexture.Value)
-						{
-							RHICmdList.Transition(FRHITransitionInfo(SRVOrTexture.Value, ERHIAccess::Unknown, ERHIAccess::SRVMask));
-						}
-						else if (SRVOrTexture.Key)
-						{
-#if COMPUSHADY_UE_VERSION > 52
-							//FTextureRHIRef TextureToTransition = SRVOrTexture.Key->GetTexture();
-							//RHICmdList.Transition(FRHITransitionInfo(TextureToTransition, ERHIAccess::Unknown, ERHIAccess::SRVMask));
-#endif
-						}
-						return SRVOrTexture;
-					}
+					return SceneSRVs[Index];
 				},
 				[&](const int32 Index) // UAV
 				{
-					RHICmdList.Transition(ResourceArray.UAVs[Index]->GetRHITransitionInfo());
 					return ResourceArray.UAVs[Index]->GetRHI();
 				},
 				[&](const int32 Index) // SamplerState
@@ -1413,6 +1457,43 @@ void ICompushadyPipeline::TrackResources(const FCompushadyResourceArray& Resourc
 void ICompushadyPipeline::UntrackResources()
 {
 	CurrentTrackedResources.Empty();
+}
+
+ICompushadySignalable::~ICompushadySignalable()
+{
+	// If this object is destroyed while a fence is still in flight, drop the pending entry
+	// so the poller never dereferences a dangling `this` in the completion callback.
+	FCompushadyGPUFencePoller::Get().Abandon(this);
+}
+
+void ICompushadySignalable::BeginFence(const FCompushadySignaled& OnSignaled, const FGPUFenceRHIRef& Fence)
+{
+	FCompushadyGPUFencePoller::Get().RegisterFence(Fence, [this, OnSignaled]()
+		{
+			bRunning = false;
+			OnSignaled.ExecuteIfBound(true, "");
+			OnSignalReceived();
+		}, this);
+}
+
+void ICompushadySignalable::BeginFence(const FCompushadySignaledAndProfiled& OnSignaledAndProfiled, const FGPUFenceRHIRef& Fence)
+{
+	FCompushadyGPUFencePoller::Get().RegisterFence(Fence, [this, OnSignaledAndProfiled]()
+		{
+			bRunning = false;
+			OnSignaledAndProfiled.ExecuteIfBound(true, LastQueriedMicroseconds, "");
+			OnSignalReceived();
+		}, this);
+}
+
+void ICompushadySignalable::BeginFence(const FCompushadySignaledWithFloatArrayPayload& OnSignaled, const FGPUFenceRHIRef& Fence, const TArray<float>& ReadbackCacheFloats)
+{
+	FCompushadyGPUFencePoller::Get().RegisterFence(Fence, [this, OnSignaled, &ReadbackCacheFloats]()
+		{
+			bRunning = false;
+			OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
+			OnSignalReceived();
+		}, this);
 }
 
 void ICompushadyPipeline::TrackResourcesAndMarkAsRunning(const FCompushadyResourceArray& ResourceArray)
@@ -1503,7 +1584,7 @@ void UCompushadyResource::CopyToBuffer(UCompushadyResource* DestinationBuffer, c
 
 				RHICmdList.CopyBufferRegion(TempBuffer, 0, GetBufferRHI(), SourceOffset, RequiredSize);
 
-				WaitForGPU(RHICmdList);
+				// TempBuffer write -> read is ordered by the Unknown -> CopySrc transition below; no full GPU stall needed.
 
 				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));
@@ -1584,7 +1665,7 @@ bool UCompushadyResource::CopyToBufferSync(UCompushadyResource* DestinationBuffe
 
 				RHICmdList.CopyBufferRegion(TempBuffer, 0, GetBufferRHI(), SourceOffset, RequiredSize);
 
-				WaitForGPU(RHICmdList);
+				// TempBuffer write -> read is ordered by the Unknown -> CopySrc transition below; no full GPU stall needed.
 
 				RHICmdList.Transition(FRHITransitionInfo(TempBuffer, ERHIAccess::Unknown, ERHIAccess::CopySrc));
 				RHICmdList.Transition(FRHITransitionInfo(DestinationBuffer->GetBufferRHI(), ERHIAccess::Unknown, ERHIAccess::CopyDest));

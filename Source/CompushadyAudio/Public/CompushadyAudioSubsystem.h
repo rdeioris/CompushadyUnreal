@@ -12,7 +12,7 @@
  * 
  */
 UCLASS()
-class COMPUSHADY_API UCompushadyAudioSubsystem : public UTickableWorldSubsystem
+class COMPUSHADYAUDIO_API UCompushadyAudioSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 

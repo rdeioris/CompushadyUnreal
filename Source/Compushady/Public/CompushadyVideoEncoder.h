@@ -50,9 +50,11 @@ public:
 
 	bool Initialize(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency);
 
+	// Submits the texture in FrameResource to the encoder as the next video frame, optionally forcing it to be encoded as a key frame; returns false if the resource is not a valid texture.
 	UFUNCTION(BlueprintCallable, Category="Compushady")
 	bool EncodeFrame(UCompushadyResource* FrameResource, const bool bForceKeyFrame);
 
+	// Retrieves the next available encoded video packet into FrameData; returns false if no encoded frame is ready.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool DequeueEncodedFrame(TArray<uint8>& FrameData);
 

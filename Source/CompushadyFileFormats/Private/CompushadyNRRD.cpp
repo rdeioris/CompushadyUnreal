@@ -1,14 +1,14 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 
-#include "CompushadyTypes.h"
+#include "CompushadyFileFormats.h"
 #include "Misc/FileHelper.h"
 
 bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& SlicesData, int64& Offset, uint32& Width, uint32& Height, uint32& Depth, EPixelFormat& PixelFormat)
 {
 	if (!FFileHelper::LoadFileToArray(SlicesData, *Filename))
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unable to load file %s"), *Filename);
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Unable to load file %s"), *Filename);
 		return false;
 	}
 
@@ -36,7 +36,7 @@ bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& Slice
 
 	if (Lines.Num() < 5 || !Lines[0].StartsWith("NRRD"))
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD file"));
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD file"));
 		return false;
 	}
 
@@ -94,7 +94,7 @@ bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& Slice
 				}
 				else
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD type"));
+					UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD type"));
 					return false;
 				}
 			}
@@ -103,7 +103,7 @@ bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& Slice
 				Dimension = FCString::Atoi(*Value);
 				if (Dimension < 1)
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD dimension"));
+					UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD dimension"));
 					return false;
 				}
 			}
@@ -111,7 +111,7 @@ bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& Slice
 			{
 				if (Value != "raw")
 				{
-					UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD encoding"));
+					UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD encoding"));
 					return false;
 				}
 			}
@@ -125,19 +125,19 @@ bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& Slice
 
 	if (PixelFormat == EPixelFormat::PF_Unknown)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD: missing type"));
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD: missing type"));
 		return false;
 	}
 
 	if (Dimension == 0)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD: missing dimension"));
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD: missing dimension"));
 		return false;
 	}
 
 	if (Sizes.Num() == 0)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD: missing sizes"));
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD: missing sizes"));
 		return false;
 	}
 
@@ -155,7 +155,7 @@ bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& Slice
 
 	if (Width <= 0 || Height <= 0 || Depth <= 0)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD sizes (%d %d %d)"), Width, Height, Depth);
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD sizes (%d %d %d)"), Width, Height, Depth);
 		return false;
 	}
 
@@ -165,7 +165,7 @@ bool Compushady::Utils::LoadNRRD(const FString& Filename, TArray64<uint8>& Slice
 
 	if (Offset >= SlicesData.Num() || (SlicesData.Num() - Offset) < RequiredSize)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Invalid NRRD file size (required: %lld bytes)"), RequiredSize);
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Invalid NRRD file size (required: %lld bytes)"), RequiredSize);
 		return false;
 	}
 

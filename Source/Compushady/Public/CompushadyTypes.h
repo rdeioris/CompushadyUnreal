@@ -364,66 +364,39 @@ DECLARE_DYNAMIC_DELEGATE_ThreeParams(FCompushadySignaledWithFloatArrayPayload, b
 class COMPUSHADY_API ICompushadySignalable
 {
 public:
-	virtual ~ICompushadySignalable() = default;
+	virtual ~ICompushadySignalable();
 
 	bool IsRunning() const
 	{
 		return bRunning;
 	}
 
-	void BeginFence(const FCompushadySignaled& OnSignaled)
-	{
-		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
-		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
-		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled]
-			{
-				bRunning = false;
-				OnSignaled.ExecuteIfBound(true, "");
-				OnSignalReceived();
-			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
-	}
-
-	void BeginFence(const FCompushadySignaledAndProfiled& OnSignaledAndProfiled)
-	{
-		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
-		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
-		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaledAndProfiled]
-			{
-				bRunning = false;
-				OnSignaledAndProfiled.ExecuteIfBound(true, LastQueriedMicroseconds, "");
-				OnSignalReceived();
-			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
-	}
-
-	void BeginFence(const FCompushadySignaledWithFloatArrayPayload& OnSignaled, const TArray<float>& ReadbackCacheFloats)
-	{
-		FGraphEventRef RenderThreadCompletionEvent = FFunctionGraphTask::CreateAndDispatchWhenReady([] {}, TStatId(), nullptr, ENamedThreads::GetRenderThread());
-		FGraphEventArray Prerequisites = { RenderThreadCompletionEvent };
-		FFunctionGraphTask::CreateAndDispatchWhenReady([this, OnSignaled, &ReadbackCacheFloats]
-			{
-				bRunning = false;
-				OnSignaled.ExecuteIfBound(true, ReadbackCacheFloats, "");
-				OnSignalReceived();
-			}, TStatId(), &Prerequisites, ENamedThreads::GameThread);
-	}
-
-	void WaitForGPU(FRHICommandListImmediate& RHICmdList)
-	{
-		RHICmdList.SubmitCommandsAndFlushGPU();
-		RHICmdList.BlockUntilGPUIdle();
-	}
+	// The three BeginFence overloads now register the supplied GPU fence with the
+	// FCompushadyGPUFencePoller instead of piggy-backing on an empty render-thread task.
+	// The completion (bRunning = false; delegate; OnSignalReceived()) fires on the game
+	// thread once the GPU has actually signalled the fence. Definitions live in
+	// CompushadyTypes.cpp so this header does not need to pull in the poller.
+	void BeginFence(const FCompushadySignaled& OnSignaled, const FGPUFenceRHIRef& Fence);
+	void BeginFence(const FCompushadySignaledAndProfiled& OnSignaledAndProfiled, const FGPUFenceRHIRef& Fence);
+	void BeginFence(const FCompushadySignaledWithFloatArrayPayload& OnSignaled, const FGPUFenceRHIRef& Fence, const TArray<float>& ReadbackCacheFloats);
 
 	template<typename DELEGATE, typename... TArgs>
 	void EnqueueToGPU(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction, const DELEGATE& OnSignaled, TArgs & ... Args)
 	{
 		bRunning = true;
+
+		// Fresh, single-shot fence per dispatch (matches the engine's own readback pattern):
+		// no reuse means no stale-signal race, and creation is cheap.
+		FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyEnqueueToGPU"));
+
 		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
-			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			[this, InFunction, SignalFence](FRHICommandListImmediate& RHICmdList)
 			{
 				InFunction(RHICmdList);
+				RHICmdList.WriteGPUFence(SignalFence.GetReference());
 			});
 
-		BeginFence(OnSignaled, Args...);
+		BeginFence(OnSignaled, SignalFence, Args...);
 	}
 
 	template<typename DELEGATE, typename... TArgs>
@@ -436,8 +409,10 @@ public:
 			QueryPoolRHIRef = RHICreateRenderQueryPool(ERenderQueryType::RQT_AbsoluteTime);
 		}
 
+		FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyEnqueueToGPUAndProfile"));
+
 		ENQUEUE_RENDER_COMMAND(DoCompushadyEnqueueToGPU)(
-			[this, InFunction](FRHICommandListImmediate& RHICmdList)
+			[this, InFunction, SignalFence](FRHICommandListImmediate& RHICmdList)
 			{
 				FRHIPooledRenderQuery BeforeRenderQuery = QueryPoolRHIRef->AllocateQuery();
 				RHICmdList.EndRenderQuery(BeforeRenderQuery.GetQuery());
@@ -447,20 +422,24 @@ public:
 				FRHIPooledRenderQuery AfterRenderQuery = QueryPoolRHIRef->AllocateQuery();
 				RHICmdList.EndRenderQuery(AfterRenderQuery.GetQuery());
 
-				WaitForGPU(RHICmdList);
+				// Submit the recorded work, then let each query read below wait only on its own timestamp
+				// (bWait = true) instead of draining the whole GPU with BlockUntilGPUIdle.
+				RHICmdList.SubmitCommandsAndFlushGPU();
 
 				uint64 BeforeMicroseconds = 0;
-				RHIGetRenderQueryResult(BeforeRenderQuery.GetQuery(), BeforeMicroseconds, false);
+				RHIGetRenderQueryResult(BeforeRenderQuery.GetQuery(), BeforeMicroseconds, true);
 				uint64 AfterMicroseconds = 0;
-				RHIGetRenderQueryResult(AfterRenderQuery.GetQuery(), AfterMicroseconds, false);
+				RHIGetRenderQueryResult(AfterRenderQuery.GetQuery(), AfterMicroseconds, true);
 
 				BeforeRenderQuery.ReleaseQuery();
 				AfterRenderQuery.ReleaseQuery();
 
 				LastQueriedMicroseconds = AfterMicroseconds - BeforeMicroseconds;
+
+				RHICmdList.WriteGPUFence(SignalFence.GetReference());
 			});
 
-		BeginFence(OnSignaledAndProfiled, Args...);
+		BeginFence(OnSignaledAndProfiled, SignalFence, Args...);
 	}
 
 	void EnqueueToGPUSync(TFunction<void(FRHICommandListImmediate& RHICmdList)> InFunction)
@@ -511,89 +490,96 @@ class COMPUSHADY_API UCompushadyResource : public UObject, public ICompushadyBin
 	GENERATED_BODY()
 public:
 
+	// Asynchronously reads back 'Elements' floats starting at 'Offset' from this buffer's GPU memory, delivering them through the OnSignaled payload delegate.
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void ReadbackBufferToFloatArray(const int32 Offset, const int32 Elements, const FCompushadySignaledWithFloatArrayPayload& OnSignaled);
 
+	// Synchronously reads back floats from this buffer into the Floats array (Elements <= 0 reads the whole buffer); returns false on failure.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool ReadbackBufferToFloatArraySync(const int64 Offset, const int64 Elements, TArray<float>& Floats, FString& ErrorMessages);
 
+	// Synchronously reads back raw bytes from this buffer into the Bytes array (Size <= 0 reads the whole buffer); returns false on failure.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool ReadbackBufferToByteArraySync(const int64 Offset, const int64 Size, TArray<uint8>& Bytes, FString& ErrorMessages);
 
+	// Synchronously reads back the buffer's floats as an array of FVector (3 floats each), advancing by Stride bytes per element.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	TArray<FVector> ReadbackBufferFloatsToVectorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 12);
 
+	// Synchronously reads back the buffer's floats as an array of FVector2D (2 floats each), advancing by Stride bytes per element.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	TArray<FVector2D> ReadbackBufferFloatsToVector2ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 8);
 
+	// Synchronously reads back the buffer's floats as an array of FVector4 (4 floats each), advancing by Stride bytes per element.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	TArray<FVector4> ReadbackBufferFloatsToVector4ArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
 
+	// Synchronously reads back the buffer's floats as an array of FLinearColor (RGBA, 4 floats each), advancing by Stride bytes per element.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	TArray<FLinearColor> ReadbackBufferFloatsToLinearColorArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 16);
 
+	// Synchronously reads back the buffer's data as an array of int32 values, advancing by Stride bytes per element.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	TArray<int32> ReadbackBufferIntsToIntArraySync(const int32 Offset, const int32 Elements, const int32 Stride = 4);
 
+	// Asynchronously reads back a range of this buffer and writes it to the given file, signaling completion via OnSignaled.
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void ReadbackBufferToFile(const FString& Filename, const int64 Offset, const int64 Size, const FCompushadySignaled& OnSignaled);
 
+	// Synchronously reads back a range of this buffer and writes it to the given file (Size <= 0 writes the whole buffer); returns false on failure.
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	bool ReadbackBufferToFileSync(const FString& Filename, const int64 Offset, const int64 Size, FString& ErrorMessages);
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool ReadbackTextureToPNGFileSync(const FString& Filename, FString& ErrorMessages);
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool ReadbackTextureToTIFFFileSync(const FString& Filename, const FString& ImageDescription, FString& ErrorMessages);
 
-	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	bool ReadbackBufferToWAVFileSync(const FString& Filename, const int64 Offset, const int64 Size, const int32 SampleRate, const int32 NumChannels, const EPixelFormat PixelFormat, const ECompushadyWAVFormat WAVFormat, FString& ErrorMessages);
-
+	// Asynchronously copies this resource's texture into the given Render Target 2D, signaling completion via OnSignaled.
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
 	void CopyToRenderTarget2D(UTextureRenderTarget2D* RenderTarget, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
+	// Asynchronously copies this resource's texture into the given Render Target 2D Array, signaling completion via OnSignaled.
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
 	void CopyToRenderTarget2DArray(UTextureRenderTarget2DArray* RenderTargetArray, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
+	// Asynchronously copies the given Media Texture into this resource's texture, signaling completion via OnSignaled.
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "CopyInfo", AutoCreateRefTerm = "OnSignaled,CopyInfo"), Category = "Compushady")
 	void CopyFromMediaTexture(UMediaTexture* MediaTexture, const FCompushadySignaled& OnSignaled, const FCompushadyTextureCopyInfo& CopyInfo);
 
+	// Asynchronously copies a region of this buffer into the destination buffer at the given offsets, signaling completion via OnSignaled.
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "OnSignaled"), Category = "Compushady")
 	void CopyToBuffer(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, const FCompushadySignaled& OnSignaled);
 
+	// Synchronously copies a region of this buffer into the destination buffer at the given offsets; returns false on failure.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool CopyToBufferSync(UCompushadyResource* DestinationBuffer, const int64 Size, const int64 DestinationOffset, const int64 SourceOffset, FString& ErrorMessages);
 
+	/** Returns the number of compute thread groups needed to cover this texture, dividing its dimensions by the per-group XYZ size (rounding up).
+	 * When bUseNumSlicesForZ is true the Z count is derived from the texture's slice count instead of its depth. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureThreadGroupSize(const FIntVector XYZ, const bool bUseNumSlicesForZ) const;
 
+	// Returns the number of compute thread groups needed to cover this structured buffer, dividing its element count by XYZ.X (rounding up).
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetStructuredBufferThreadGroupSize(const FIntVector XYZ) const;
 
+	// Returns this resource's texture dimensions (width, height, depth), or a zero vector if it is not a valid texture.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	FIntVector GetTextureSize() const;
 
+	// Returns the size in bytes of this resource's buffer, or 0 if it is not a valid buffer.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	int64 GetBufferSize() const;
 
+	// Returns the element stride in bytes of this resource's buffer, or 0 if it is not a valid buffer.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	int32 GetBufferStride() const;
 
+	// Returns the number of array slices in this texture (multiplied by 6 for cube textures), or 0 if it is not a valid texture.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	int32 GetTextureNumSlices() const;
 
+	// Returns the pixel format of this resource's texture, or PF_Unknown if it is not a valid texture.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	EPixelFormat GetTexturePixelFormat() const;
-
-	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
-	FGuid Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
-
-	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
-	FGuid DrawBeforePostProcessing(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
-
-	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
-	FGuid DrawAfterMotionBlur(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;
@@ -617,15 +603,19 @@ public:
 	void MapWriteAndExecuteInGameThread(TFunction<void(void*)> InFunction, const FCompushadySignaled& OnSignaled);
 	bool MapWriteAndExecuteSync(TFunction<bool(void*)> InFunction);
 
+	// Synchronously uploads the given pixel bytes into the specified slice of this texture; returns false while a task is running or if it is not a valid texture.
 	UFUNCTION(BlueprintCallable, meta = (AdvancedDisplay = "UpdateInfo", AutoCreateRefTerm = "UpdateInfo"), Category = "Compushady")
 	bool UpdateTextureSliceSync(const TArray<uint8>& Pixels, const int32 Slice);
 
+	// Synchronously fills the entire buffer with the given byte value; returns false if it is not a valid buffer.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool ClearBufferWithByteSync(const uint8 Value);
 
+	// Synchronously fills the entire buffer with the given float value (per 4-byte element); returns false if it is not a valid buffer.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool ClearBufferWithFloatSync(const float Value);
 
+	// Synchronously fills the entire buffer with the given int32 value (per 4-byte element); returns false if it is not a valid buffer.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool ClearBufferWithIntSync(const int32 Value);
 
@@ -634,7 +624,40 @@ public:
 
 	bool MapTextureSliceAndExecuteSync(TFunction<void(const void*, const int32)> InFunction, const int32 Slice);
 
+	// Async, non-stalling counterpart of MapTextureSliceAndExecuteSync: copies the slice into the
+	// CPU-readback texture, then maps + runs InFunction on the game thread once the GPU fence signals.
+	void MapTextureSliceAndExecute(TFunction<void(const void*, const int32)> InFunction, const int32 Slice, const FCompushadySignaled& OnSignaled);
+
+	// The cross-process shared-handle name — the kernel-object name a peer passes to
+	// OpenSharedHandleByName (D3D12); empty on Vulkan (handles are transported by value there). This
+	// is distinct from the resource's RHI debug name.
+	void SetSharedName(const FString& InSharedName) { SharedName = InSharedName; }
+
+	// Cross-process sharing. The CompushadyShared module exports a native OS handle for this resource
+	// and hands it over via SetSharedHandle; the resource owns it, keeps it open for its lifetime (so
+	// a peer can keep opening it by name) and closes it in BeginDestroy. The platform close lives in
+	// its own small translation unit (CompushadyResourceSharedHandle.cpp).
+	void SetSharedHandle(void* InHandle);
+	void CloseSharedHandle();
+
+	// True if this resource was created as cross-process shared and currently owns an exported OS handle.
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady|Shared")
+	bool IsShared() const { return SharedHandle != nullptr; }
+
+	// The cross-process shared name a peer opens this resource by (empty if the resource is not shared).
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady|Shared")
+	FString GetSharedName() const { return SharedName; }
+
+	// Raw OS handle value (NT HANDLE / fd). Kept for the Vulkan/CUDA handle-by-value path; not needed
+	// for the D3D12 name-based handshake, so it stays plain C++ rather than a Blueprint node.
+	int64 GetSharedHandle() const { return reinterpret_cast<int64>(SharedHandle); }
+
+	virtual void BeginDestroy() override;
+
 protected:
+	void* SharedHandle = nullptr;
+	FString SharedName;
+
 	FTextureRHIRef TextureRHIRef;
 	FBufferRHIRef BufferRHIRef;
 	FStagingBufferRHIRef StagingBufferRHIRef;
@@ -693,18 +716,10 @@ namespace Compushady
 
 		COMPUSHADY_API void FillRasterizerPipelineStateInitializer(const FCompushadyRasterizerConfig& RasterizerConfig, FGraphicsPipelineStateInitializer& PipelineStateInitializer);
 
-		COMPUSHADY_API bool GenerateTIFF(const void* Data, const int32 Stride, const uint32 Width, const uint32 Height, const EPixelFormat PixelFormat, const FString ImageDescription, TArray<uint8>& IFD);
-		COMPUSHADY_API bool LoadNRRD(const FString& Filename, TArray64<uint8>& SlicesData, int64& Offset, uint32& Width, uint32& Height, uint32& Depth, EPixelFormat& PixelFormat);
-		COMPUSHADY_API bool GZIPDecompress(const TArray<uint8>& Data, TArray<uint8>& UncompressedData);
 
 		COMPUSHADY_API void BytesToStringArray(const TArray<uint8>& Bytes, TArray<FString>& Lines);
 		COMPUSHADY_API bool SplitToFloats(const TArray<FString>& Lines, const TArray<int32>& Columns, const FString& Separator, const int32 SkipLines, const bool bCullEmpty, TArray<float>& Values, int32& Stride);
 
 		COMPUSHADY_API void DrawVertices(FRHICommandList& RHICmdList, const int32 NumVertices, const int32 NumInstances, const FCompushadyRasterizerConfig& RasterizerConfig);
-	}
-
-	namespace PointCloud
-	{
-		COMPUSHADY_API bool LoadLASToFloatArray(const TArray<uint8>& Data, TArray<float>& Floats, const bool bIncludeColors);
 	}
 }

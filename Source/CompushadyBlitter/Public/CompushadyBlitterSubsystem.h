@@ -31,7 +31,7 @@ struct FCompushadyBlitterRasterizer
 };
 
 UCLASS()
-class COMPUSHADY_API UCompushadyBlitterSubsystem : public UWorldSubsystem
+class COMPUSHADYBLITTER_API UCompushadyBlitterSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 
@@ -41,21 +41,27 @@ public:
 
 	bool ShouldCreateSubsystem(UObject* Outer) const override;
 
+	// Blits a Compushady resource as a quad over the viewport after the scene is rendered, spawning the blitter actor on demand; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
+	// Blits a Compushady resource as a quad onto the scene color before post-processing, spawning the blitter actor on demand; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddBeforePostProcessingDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
+	// Blits a Compushady resource as a quad onto the scene right after the motion blur pass, spawning the blitter actor on demand; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
+	// Removes a previously added drawable from the blitter actor by its handle.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void RemoveDrawable(const FGuid& Guid);
 
+	// Returns the view matrix captured from the last rendered view by the blitter actor, or the identity matrix if unavailable.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	const FMatrix& GetViewMatrix();
 
+	// Returns the projection matrix captured from the last rendered view by the blitter actor, or the identity matrix if unavailable.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	const FMatrix& GetProjectionMatrix();
 

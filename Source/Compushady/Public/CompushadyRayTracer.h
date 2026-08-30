@@ -19,9 +19,11 @@ class COMPUSHADY_API UCompushadyRayTracer : public UObject, public ICompushadyPi
 public:
 	bool InitFromHLSL(const TArray<uint8>& RayGenShaderCode, const FString& RayGenShaderEntryPoint, const TArray<uint8>& RayMissShaderCode, const FString& RayMissShaderEntryPoint, const TArray<uint8>& RayHitGroupShaderCode, const FString& RayHitGroupShaderEntryPoint, FString& ErrorMessages);
 
+	// Asynchronously launches the ray tracing pipeline over an XYZ ray grid using the ray generation shader bindings, invoking OnSignaled when the GPU work completes.
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ResourceArray,OnSignaled"), Category = "Compushady")
 	void DispatchRays(const FCompushadyResourceArray& ResourceArray, const FIntVector XYZ, const FCompushadySignaled& OnSignaled);
 
+	// Returns true while a previously enqueued ray dispatch is still executing on the GPU.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	bool IsRunning() const;
 

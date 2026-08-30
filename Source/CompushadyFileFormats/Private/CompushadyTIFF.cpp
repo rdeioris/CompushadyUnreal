@@ -1,7 +1,7 @@
 // Copyright 2023-2024 - Roberto De Ioris.
 
 
-#include "CompushadyTypes.h"
+#include "CompushadyFileFormats.h"
 
 #define COMPUSHADY_TIFF_TYPE_ASCII 2
 #define COMPUSHADY_TIFF_TYPE_SHORT 3
@@ -262,7 +262,7 @@ bool Compushady::Utils::GenerateTIFF(const void* Data, const int32 Stride, const
 {
 	if (!GPixelFormats[PixelFormat].Supported)
 	{
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported PixelFormat %d for TIFF generator"), static_cast<int32>(PixelFormat));
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Unsupported PixelFormat %d for TIFF generator"), static_cast<int32>(PixelFormat));
 		return false;
 	}
 
@@ -316,7 +316,7 @@ bool Compushady::Utils::GenerateTIFF(const void* Data, const int32 Stride, const
 		Format = COMPUSHADY_TIFF_FORMAT_INT;
 		break;
 	default:
-		UE_LOG(LogCompushady, Error, TEXT("Unsupported PixelFormat %d for TIFF generator"), static_cast<int32>(PixelFormat));
+		UE_LOG(LogCompushadyFileFormats, Error, TEXT("Unsupported PixelFormat %d for TIFF generator"), static_cast<int32>(PixelFormat));
 		return false;
 	}
 

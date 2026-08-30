@@ -45,11 +45,11 @@ protected:
 		SRVViewDesc.SetDimensionFromTexture(Contents->SceneDepthTexture->GetRHI());
 
 		SRVViewDesc.SetPlane(ERHITexturePlane::Depth);
-		FShaderResourceViewRHIRef DepthSRV = COMPUSHADY_CREATE_SRV(Contents->SceneDepthTexture->GetRHI(), SRVViewDesc);
+		FShaderResourceViewRHIRef DepthSRV = COMPUSHADY_CREATE_SRV_TEXTURE_VIEWDESC(Contents->SceneDepthTexture->GetRHI(), SRVViewDesc);
 		SceneTextures.SetSRV(ECompushadySceneTexture::Depth, DepthSRV);
 
 		SRVViewDesc.SetPlane(ERHITexturePlane::Stencil);
-		FShaderResourceViewRHIRef StencilSRV = COMPUSHADY_CREATE_SRV(Contents->SceneDepthTexture->GetRHI(), SRVViewDesc);
+		FShaderResourceViewRHIRef StencilSRV = COMPUSHADY_CREATE_SRV_TEXTURE_VIEWDESC(Contents->SceneDepthTexture->GetRHI(), SRVViewDesc);
 		SceneTextures.SetSRV(ECompushadySceneTexture::Stencil, StencilSRV);
 
 		SceneTextures.SetTexture(ECompushadySceneTexture::CustomDepth, Contents->CustomDepthTexture->GetRHI());

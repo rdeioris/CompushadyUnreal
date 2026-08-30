@@ -29,9 +29,6 @@ public class Compushady : ModuleRules
                 "SlateCore",
                 "Slate",
                 "UMG",
-                "AudioExtensions",
-                "AudioMixer",
-                "SignalProcessing"
             }
             );
 
