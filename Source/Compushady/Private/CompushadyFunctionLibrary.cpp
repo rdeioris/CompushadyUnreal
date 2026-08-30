@@ -1810,6 +1810,58 @@ void UCompushadyFunctionLibrary::DispatchMultiPass(const TArray<FCompushadyCompu
 		}, OnSignaled, static_cast<TArray<ICompushadyPipeline*>>(ComputesArray));
 }
 
+bool UCompushadyFunctionLibrary::DispatchMultiPassPersistent(
+	const TArray<FCompushadyComputePass>& ComputePasses, FString& ErrorMessages)
+{
+	TArray<UCompushadyCompute*> ComputesArray;
+	TArray<FCompushadyResourceArray> ResourceArrays;
+	TArray<FIntVector> XYZs;
+
+	ComputesArray.Reserve(ComputePasses.Num());
+	ResourceArrays.Reserve(ComputePasses.Num());
+	XYZs.Reserve(ComputePasses.Num());
+
+	for (const FCompushadyComputePass& ComputePass : ComputePasses)
+	{
+		if (!ComputePass.Compute)
+		{
+			ErrorMessages = TEXT("Compute is NULL");
+			return false;
+		}
+
+		if (ComputePass.XYZ.X <= 0 || ComputePass.XYZ.Y <= 0 || ComputePass.XYZ.Z <= 0)
+		{
+			ErrorMessages = FString::Printf(
+				TEXT("Invalid ThreadGroupCount %s"), *ComputePass.XYZ.ToString());
+			return false;
+		}
+
+		if (!Compushady::Utils::ValidateResourceBindings(
+				ComputePass.ResourceArray, ComputePass.Compute->ResourceBindings, ErrorMessages))
+		{
+			return false;
+		}
+
+		ComputesArray.Add(ComputePass.Compute);
+		ResourceArrays.Add(ComputePass.ResourceArray);
+		XYZs.Add(ComputePass.XYZ);
+	}
+
+	// Deliberately no IsRunning() check, no TrackResourcesAndMarkAsRunning, and
+	// no fence: the caller guarantees the resources outlive the GPU work.
+	ENQUEUE_RENDER_COMMAND(DoCompushadyDispatchMultiPassPersistent)(
+		[ComputesArray, ResourceArrays, XYZs](FRHICommandListImmediate& RHICmdList)
+		{
+			for (int32 Index = 0; Index < ComputesArray.Num(); Index++)
+			{
+				ComputesArray[Index]->Dispatch_RenderThread(
+					RHICmdList, ResourceArrays[Index], XYZs[Index]);
+			}
+		});
+
+	return true;
+}
+
 bool UCompushadyFunctionLibrary::LoadFileWithLoaderConfig(const FString& Filename, TArray<uint8>& Bytes, const FCompushadyFileLoaderConfig& FileLoaderConfig)
 {
 	for (const FString& PrependFilename : FileLoaderConfig.PrependFiles)

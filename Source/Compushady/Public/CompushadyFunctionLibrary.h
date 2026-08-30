@@ -358,6 +358,28 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "Computes,OnSignaled"), Category = "Compushady")
 	static void DispatchMultiPass(const TArray<FCompushadyComputePass>& ComputePasses, const FCompushadySignaled& OnSignaled);
 
+	/**
+	 * Records a multi-pass compute chain without the fence and re-entrancy guard
+	 * of DispatchMultiPass, for callers that dispatch every frame.
+	 *
+	 * DispatchMultiPass marks each compute as running and clears the mark only
+	 * when a GPU fence signals. With normal game/render/GPU pipelining the fence
+	 * for frame N has not signalled when frame N+1 is recorded, so a per-frame
+	 * simulation is refused on most frames. This variant records unconditionally
+	 * and signals nothing.
+	 *
+	 * The caller therefore owns resource lifetime: every compute and every
+	 * resource referenced by ComputePasses must be kept alive until the GPU has
+	 * consumed them. Intended for steady-state simulation loops that hold their
+	 * resources as UPROPERTYs for the lifetime of the simulation. For one-shot
+	 * jobs use DispatchMultiPass, which tracks resources for you.
+	 *
+	 * @return false, with ErrorMessages filled, if any pass is malformed. True
+	 *         means the chain was recorded, not that the GPU has finished it.
+	 */
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm = "ComputePasses"), Category = "Compushady")
+	static bool DispatchMultiPassPersistent(const TArray<FCompushadyComputePass>& ComputePasses, FString& ErrorMessages);
+
 	// Converts a double value into a Compushady float wrapper (Blueprint autocast).
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "To Compushady Float", BlueprintAutocast), Category = "Compushady")
 	static FCompushadyFloat Conv_DoubleToCompushadyFloat(double Value);
