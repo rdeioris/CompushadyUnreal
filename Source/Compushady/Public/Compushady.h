@@ -43,6 +43,21 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 #endif
 #endif
 
+// ---- shader identity hash ----
+//
+// 5.8 replaced FSHAHash (160-bit SHA-1) with FShaderHash (64-bit xxhash) as the shader
+// identity type taken by RHICreate*Shader and FRHIShader::SetHash. Compushady only ever
+// computes this hash from a finished shader blob and hands it straight to the RHI - it is
+// never stored, serialised, or compared - so the change of algorithm is transparent here.
+#if COMPUSHADY_UE_VERSION >= 58
+#include "Hash/ShaderHash.h"
+#include "Hash/xxhash.h"
+using FCompushadyShaderHash = FShaderHash;
+#else
+#include "Misc/SecureHash.h"
+using FCompushadyShaderHash = FSHAHash;
+#endif
+
 // ---- buffer creation ----
 #if COMPUSHADY_UE_VERSION == 52
 #define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
@@ -154,8 +169,8 @@ namespace Compushady
 	COMPUSHADY_API void StringToShaderCode(const FString& Code, TArray<uint8>& ShaderCode);
 	COMPUSHADY_API void StringToCString(const FString& Code, TArray<uint8>& ShaderCode);
 	COMPUSHADY_API FString ShaderCodeToString(const TArray<uint8>& ShaderCode);
-	COMPUSHADY_API bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs, const uint32 NumSamplers, FSHAHash& Hash);
-	COMPUSHADY_API FSHAHash GetHash(const TArrayView<uint8>& Data);
+	COMPUSHADY_API bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs, const uint32 NumSamplers, FCompushadyShaderHash& Hash);
+	COMPUSHADY_API FCompushadyShaderHash GetHash(const TArrayView<uint8>& Data);
 
 	COMPUSHADY_API bool FileToByteArray(const FString& Filename, const bool bRelativeToContent, TArray<uint8>& Bytes);
 

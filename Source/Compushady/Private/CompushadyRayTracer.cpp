@@ -57,7 +57,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 	/** RayGen Shader */
 
 	TArray<uint8> RGSByteCode;
-	FSHAHash RGSHash;
+	FCompushadyShaderHash RGSHash;
 	//if (!Compushady::ToUnrealShader(RayGenShaderByteCode, RGSByteCode, RayGenResourceBindings.NumCBVs, RayGenResourceBindings.NumSRVs, RayGenResourceBindings.NumUAVs, RayGenResourceBindings.NumSamplers, RGSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the RayGen Shader";
@@ -76,7 +76,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 	/** RayMiss Shader */
 
 	TArray<uint8> RMSByteCode;
-	FSHAHash RMSHash;
+	FCompushadyShaderHash RMSHash;
 	//if (!Compushady::ToUnrealShader(RayMissShaderByteCode, RMSByteCode, RayMissResourceBindings.NumCBVs, RayMissResourceBindings.NumSRVs, RayMissResourceBindings.NumUAVs, RayMissResourceBindings.NumSamplers, RMSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the RayMiss Shader";
@@ -95,7 +95,7 @@ bool UCompushadyRayTracer::CreateRayTracerPipeline(TArray<uint8>& RayGenShaderBy
 	/** RayHitGroup Shader */
 
 	TArray<uint8> RHGSByteCode;
-	FSHAHash RHGSHash;
+	FCompushadyShaderHash RHGSHash;
 
 	//if (!Compushady::ToUnrealShader(RayHitGroupShaderByteCode, RHGSByteCode, RayHitGroupResourceBindings.NumCBVs, RayHitGroupResourceBindings.NumSRVs, RayHitGroupResourceBindings.NumUAVs, RayHitGroupResourceBindings.NumSamplers, RHGSHash))
 	{

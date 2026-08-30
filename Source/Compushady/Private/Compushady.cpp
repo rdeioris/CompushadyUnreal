@@ -46,7 +46,7 @@ namespace Compushady
 		return FString(Converter.Length(), Converter.Get());
 	}
 
-	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs, const uint32 NumSamplers, FSHAHash& Hash)
+	bool ToUnrealShader(const TArray<uint8>& ByteCode, TArray<uint8>& Blob, const uint32 NumCBVs, const uint32 NumSRVs, const uint32 NumUAVs, const uint32 NumSamplers, FCompushadyShaderHash& Hash)
 	{
 		Blob.Append(ByteCode);
 
@@ -75,11 +75,16 @@ namespace Compushady
 		return true;
 	}
 
-	FSHAHash GetHash(const TArrayView<uint8>& Data)
+	FCompushadyShaderHash GetHash(const TArrayView<uint8>& Data)
 	{
+#if COMPUSHADY_UE_VERSION >= 58
+		// FShaderHash derives from FXxHash64 and converts from it implicitly.
+		return FXxHash64::HashBuffer(Data.GetData(), Data.Num());
+#else
 		FSHA1 Sha1;
 		Sha1.Update(Data.GetData(), Data.Num());
 		return Sha1.Finalize();
+#endif
 	}
 
 	bool FileToByteArray(const FString& Filename, const bool bRelativeToContent, TArray<uint8>& Bytes)

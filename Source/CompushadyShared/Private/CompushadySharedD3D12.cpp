@@ -7,6 +7,7 @@
 #include "ID3D12DynamicRHI.h"
 #include "RenderingThread.h"
 #include "RHICommandList.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 #include "Windows/AllowWindowsPlatformTypes.h"
 
@@ -172,7 +173,15 @@ namespace CompushadyShared
                     FRHICommandListScopedPipeline ScopedPipeline(RHICmdList, ERHIPipeline::Graphics);
                     RHICmdList.EnqueueLambda([NativeFence, Value](FRHICommandListBase& ExecutingCmdList)
                         {
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8)
+                            // 5.8 added a fourth argument: a flag the RHI sets once the
+                            // wait has been satisfied (it is stored in the payload's
+                            // ManualFencesToWait). Nothing here observes it, but it must
+                            // be a valid shared pointer rather than null.
+                            GetID3D12DynamicRHI()->RHIWaitManualFence(static_cast<FRHICommandList&>(ExecutingCmdList), NativeFence, Value, MakeShared<std::atomic<bool>>(false));
+#else
                             GetID3D12DynamicRHI()->RHIWaitManualFence(static_cast<FRHICommandList&>(ExecutingCmdList), NativeFence, Value);
+#endif
                         });
                 });
         }

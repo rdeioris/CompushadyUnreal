@@ -1917,7 +1917,7 @@ FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromHLSL(const TArray<u
 	}
 
 	TArray<uint8> VSByteCode;
-	FSHAHash VSHash;
+	FCompushadyShaderHash VSHash;
 	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VertexShaderResourceBindings.CBVs.Num(), VertexShaderResourceBindings.SRVs.Num(), VertexShaderResourceBindings.UAVs.Num(), VertexShaderResourceBindings.Samplers.Num(), VSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
@@ -1954,7 +1954,7 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromHLSL(const TArray<uin
 	}
 
 	TArray<uint8> PSByteCode;
-	FSHAHash PSHash;
+	FCompushadyShaderHash PSHash;
 	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PixelShaderResourceBindings.CBVs.Num(), PixelShaderResourceBindings.SRVs.Num(), PixelShaderResourceBindings.UAVs.Num(), PixelShaderResourceBindings.Samplers.Num(), PSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
@@ -1991,7 +1991,7 @@ FPixelShaderRHIRef Compushady::Utils::CreatePixelShaderFromGLSL(const TArray<uin
 	}
 
 	TArray<uint8> PSByteCode;
-	FSHAHash PSHash;
+	FCompushadyShaderHash PSHash;
 	if (!Compushady::ToUnrealShader(PixelShaderByteCode, PSByteCode, PixelShaderResourceBindings.CBVs.Num(), PixelShaderResourceBindings.SRVs.Num(), PixelShaderResourceBindings.UAVs.Num(), PixelShaderResourceBindings.Samplers.Num(), PSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the pixel shader";
@@ -2025,7 +2025,7 @@ FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromHLSL(const TArray
 	}
 
 	TArray<uint8> CSByteCode;
-	FSHAHash CSHash;
+	FCompushadyShaderHash CSHash;
 	if (!Compushady::ToUnrealShader(ComputeShaderByteCode, CSByteCode, ComputeShaderResourceBindings.CBVs.Num(), ComputeShaderResourceBindings.SRVs.Num(), ComputeShaderResourceBindings.UAVs.Num(), ComputeShaderResourceBindings.Samplers.Num(), CSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the compute shader";
@@ -2061,7 +2061,7 @@ FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromGLSL(const TArray
 	}
 
 	TArray<uint8> CSByteCode;
-	FSHAHash CSHash;
+	FCompushadyShaderHash CSHash;
 	if (!Compushady::ToUnrealShader(ComputeShaderByteCode, CSByteCode, ComputeShaderResourceBindings.CBVs.Num(), ComputeShaderResourceBindings.SRVs.Num(), ComputeShaderResourceBindings.UAVs.Num(), ComputeShaderResourceBindings.Samplers.Num(), CSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the compute shader";
@@ -2093,7 +2093,7 @@ FComputeShaderRHIRef Compushady::Utils::CreateComputeShaderFromSPIRVBlob(const T
 	}
 
 	TArray<uint8> CSByteCode;
-	FSHAHash CSHash;
+	FCompushadyShaderHash CSHash;
 	if (!Compushady::ToUnrealShader(ComputeShaderByteCode, CSByteCode, ComputeShaderResourceBindings.CBVs.Num(), ComputeShaderResourceBindings.SRVs.Num(), ComputeShaderResourceBindings.UAVs.Num(), ComputeShaderResourceBindings.Samplers.Num(), CSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the compute shader";
@@ -2129,7 +2129,7 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromHLSL(const TArray<uint8
 	}
 
 	TArray<uint8> MSByteCode;
-	FSHAHash MSHash;
+	FCompushadyShaderHash MSHash;
 	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MeshShaderResourceBindings.CBVs.Num(), MeshShaderResourceBindings.SRVs.Num(), MeshShaderResourceBindings.UAVs.Num(), MeshShaderResourceBindings.Samplers.Num(), MSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the mesh shader";
@@ -2165,7 +2165,7 @@ FMeshShaderRHIRef Compushady::Utils::CreateMeshShaderFromGLSL(const TArray<uint8
 	}
 
 	TArray<uint8> MSByteCode;
-	FSHAHash MSHash;
+	FCompushadyShaderHash MSHash;
 	if (!Compushady::ToUnrealShader(MeshShaderByteCode, MSByteCode, MeshShaderResourceBindings.CBVs.Num(), MeshShaderResourceBindings.SRVs.Num(), MeshShaderResourceBindings.UAVs.Num(), MeshShaderResourceBindings.Samplers.Num(), MSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the mesh shader";
@@ -2202,7 +2202,7 @@ FVertexShaderRHIRef Compushady::Utils::CreateVertexShaderFromGLSL(const TArray<u
 	}
 
 	TArray<uint8> VSByteCode;
-	FSHAHash VSHash;
+	FCompushadyShaderHash VSHash;
 	if (!Compushady::ToUnrealShader(VertexShaderByteCode, VSByteCode, VertexShaderResourceBindings.CBVs.Num(), VertexShaderResourceBindings.SRVs.Num(), VertexShaderResourceBindings.UAVs.Num(), VertexShaderResourceBindings.Samplers.Num(), VSHash))
 	{
 		ErrorMessages = "Unable to add Unreal metadata to the vertex shader";
