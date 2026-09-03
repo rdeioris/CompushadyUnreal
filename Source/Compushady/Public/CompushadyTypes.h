@@ -484,6 +484,33 @@ protected:
 	TArray<TStrongObjectPtr<UObject>> CurrentTrackedResources;
 };
 
+// ---------------------------------------------------------------------------
+// Blitter draw sink — registration seam for the CompushadyBlitter module.
+// UCompushadyResource::Draw/DrawBeforePostProcessing/DrawAfterMotionBlur are
+// UFUNCTIONs on this module's class (callable via reflection, e.g. DuPython's
+// uav.draw), but the blitter that fulfils them lives in the CompushadyBlitter
+// module, which already depends on this one. The blitter registers a sink at
+// module startup; the Draw* methods forward through it. No sink registered ->
+// warn + invalid FGuid, never a crash.
+// ---------------------------------------------------------------------------
+namespace Compushady::Blitter
+{
+	enum class EDrawPhase : uint8
+	{
+		Default,
+		BeforePostProcessing,
+		AfterMotionBlur,
+	};
+
+	using FDrawSink = TFunction<FGuid(class UCompushadyResource* Resource,
+		UObject* WorldContextObject, const FVector4 Quad,
+		const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label,
+		EDrawPhase Phase)>;
+
+	COMPUSHADY_API void RegisterDrawSink(FDrawSink InSink);
+	COMPUSHADY_API void UnregisterDrawSink();
+}
+
 UCLASS(Abstract, BlueprintType)
 class COMPUSHADY_API UCompushadyResource : public UObject, public ICompushadyBindable, public ICompushadySignalable
 {
@@ -580,6 +607,15 @@ public:
 	// Returns the pixel format of this resource's texture, or PF_Unknown if it is not a valid texture.
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Compushady")
 	EPixelFormat GetTexturePixelFormat() const;
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	FGuid Draw(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label = TEXT(""));
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	FGuid DrawBeforePostProcessing(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "Compushady")
+	FGuid DrawAfterMotionBlur(UObject* WorldContextObject, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
 	FTextureRHIRef GetTextureRHI() const;
 	FBufferRHIRef GetBufferRHI() const;

@@ -28,7 +28,7 @@ public:
 
 	// Registers a Compushady resource to be blitted as a quad over the viewport after the scene is rendered; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	FGuid AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
+	FGuid AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label = TEXT(""));
 
 	// Registers a Compushady resource to be blitted as a quad onto the scene color before post-processing runs; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")

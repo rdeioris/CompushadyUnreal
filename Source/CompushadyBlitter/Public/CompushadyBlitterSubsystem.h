@@ -43,7 +43,7 @@ public:
 
 	// Blits a Compushady resource as a quad over the viewport after the scene is rendered, spawning the blitter actor on demand; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
-	FGuid AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
+	FGuid AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label = TEXT(""));
 
 	// Blits a Compushady resource as a quad onto the scene color before post-processing, spawning the blitter actor on demand; returns a handle for RemoveDrawable.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")

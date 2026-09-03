@@ -10,9 +10,16 @@
 #endif
 
 #include "RenderGraphBuilder.h"
+#include "RenderGraphUtils.h"
 #include "SceneViewExtension.h"
 #include "FXRenderingUtils.h"
 #include "CompushadyBlendable.h"
+
+// On-screen preview labels (optional per-drawable text drawn at the quad corner).
+#include "CanvasTypes.h"
+#include "CanvasItem.h"
+#include "Engine/Engine.h"
+#include "Engine/Font.h"
 
 #include "Misc/Optional.h"
 
@@ -23,6 +30,7 @@ struct FCompushadyBlitterDrawable
 	FShaderResourceViewRHIRef SRV;
 	FVector4 Quad;
 	ECompushadyKeepAspectRatio AspectRatio;
+	FString Label;
 
 	FCompushadyBlitterDrawable()
 	{
@@ -235,7 +243,53 @@ public:
 							DrawDrawables_RenderThread(RHICmdList, ViewRect, CurrentDrawables);
 						}, RasterizerConfig);
 				});
+
+			DrawLabels_RenderThread(GraphBuilder, InView, ViewRect, RenderTarget, CurrentDrawables);
 		}
+	}
+
+	// Draw each drawable's optional text label at its quad's top-left corner,
+	// loaded over the already-blitted previews. No-op when no labels are set.
+	void DrawLabels_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FIntRect ViewRect, FTextureRHIRef RenderTarget, const TArray<FCompushadyBlitterDrawable>& CurrentDrawables)
+	{
+		bool bHasLabels = false;
+		for (const FCompushadyBlitterDrawable& Drawable : CurrentDrawables)
+		{
+			if (!Drawable.Label.IsEmpty())
+			{
+				bHasLabels = true;
+				break;
+			}
+		}
+		if (!bHasLabels)
+		{
+			return;
+		}
+
+		FRDGTextureRef OutputTexture = RegisterExternalTexture(GraphBuilder, RenderTarget, TEXT("CompushadyBlitterLabelTarget"));
+		FScreenPassRenderTarget Output(OutputTexture, ViewRect, ERenderTargetLoadAction::ELoad);
+
+		AddDrawCanvasPass(GraphBuilder, RDG_EVENT_NAME("FCompushadyBlitterViewExtension::DrawLabels"), InView, Output,
+			[CurrentDrawables, ViewRect](FCanvas& Canvas)
+			{
+				UFont* Font = GEngine ? GEngine->GetSmallFont() : nullptr;
+				if (!Font)
+				{
+					return;
+				}
+				for (const FCompushadyBlitterDrawable& Drawable : CurrentDrawables)
+				{
+					if (Drawable.Label.IsEmpty())
+					{
+						continue;
+					}
+					const float X = ViewRect.Min.X + static_cast<float>(Drawable.Quad.X) * ViewRect.Width() + 6.0f;
+					const float Y = ViewRect.Min.Y + static_cast<float>(Drawable.Quad.Y) * ViewRect.Height() + 4.0f;
+					FCanvasTextItem TextItem(FVector2D(X, Y), FText::FromString(Drawable.Label), Font, FLinearColor::White);
+					TextItem.EnableShadow(FLinearColor::Black);
+					Canvas.DrawItem(TextItem);
+				}
+			});
 	}
 
 	void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override
@@ -501,7 +555,7 @@ void ACompushadyBlitterActor::Tick(float DeltaTime)
 
 }
 
-FGuid ACompushadyBlitterActor::AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio)
+FGuid ACompushadyBlitterActor::AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label)
 {
 	if (!ViewExtension || !Resource || !Resource->GetTextureRHI())
 	{
@@ -521,6 +575,7 @@ FGuid ACompushadyBlitterActor::AddDrawable(UCompushadyResource* Resource, const 
 		Drawable.Quad = FVector4(0, 0, 1, 1);
 	}
 	Drawable.AspectRatio = KeepAspectRatio;
+	Drawable.Label = Label;
 
 	ViewExtension->AddDrawable(Drawable);
 	return Drawable.Guid;
