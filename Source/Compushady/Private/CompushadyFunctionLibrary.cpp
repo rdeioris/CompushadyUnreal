@@ -1400,16 +1400,12 @@ UCompushadySampler* UCompushadyFunctionLibrary::CreateCompushadySampler(const Te
 			{
 			case(ECompushadySamplerAddressMode::Clamp):
 				return ESamplerAddressMode::AM_Clamp;
-				break;
 			case(ECompushadySamplerAddressMode::Mirror):
 				return ESamplerAddressMode::AM_Mirror;
-				break;
 			case(ECompushadySamplerAddressMode::Border):
 				return ESamplerAddressMode::AM_Border;
-				break;
 			default:
 				return ESamplerAddressMode::AM_Wrap;
-				break;
 			}
 		};
 
