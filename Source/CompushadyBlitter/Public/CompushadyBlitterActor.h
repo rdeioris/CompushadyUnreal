@@ -8,6 +8,7 @@
 #include "CompushadyBlitterActor.generated.h"
 
 class ICompushadyTransientBlendable;
+class UCompushadyCanvas;
 
 UCLASS()
 class COMPUSHADYBLITTER_API ACompushadyBlitterActor : public AActor
@@ -38,7 +39,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
-	// Removes a previously added drawable identified by its handle from all blit stages.
+	// Registers a canvas whose items are drawn over the viewport after the scene is rendered; returns a handle for RemoveDrawable.
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	FGuid AddCanvas(UCompushadyCanvas* Canvas);
+
+	// Removes a previously added drawable or canvas identified by its handle from all blit stages.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void RemoveDrawable(const FGuid& Guid);
 
@@ -67,5 +72,10 @@ protected:
 
 	UPROPERTY()
 	TMap<FGuid, TScriptInterface<IBlendableInterface>> TrackedBlendables;
+
+	// Canvases registered via AddCanvas; the strong ref keeps them alive while
+	// registered, and Tick() snapshots their items to the view extension.
+	UPROPERTY()
+	TMap<FGuid, TObjectPtr<UCompushadyCanvas>> RegisteredCanvases;
 
 };

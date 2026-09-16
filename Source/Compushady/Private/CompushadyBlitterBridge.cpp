@@ -1,4 +1,4 @@
-// Copyright Duality 2026. All Rights Reserved.
+// Copyright 2023-2026 - Roberto De Ioris.
 //
 // UCompushadyResource::Draw* — the reflection-callable entry points for
 // on-screen blitting (with optional text label) — forwarding through the

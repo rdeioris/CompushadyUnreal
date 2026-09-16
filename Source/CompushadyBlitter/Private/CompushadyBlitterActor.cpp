@@ -21,6 +21,9 @@
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
 
+// Generalized on-screen text surface (UCompushadyCanvas).
+#include "CompushadyCanvas.h"
+
 #include "Misc/Optional.h"
 
 struct FCompushadyBlitterDrawable
@@ -218,39 +221,48 @@ public:
 			CurrentDrawables = Drawables;
 		}
 
-		if (CurrentDrawables.Num() > 0)
+		TArray<FCompushadyCanvasText> CurrentCanvasText;
 		{
-			FTextureRHIRef RenderTarget = InView.Family->RenderTarget->GetRenderTargetTexture();
+			FScopeLock CanvasLock(&CanvasCriticalSection);
+			CurrentCanvasText = CanvasTextItems;
+		}
 
+		if (CurrentDrawables.Num() > 0 || CurrentCanvasText.Num() > 0)
+		{
 			if (!InView.Family->RenderTarget->GetRenderTargetTexture().IsValid())
 			{
 				return;
 			}
 
+			FTextureRHIRef RenderTarget = InView.Family->RenderTarget->GetRenderTargetTexture();
+
 			const FIntRect ViewRect = GetScreenSize(InView, false);
 
-			GraphBuilder.AddPass(
-				RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
-				ERDGPassFlags::None,
-				[this, ViewRect, RenderTarget, CurrentDrawables](FRHICommandList& RHICmdList)
-				{
-					FCompushadyRasterizerConfig RasterizerConfig;
-					RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
+			if (CurrentDrawables.Num() > 0)
+			{
+				GraphBuilder.AddPass(
+					RDG_EVENT_NAME("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
+					ERDGPassFlags::None,
+					[this, ViewRect, RenderTarget, CurrentDrawables](FRHICommandList& RHICmdList)
+					{
+						FCompushadyRasterizerConfig RasterizerConfig;
+						RasterizerConfig.BlendMode = ECompushadyRasterizerBlendMode::AlphaBlending;
 
-					Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
-						RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, [&]()
-						{
-							DrawDrawables_RenderThread(RHICmdList, ViewRect, CurrentDrawables);
-						}, RasterizerConfig);
-				});
+						Compushady::Utils::RasterizeSimplePass_RenderThread(TEXT("FCompushadyDrawerViewExtension::PostRenderView_RenderThread"),
+							RHICmdList, VertexShaderRef, PixelShaderRef, &ViewRect, RenderTarget, [&]()
+							{
+								DrawDrawables_RenderThread(RHICmdList, ViewRect, CurrentDrawables);
+							}, RasterizerConfig);
+					});
+			}
 
-			DrawLabels_RenderThread(GraphBuilder, InView, ViewRect, RenderTarget, CurrentDrawables);
+			DrawLabels_RenderThread(GraphBuilder, InView, ViewRect, RenderTarget, CurrentDrawables, CurrentCanvasText);
 		}
 	}
 
 	// Draw each drawable's optional text label at its quad's top-left corner,
 	// loaded over the already-blitted previews. No-op when no labels are set.
-	void DrawLabels_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FIntRect ViewRect, FTextureRHIRef RenderTarget, const TArray<FCompushadyBlitterDrawable>& CurrentDrawables)
+	void DrawLabels_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FIntRect ViewRect, FTextureRHIRef RenderTarget, const TArray<FCompushadyBlitterDrawable>& CurrentDrawables, const TArray<FCompushadyCanvasText>& CurrentCanvasText)
 	{
 		bool bHasLabels = false;
 		for (const FCompushadyBlitterDrawable& Drawable : CurrentDrawables)
@@ -261,7 +273,7 @@ public:
 				break;
 			}
 		}
-		if (!bHasLabels)
+		if (!bHasLabels && CurrentCanvasText.Num() == 0)
 		{
 			return;
 		}
@@ -270,23 +282,43 @@ public:
 		FScreenPassRenderTarget Output(OutputTexture, ViewRect, ERenderTargetLoadAction::ELoad);
 
 		AddDrawCanvasPass(GraphBuilder, RDG_EVENT_NAME("FCompushadyBlitterViewExtension::DrawLabels"), InView, Output,
-			[CurrentDrawables, ViewRect](FCanvas& Canvas)
+			[CurrentDrawables, CurrentCanvasText, ViewRect](FCanvas& Canvas)
 			{
-				UFont* Font = GEngine ? GEngine->GetSmallFont() : nullptr;
-				if (!Font)
+				UFont* DefaultFont = GEngine ? GEngine->GetSmallFont() : nullptr;
+
+				// Per-drawable corner labels (fixed style, small font).
+				if (DefaultFont)
 				{
-					return;
+					for (const FCompushadyBlitterDrawable& Drawable : CurrentDrawables)
+					{
+						if (Drawable.Label.IsEmpty())
+						{
+							continue;
+						}
+						const float X = ViewRect.Min.X + static_cast<float>(Drawable.Quad.X) * ViewRect.Width() + 6.0f;
+						const float Y = ViewRect.Min.Y + static_cast<float>(Drawable.Quad.Y) * ViewRect.Height() + 4.0f;
+						FCanvasTextItem TextItem(FVector2D(X, Y), FText::FromString(Drawable.Label), DefaultFont, FLinearColor::White);
+						TextItem.EnableShadow(FLinearColor::Black);
+						Canvas.DrawItem(TextItem);
+					}
 				}
-				for (const FCompushadyBlitterDrawable& Drawable : CurrentDrawables)
+
+				// Canvas text items (per-item style; normalized 0..1 position).
+				for (const FCompushadyCanvasText& Item : CurrentCanvasText)
 				{
-					if (Drawable.Label.IsEmpty())
+					UFont* ItemFont = Item.Font ? ToRawPtr(Item.Font) : DefaultFont;
+					if (!ItemFont)
 					{
 						continue;
 					}
-					const float X = ViewRect.Min.X + static_cast<float>(Drawable.Quad.X) * ViewRect.Width() + 6.0f;
-					const float Y = ViewRect.Min.Y + static_cast<float>(Drawable.Quad.Y) * ViewRect.Height() + 4.0f;
-					FCanvasTextItem TextItem(FVector2D(X, Y), FText::FromString(Drawable.Label), Font, FLinearColor::White);
-					TextItem.EnableShadow(FLinearColor::Black);
+					const float X = ViewRect.Min.X + static_cast<float>(Item.Position.X) * ViewRect.Width();
+					const float Y = ViewRect.Min.Y + static_cast<float>(Item.Position.Y) * ViewRect.Height();
+					FCanvasTextItem TextItem(FVector2D(X, Y), FText::FromString(Item.Text), ItemFont, Item.Color);
+					TextItem.Scale = FVector2D(Item.Scale, Item.Scale);
+					if (Item.bShadow)
+					{
+						TextItem.EnableShadow(FLinearColor::Black);
+					}
 					Canvas.DrawItem(TextItem);
 				}
 			});
@@ -474,6 +506,15 @@ public:
 		return CurrentProjectionMatrix;
 	}
 
+	// Game-thread push of the flattened canvas text items to be drawn this and
+	// subsequent frames (until the next push). Copied by value on the render
+	// thread in PostRenderView_RenderThread.
+	void SetCanvasSnapshot(TArray<FCompushadyCanvasText> InItems)
+	{
+		FScopeLock CanvasLock(&CanvasCriticalSection);
+		CanvasTextItems = MoveTemp(InItems);
+	}
+
 protected:
 	FCriticalSection DrawablesCriticalSection;
 	TArray<FCompushadyBlitterDrawable> Drawables;
@@ -483,6 +524,10 @@ protected:
 
 	FCriticalSection AfterMotionBlurDrawablesCriticalSection;
 	TArray<FCompushadyBlitterDrawable> AfterMotionBlurDrawables;
+
+	// Flattened canvas text snapshot (pushed from the game thread each frame).
+	FCriticalSection CanvasCriticalSection;
+	TArray<FCompushadyCanvasText> CanvasTextItems;
 
 	FVertexShaderRHIRef VertexShaderRef;
 	FCompushadyResourceBindings VSResourceBindings;
@@ -504,8 +549,10 @@ protected:
 // Sets default values
 ACompushadyBlitterActor::ACompushadyBlitterActor()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = false;
+	// Ticks only while at least one canvas is registered (see AddCanvas /
+	// RemoveDrawable), to push the per-frame canvas snapshot to the render thread.
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
 // Called when the game starts or when spawned
@@ -548,11 +595,41 @@ void ACompushadyBlitterActor::BeginPlay()
 
 }
 
-// Called every frame
+// Called every frame (only while canvases are registered)
 void ACompushadyBlitterActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (!ViewExtension)
+	{
+		return;
+	}
+
+	// Flatten every registered canvas's items into one snapshot and hand it to
+	// the view extension. Done on the game thread so UObject access is safe; the
+	// view extension copies it by value onto the render thread.
+	TArray<FCompushadyCanvasText> Snapshot;
+	for (const TPair<FGuid, TObjectPtr<UCompushadyCanvas>>& Pair : RegisteredCanvases)
+	{
+		if (Pair.Value)
+		{
+			Snapshot.Append(Pair.Value->GetTextItems());
+		}
+	}
+	ViewExtension->SetCanvasSnapshot(MoveTemp(Snapshot));
+}
+
+FGuid ACompushadyBlitterActor::AddCanvas(UCompushadyCanvas* Canvas)
+{
+	if (!ViewExtension || !Canvas)
+	{
+		return FGuid();
+	}
+
+	const FGuid Handle = FGuid::NewGuid();
+	RegisteredCanvases.Add(Handle, Canvas);
+	SetActorTickEnabled(true);
+	return Handle;
 }
 
 FGuid ACompushadyBlitterActor::AddDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio, const FString& Label)
@@ -633,6 +710,22 @@ FGuid ACompushadyBlitterActor::AddAfterMotionBlurDrawable(UCompushadyResource* R
 
 void ACompushadyBlitterActor::RemoveDrawable(const FGuid& Guid)
 {
+	// A canvas registration handle? Unregister it (the strong ref is dropped so
+	// the canvas can be GC'd if nothing else holds it) and stop ticking / clear
+	// the snapshot once none remain.
+	if (RegisteredCanvases.Remove(Guid) > 0)
+	{
+		if (RegisteredCanvases.Num() == 0)
+		{
+			SetActorTickEnabled(false);
+			if (ViewExtension)
+			{
+				ViewExtension->SetCanvasSnapshot(TArray<FCompushadyCanvasText>());
+			}
+		}
+		return;
+	}
+
 	if (!ViewExtension)
 	{
 		return;

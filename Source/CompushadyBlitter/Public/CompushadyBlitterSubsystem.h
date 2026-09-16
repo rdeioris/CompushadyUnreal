@@ -53,7 +53,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	FGuid AddAfterMotionBlurDrawable(UCompushadyResource* Resource, const FVector4 Quad, const ECompushadyKeepAspectRatio KeepAspectRatio);
 
-	// Removes a previously added drawable from the blitter actor by its handle.
+	// Typed accessor for this world subsystem (BP-friendly: returns the concrete
+	// type so no cast is needed, unlike GetWorldSubsystem which returns the base).
+	UFUNCTION(BlueprintCallable, Category = "Compushady", meta = (WorldContext = "WorldContextObject"))
+	static UCompushadyBlitterSubsystem* Get(UObject* WorldContextObject);
+
+	// Registers a canvas whose items are drawn over the viewport after the scene is rendered, spawning the blitter actor on demand; returns a handle for RemoveDrawable.
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	FGuid AddCanvas(UCompushadyCanvas* Canvas);
+
+	// Removes a previously added drawable or canvas from the blitter actor by its handle.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	void RemoveDrawable(const FGuid& Guid);
 
