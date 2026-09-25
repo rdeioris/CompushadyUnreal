@@ -745,6 +745,22 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& TargetProfil
 
 #if COMPUSHADY_UE_VERSION >= 53
 	FShaderResourceTable ShaderResourceTable;
+	// The Vulkan RHI (FVulkanShader ctor) builds one static uniform-buffer slot per
+	// entry in VulkanShaderHeader.UniformBufferInfos (when the count exceeds the
+	// packed-globals buffer), and RHICore::ApplyStaticUniformBuffers then asserts
+	// StaticSlots.Num() == ResourceTableLayoutHashes.Num() on EVERY pipeline set.
+	// Compushady manages all its own bindings and uses no UE static uniform buffers,
+	// so a shader with a cbuffer got Slots=1 but an empty resource table (Hashes=0)
+	// and crashed on Vulkan (fine on D3D12). Emit one placeholder (zero) layout hash
+	// per registered uniform buffer, mirroring the engine's slot-building condition,
+	// to keep the counts equal. Zero matches no real UB struct, so the slots resolve
+	// to MAX_UNIFORM_BUFFER_STATIC_SLOTS (invalid) and are skipped when static
+	// bindings are applied — no behavioural change, just satisfies the invariant.
+	const int32 NumGlobalPackedBuffer = (VulkanShaderHeader.PackedGlobalsSize > 0) ? 1 : 0;
+	if (VulkanShaderHeader.UniformBufferInfos.Num() > NumGlobalPackedBuffer)
+	{
+		ShaderResourceTable.ResourceTableLayoutHashes.AddZeroed(VulkanShaderHeader.UniformBufferInfos.Num());
+	}
 	Writer << ShaderResourceTable;
 #endif
 
