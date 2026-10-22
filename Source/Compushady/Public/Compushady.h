@@ -64,7 +64,10 @@ using FCompushadyShaderHash = FSHAHash;
 #elif COMPUSHADY_UE_VERSION >= 53 && COMPUSHADY_UE_VERSION <= 55
 #define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIResourceCreateInfo ResourceCreateInfo(*Name); return RHICmdList.CreateBuffer(Size, Flags, Stride, InitialState, ResourceCreateInfo);}()
 #elif COMPUSHADY_UE_VERSION >= 56
-#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { FRHIBufferCreateDesc ResourceCreateInfo = FRHIBufferCreateDesc::Create(Name, Size, Stride, Flags).SetInitialState(InitialState); return RHICmdList.CreateBuffer(ResourceCreateInfo);}()
+// FRHIBufferCreateDesc keeps only the DebugName pointer: copy the name first, because callers pass the TCHAR* of
+// a temporary FString (*FString::Printf(...)) that is destroyed at the end of the statement building the desc,
+// before CreateBuffer reads it (use after free: FName length assert / SIGSEGV in FRHIBuffer::FRHIBuffer)
+#define COMPUSHADY_CREATE_BUFFER(Name, Size, Flags, Stride, InitialState) [&]() { const FString CompushadyBufferDebugName(Name); FRHIBufferCreateDesc ResourceCreateInfo = FRHIBufferCreateDesc::Create(*CompushadyBufferDebugName, Size, Stride, Flags).SetInitialState(InitialState); return RHICmdList.CreateBuffer(ResourceCreateInfo);}()
 #endif
 
 // ---- SRV / UAV creation ----
