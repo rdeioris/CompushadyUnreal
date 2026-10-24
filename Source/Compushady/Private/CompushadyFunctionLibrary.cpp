@@ -125,6 +125,11 @@ UCompushadyVideoEncoder* UCompushadyFunctionLibrary::CreateCompushadyVideoEncode
 	return CompushadyVideoEncoder;
 }
 
+bool UCompushadyFunctionLibrary::IsCompushadyVideoEncoderCodecSupported(const ECompushadyVideoEncoderCodec Codec)
+{
+	return UCompushadyVideoEncoder::IsCodecSupported(Codec);
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
@@ -1400,16 +1405,12 @@ UCompushadySampler* UCompushadyFunctionLibrary::CreateCompushadySampler(const Te
 			{
 			case(ECompushadySamplerAddressMode::Clamp):
 				return ESamplerAddressMode::AM_Clamp;
-				break;
 			case(ECompushadySamplerAddressMode::Mirror):
 				return ESamplerAddressMode::AM_Mirror;
-				break;
 			case(ECompushadySamplerAddressMode::Border):
 				return ESamplerAddressMode::AM_Border;
-				break;
 			default:
 				return ESamplerAddressMode::AM_Wrap;
-				break;
 			}
 		};
 

@@ -262,6 +262,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static UCompushadyVideoEncoder* CreateCompushadyVideoEncoder(const ECompushadyVideoEncoderCodec Codec, const ECompushadyVideoEncoderQuality Quality, const ECompushadyVideoEncoderLatency Latency);
 
+	// Whether this machine's hardware encoder can encode Codec from GPU textures; CreateCompushadyVideoEncoder returns null when it cannot.
+	UFUNCTION(BlueprintPure, Category = "Compushady")
+	static bool IsCompushadyVideoEncoderCodecSupported(const ECompushadyVideoEncoderCodec Codec);
+
 	// Loads a SPIR-V binary file and disassembles it into human-readable text; returns false on failure.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	static bool DisassembleSPIRVFile(const FString& Filename, FString& Disassembled, FString& ErrorMessages);
