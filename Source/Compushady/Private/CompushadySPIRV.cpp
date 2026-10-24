@@ -745,6 +745,18 @@ bool Compushady::FixupSPIRV(TArray<uint8>& ByteCode, const FString& TargetProfil
 
 #if COMPUSHADY_UE_VERSION >= 53
 	FShaderResourceTable ShaderResourceTable;
+#if COMPUSHADY_UE_VERSION >= 55
+	// FVulkanShader gives every uniform buffer (beyond the packed globals) a static slot, and binding the
+	// pipeline checks there is one layout hash per slot: without these, a cbuffer asserts in non-shipping builds.
+	const int32 NumGlobalPackedBuffer = VulkanShaderHeader.PackedGlobalsSize > 0 ? 1 : 0;
+	if (VulkanShaderHeader.UniformBufferInfos.Num() > NumGlobalPackedBuffer)
+	{
+		for (const FVulkanShaderHeader::FUniformBufferInfo& UniformBufferInfo : VulkanShaderHeader.UniformBufferInfos)
+		{
+			ShaderResourceTable.ResourceTableLayoutHashes.Add(UniformBufferInfo.LayoutHash);
+		}
+	}
+#endif
 	Writer << ShaderResourceTable;
 #endif
 
