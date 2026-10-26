@@ -150,6 +150,10 @@ protected:
 		}
 
 		GraphBuilder.ConvertToExternalTexture(Output.Texture);
+		// The passes below read the input through its RHI texture, without declaring it to the graph. Nothing
+		// else reads it (what follows reads Output), so the graph would cull the pass writing it (the tonemapper,
+		// or the copy CopyFromSlice makes) and the shaders would read an empty texture. External, it is kept.
+		GraphBuilder.ConvertToExternalTexture(SceneColorInput.Texture);
 
 		const FIntRect ViewRect = GetViewRectAndFillCBVZero(View, false);
 
