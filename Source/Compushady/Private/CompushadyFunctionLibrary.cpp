@@ -125,6 +125,11 @@ UCompushadyVideoEncoder* UCompushadyFunctionLibrary::CreateCompushadyVideoEncode
 	return CompushadyVideoEncoder;
 }
 
+bool UCompushadyFunctionLibrary::IsCompushadyVideoEncoderCodecSupported(const ECompushadyVideoEncoderCodec Codec)
+{
+	return UCompushadyVideoEncoder::IsCodecSupported(Codec);
+}
+
 UCompushadyCompute* UCompushadyFunctionLibrary::CreateCompushadyComputeFromDXILFile(const FString& Filename, FString& ErrorMessages)
 {
 	UCompushadyCompute* CompushadyCompute = NewObject<UCompushadyCompute>();
