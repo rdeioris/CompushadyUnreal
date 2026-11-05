@@ -85,6 +85,36 @@ struct FCompushadyVideoEncoder
 			InFlight--;
 		}
 	}
+
+	// Sends every frame still in flight, waiting for the render thread to copy them and for the GPU to finish
+	// the copies; returns false if the GPU did not finish in time (the frames are then sent later, as when asynchronous).
+	bool SendAllCopied()
+	{
+		check(IsInGameThread());
+		// Submitted now rather than at the end of the frame, which the waiting game thread would never reach.
+		ENQUEUE_RENDER_COMMAND(CompushadyEncodeFrameSubmit)(
+			[](FRHICommandListImmediate& RHICmdList)
+			{
+				RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
+			});
+		FRenderCommandFence RenderCommandFence;
+		RenderCommandFence.BeginFence();
+		RenderCommandFence.Wait();
+
+		const double Deadline = FPlatformTime::Seconds() + 5.0;
+		SendCopied();
+		while (InFlight > 0)
+		{
+			if (FPlatformTime::Seconds() > Deadline)
+			{
+				UE_LOG(LogCompushady, Warning, TEXT("Video encoder: the GPU did not finish copying %d frame(s) in time"), InFlight);
+				return false;
+			}
+			FPlatformProcess::SleepNoStats(0.0001f);
+			SendCopied();
+		}
+		return true;
+	}
 };
 
 namespace
@@ -244,13 +274,32 @@ bool UCompushadyVideoEncoder::IsCodecSupported(const ECompushadyVideoEncoderCode
 bool UCompushadyVideoEncoder::EncodeFrame(UCompushadyResource* FrameResource, const bool bForceKeyFrame)
 {
 #ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
-	return EncodeFrameAtTime(FrameResource, bForceKeyFrame, NowMicroseconds());
+	return EncodeFrameInternal(FrameResource, bForceKeyFrame, NowMicroseconds(), false);
 #else
 	return false;
 #endif
 }
 
 bool UCompushadyVideoEncoder::EncodeFrameAtTime(UCompushadyResource* FrameResource, const bool bForceKeyFrame, const int64 CaptureTimeMicroseconds)
+{
+	return EncodeFrameInternal(FrameResource, bForceKeyFrame, CaptureTimeMicroseconds, false);
+}
+
+bool UCompushadyVideoEncoder::EncodeFrameSync(UCompushadyResource* FrameResource, const bool bForceKeyFrame)
+{
+#ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
+	return EncodeFrameInternal(FrameResource, bForceKeyFrame, NowMicroseconds(), true);
+#else
+	return false;
+#endif
+}
+
+bool UCompushadyVideoEncoder::EncodeFrameAtTimeSync(UCompushadyResource* FrameResource, const bool bForceKeyFrame, const int64 CaptureTimeMicroseconds)
+{
+	return EncodeFrameInternal(FrameResource, bForceKeyFrame, CaptureTimeMicroseconds, true);
+}
+
+bool UCompushadyVideoEncoder::EncodeFrameInternal(UCompushadyResource* FrameResource, const bool bForceKeyFrame, const int64 CaptureTimeMicroseconds, const bool bSync)
 {
 #ifdef COMPUSHADY_SUPPORTS_VIDEO_ENCODING
 	if (!VideoEncoder)
@@ -280,6 +329,11 @@ bool UCompushadyVideoEncoder::EncodeFrameAtTime(UCompushadyResource* FrameResour
 	// codec-neutral config resets the profile to Auto (NVENC then picks High for a Baseline encoder).
 	const FIntPoint Size(FrameResource->GetTextureSize().X, FrameResource->GetTextureSize().Y);
 	VideoEncoder->SendCopied();
+	if (bSync && VideoEncoder->InFlight > 0 && !VideoEncoder->SendAllCopied())
+	{
+		// Frames sent asynchronously before this one are still being copied.
+		return false;
+	}
 	if (!VideoEncoder->Encoder || Size != ConfiguredSize)
 	{
 		if (VideoEncoder->InFlight > 0)
@@ -314,6 +368,8 @@ bool UCompushadyVideoEncoder::EncodeFrameAtTime(UCompushadyResource* FrameResour
 	// The encoder reads a texture as soon as it gets it, so it gets one only once the GPU has finished the copy
 	// (like Pixel Streaming, which encodes captured frames only): the render thread copies and writes a fence,
 	// and the game thread sends the frames whose fence has passed, here and when packets are dequeued.
+	// The Sync versions wait for the copy right away instead, and the hardware encoders (NVENC, AMF) have the
+	// packet ready when SendFrame returns, so it can be dequeued as soon as EncodeFrameSync returns.
 	const FVideoDescriptor Descriptor = FVideoResourceRHI::GetDescriptorFrom(VideoEncoder->Encoder->GetDevice().ToSharedRef(), FrameResource->GetTextureRHI());
 	if (!VideoEncoder->Textures)
 	{
@@ -358,6 +414,11 @@ bool UCompushadyVideoEncoder::EncodeFrameAtTime(UCompushadyResource* FrameResour
 			RHICmdList.WriteGPUFence(Fence);
 			Copied->Enqueue({ EncoderTexture, Fence, Index, bForceKeyFrame });
 		});
+
+	if (bSync)
+	{
+		return VideoEncoder->SendAllCopied();
+	}
 
 	return true;
 #else
