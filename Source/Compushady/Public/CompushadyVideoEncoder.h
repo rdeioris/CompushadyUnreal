@@ -91,6 +91,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool EncodeFrameAtTime(UCompushadyResource* FrameResource, const bool bForceKeyFrame, const int64 CaptureTimeMicroseconds);
 
+	// Like EncodeFrame, but returns once the frame is encoded (waiting for the render thread and the GPU), so its packet, and those of the frames sent before it, can be dequeued right away.
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool EncodeFrameSync(UCompushadyResource* FrameResource, const bool bForceKeyFrame);
+
+	// Like EncodeFrameSync, but the packet carries CaptureTimeMicroseconds instead of the time of the call.
+	UFUNCTION(BlueprintCallable, Category = "Compushady")
+	bool EncodeFrameAtTimeSync(UCompushadyResource* FrameResource, const bool bForceKeyFrame, const int64 CaptureTimeMicroseconds);
+
 	// Retrieves the next available encoded video packet into FrameData; returns false if no encoded frame is ready.
 	UFUNCTION(BlueprintCallable, Category = "Compushady")
 	bool DequeueEncodedFrame(TArray<uint8>& FrameData);
@@ -105,6 +113,8 @@ public:
 	ECompushadyVideoEncoderCodec GetCodec() const { return Codec; }
 
 protected:
+
+	bool EncodeFrameInternal(UCompushadyResource* FrameResource, const bool bForceKeyFrame, const int64 CaptureTimeMicroseconds, const bool bSync);
 
 	TSharedPtr<FCompushadyVideoEncoder> VideoEncoder;
 
