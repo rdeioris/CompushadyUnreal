@@ -957,7 +957,7 @@ bool UCompushadyResource::MapReadAndExecuteSync(TFunction<bool(const void*)> InF
 			// Targeted wait: submit, then block only on this copy's fence (not a full BlockUntilGPUIdle drain).
 			FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyMapReadAndExecuteSync"));
 			RHICmdList.WriteGPUFence(SignalFence.GetReference());
-			RHICmdList.SubmitCommandsAndFlushGPU();
+			COMPUSHADY_SUBMIT_COMMANDS(RHICmdList);
 			SignalFence->Wait(RHICmdList, RHICmdList.GetGPUMask());
 			void* Data = RHICmdList.LockStagingBuffer(StagingBuffer, SignalFence.GetReference(), 0, BufferRHIRef->GetSize());
 			if (Data)
@@ -1059,7 +1059,7 @@ bool UCompushadyResource::MapTextureSliceAndExecuteSync(TFunction<void(const voi
 			// Targeted wait: submit, then block only on this copy's fence (not a full BlockUntilGPUIdle drain).
 			FGPUFenceRHIRef SignalFence = RHICreateGPUFence(TEXT("CompushadyMapTextureSliceAndExecuteSync"));
 			RHICmdList.WriteGPUFence(SignalFence.GetReference());
-			RHICmdList.SubmitCommandsAndFlushGPU();
+			COMPUSHADY_SUBMIT_COMMANDS(RHICmdList);
 			SignalFence->Wait(RHICmdList, RHICmdList.GetGPUMask());
 			int32 Width = 0;
 			int32 Height = 0;

@@ -91,8 +91,12 @@ public:
 	UFUNCTION()
 	void StoreLastSignal(bool bSuccess, const FString& ErrorMessage);
 
+	UFUNCTION()
+	void StoreLastSignalAndProfile(bool bSuccess, const int64 Microseconds, const FString& ErrorMessage);
+
 	bool bLastSuccess = false;
 	FString LastErrorMessages;
+	int64 LastMicroseconds = -1;
 
 	/* end of testing block */
 

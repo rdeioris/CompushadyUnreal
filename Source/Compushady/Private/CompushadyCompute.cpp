@@ -303,3 +303,10 @@ void UCompushadyCompute::StoreLastSignal(bool bSuccess, const FString& ErrorMess
 	bLastSuccess = bSuccess;
 	LastErrorMessages = ErrorMessage;
 }
+
+void UCompushadyCompute::StoreLastSignalAndProfile(bool bSuccess, const int64 Microseconds, const FString& ErrorMessage)
+{
+	bLastSuccess = bSuccess;
+	LastMicroseconds = Microseconds;
+	LastErrorMessages = ErrorMessage;
+}

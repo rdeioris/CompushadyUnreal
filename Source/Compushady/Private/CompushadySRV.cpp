@@ -114,7 +114,12 @@ bool UCompushadySRV::InitializeFromSceneTexture(const ECompushadySceneTexture In
 
 bool UCompushadySRV::InitializeFromWorldSceneAccelerationStructure(UWorld* World)
 {
-#if COMPUSHADY_UE_VERSION >= 53 && RHI_RAYTRACING
+#if COMPUSHADY_UE_VERSION >= 59 && RHI_RAYTRACING
+	// 5.9 made the ray tracing scene per-view: the TLAS can only be resolved from a renderer
+	// FViewInfo during a frame, so there is no longer a world-wide acceleration structure to snapshot.
+	UE_LOG(LogCompushady, Error, TEXT("CreateCompushadySRVFromWorldSceneAccelerationStructure is not supported on UE 5.9+: the ray tracing scene is now per-view"));
+	return false;
+#elif COMPUSHADY_UE_VERSION >= 53 && RHI_RAYTRACING
 	FSceneInterface* Scene = World->Scene;
 
 	if (!UE::FXRenderingUtils::RayTracing::HasRayTracingScene(Scene))

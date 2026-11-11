@@ -424,7 +424,7 @@ public:
 
 				// Submit the recorded work, then let each query read below wait only on its own timestamp
 				// (bWait = true) instead of draining the whole GPU with BlockUntilGPUIdle.
-				RHICmdList.SubmitCommandsAndFlushGPU();
+				COMPUSHADY_SUBMIT_COMMANDS(RHICmdList);
 
 				uint64 BeforeMicroseconds = 0;
 				RHIGetRenderQueryResult(BeforeRenderQuery.GetQuery(), BeforeMicroseconds, true);

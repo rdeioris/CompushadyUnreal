@@ -40,7 +40,13 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCompushady, Log, All);
 #define COMPUSHADY_UE_VERSION 57
 #elif ENGINE_MINOR_VERSION == 8
 #define COMPUSHADY_UE_VERSION 58
+#elif ENGINE_MINOR_VERSION == 9
+#define COMPUSHADY_UE_VERSION 59
 #endif
+#endif
+
+#ifndef COMPUSHADY_UE_VERSION
+#error "Compushady: unsupported Unreal Engine version"
 #endif
 
 // ---- shader identity hash ----
@@ -56,6 +62,17 @@ using FCompushadyShaderHash = FShaderHash;
 #else
 #include "Misc/SecureHash.h"
 using FCompushadyShaderHash = FSHAHash;
+#endif
+
+// ---- submit without draining the GPU ----
+//
+// Used before waiting on a specific fence/query. 5.9 deprecated SubmitCommandsAndFlushGPU and
+// turned it into SubmitAndBlockUntilGPUIdle (a full GPU drain), so from 5.9 we only flush the RHI
+// thread, which submits the recorded work and lets the caller wait on its own fence/query.
+#if COMPUSHADY_UE_VERSION >= 59
+#define COMPUSHADY_SUBMIT_COMMANDS(RHICmdList) (RHICmdList).ImmediateFlush(EImmediateFlushType::FlushRHIThread)
+#else
+#define COMPUSHADY_SUBMIT_COMMANDS(RHICmdList) (RHICmdList).SubmitCommandsAndFlushGPU()
 #endif
 
 // ---- buffer creation ----
